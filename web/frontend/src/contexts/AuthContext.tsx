@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Load user data from Firestore
-  const loadUserData = useCallback(async (firebaseUser: FirebaseUser | null) => {
+  const loadUserData = useCallback(async (firebaseUser: FirebaseUser | null, skipBackendSync: boolean = false) => {
     if (!firebaseUser) {
       setState(prev => ({
         ...prev,
@@ -60,8 +60,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // If auth says email is verified but Firestore isn't updated, fix it
         if (firebaseUser.emailVerified && !userData.isVerified) {
-          await updateDoc(userRef, { isVerified: true, updatedAt: new Date().toISOString() });
-          userData = { ...userData, isVerified: true };
+          try {
+            await updateDoc(userRef, { isVerified: true, updatedAt: new Date().toISOString() });
+            userData = { ...userData, isVerified: true };
+          } catch (updateErr) {
+            console.warn('Failed to update verification status in Firestore:', updateErr);
+          }
         }
 
         // Ensure walletBalance and accountStatus exist
@@ -70,21 +74,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Sync balance from Backend (Source of Truth)
-        try {
-           const token = await firebaseUser.getIdToken();
-           const backendBalances = await getWalletBalance(token);
-           if (backendBalances) {
-             userData.walletBalance = backendBalances.mainBalance;
-             userData.cashbackBalance = backendBalances.cashbackBalance;
-             userData.referralBalance = backendBalances.referralBalance;
-           }
-        } catch (err) {
-           console.error('Failed to sync wallet balance from backend', err);
+        if (!skipBackendSync) {
+          try {
+             const token = await firebaseUser.getIdToken();
+             // 5-second timeout for backend balance fetch
+             const balancePromise = getWalletBalance(token);
+             const timeoutPromise = new Promise((_, reject) => 
+               setTimeout(() => reject(new Error('Backend sync timeout')), 5000)
+             );
+             
+             const backendBalances = await Promise.race([balancePromise, timeoutPromise]) as any;
+             
+             if (backendBalances) {
+               userData.walletBalance = backendBalances.mainBalance;
+               userData.cashbackBalance = backendBalances.cashbackBalance;
+               userData.referralBalance = backendBalances.referralBalance;
+             }
+          } catch (err) {
+             console.error('Failed to sync wallet balance from backend (using cached Firestore data):', err);
+          }
         }
 
         if (!userData.accountStatus) {
-          await updateDoc(userRef, { accountStatus: 'active' });
-          userData.accountStatus = 'active';
+          try {
+            await updateDoc(userRef, { accountStatus: 'active' });
+            userData.accountStatus = 'active';
+          } catch (updateErr) {
+            console.warn('Failed to update account status in Firestore:', updateErr);
+          }
         }
 
         setState(prev => ({
@@ -118,7 +135,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           updatedAt: new Date().toISOString(),
         };
         
-        await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+        try {
+          await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+        } catch (setErr) {
+          console.error('Failed to create user document in Firestore:', setErr);
+          throw setErr; // Re-throw as this is a critical Firestore error
+        }
         
         setState(prev => ({
           ...prev,
@@ -128,10 +150,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }));
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('Critical error loading user data from Firestore:', error);
+      // Only set user to null on critical Firestore READ errors
       setState(prev => ({
         ...prev,
-        error: 'Failed to load user data',
+        error: 'Failed to load user data from database',
+        user: null,
         loading: false,
         initialized: true,
       }));
@@ -141,7 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Set up auth state listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      await loadUserData(firebaseUser);
+      // onAuthStateChanged will handle the backend sync
+      await loadUserData(firebaseUser, false);
     });
 
     // Cleanup subscription on unmount
@@ -250,7 +275,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('Could not update isVerified in Firestore:', err);
       }
 
-      await loadUserData(user);
+      // signIn skips backend sync, let onAuthStateChanged handle it
+      await loadUserData(user, true);
       
       return user;
     } catch (error: any) {
@@ -328,7 +354,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      await updateDoc(doc(db, 'users', auth.currentUser.uid), updates);
+      try {
+        await updateDoc(doc(db, 'users', auth.currentUser.uid), updates);
+      } catch (updateErr) {
+        console.warn('Failed to update Firestore document during profile update:', updateErr);
+      }
       
       if (state.user) {
         setState(prev => ({
