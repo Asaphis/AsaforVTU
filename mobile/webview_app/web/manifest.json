@@ -1,11 +1,11 @@
 {
-    "name": "webview_app",
-    "short_name": "webview_app",
-    "start_url": ".",
+    "name": "Asafor VTU",
+    "short_name": "Asafor",
+    "start_url": "https://asaforvtu.onrender.com/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0B4F6C",
+    "theme_color": "#0B4F6C",
+    "description": "Asafor VTU - Instant Digital Services. Buy airtime, data, pay bills and more with ease.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
