@@ -52,58 +52,105 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      // Step 1: Check if DB is initialized. If not, this is a config error.
+      if (!db) {
+        throw new Error('Database not initialized. Check Firebase configuration.');
+      }
+
       const userRef = doc(db, 'users', firebaseUser.uid);
       const userDoc = await getDoc(userRef);
 
       if (userDoc.exists()) {
         let userData = userDoc.data() as Omit<UserProfile, 'uid'>;
 
-        // Ensure critical fields exist
+        // Ensure critical fields exist with defaults
         if (typeof userData.walletBalance === 'undefined') userData.walletBalance = 0;
         if (typeof userData.cashbackBalance === 'undefined') userData.cashbackBalance = 0;
         if (typeof userData.referralBalance === 'undefined') userData.referralBalance = 0;
 
-        // Priority Sync: Try to get fresh data but don't crash if it fails
-        try {
-           const token = await firebaseUser.getIdToken();
-           const backendBalances = await Promise.race([
-             getWalletBalance(token),
-             new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
-           ]) as any;
-           
-           if (backendBalances) {
-             userData.walletBalance = backendBalances.mainBalance;
-             userData.cashbackBalance = backendBalances.cashbackBalance;
-             userData.referralBalance = backendBalances.referralBalance;
-           }
-        } catch (err) {
-           console.warn('Backend sync failed, using Firestore data:', err);
-        }
-
+        // Step 2: Immediate state update so user can see dashboard
         setState(prev => ({
           ...prev,
           user: { uid: firebaseUser.uid, ...userData },
           loading: false,
           initialized: true,
+          error: null,
         }));
+
+        // Step 3: Background Sync (Non-blocking)
+        try {
+           const token = await firebaseUser.getIdToken();
+           const backendBalances = await getWalletBalance(token);
+           
+           if (backendBalances) {
+             const updatedData = {
+               ...userData,
+               walletBalance: backendBalances.mainBalance,
+               cashbackBalance: backendBalances.cashbackBalance,
+               referralBalance: backendBalances.referralBalance,
+             };
+             
+             setState(prev => ({
+               ...prev,
+               user: { uid: firebaseUser.uid, ...updatedData },
+             }));
+           }
+        } catch (err) {
+           console.warn('[Auth] Background sync failed (harmless):', err);
+        }
       } else {
-        // Handle missing document case
-        console.error('User document missing in Firestore for UID:', firebaseUser.uid);
+        // Step 4: Handle new user or missing document
+        console.warn('[Auth] User document missing, creating temporary profile');
+        const tempUser: UserProfile = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || '',
+          fullName: firebaseUser.displayName || '',
+          username: firebaseUser.email?.split('@')[0] || '',
+          phone: '',
+          pinHash: '',
+          walletBalance: 0,
+          referralBalance: 0,
+          cashbackBalance: 0,
+          accountStatus: 'active',
+          isVerified: firebaseUser.emailVerified,
+          emailVerified: firebaseUser.emailVerified,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          metadata: {
+            creationTime: firebaseUser.metadata.creationTime || new Date().toISOString(),
+            lastSignInTime: firebaseUser.metadata.lastSignInTime || new Date().toISOString(),
+          }
+        };
+
         setState(prev => ({
           ...prev,
-          error: 'User profile not found',
+          user: tempUser,
+          loading: false,
+          initialized: true,
+          error: null,
+        }));
+      }
+    } catch (error: any) {
+      console.error('[Auth] Critical synchronization error:', error);
+      
+      // Check for specific Firebase configuration errors
+      const errorMsg = error.message || '';
+      if (errorMsg.includes('invalid-api-key') || errorMsg.includes('configuration-not-found')) {
+        setState(prev => ({
+          ...prev,
+          error: 'Firebase Configuration Error: Please check your API keys.',
+          loading: false,
+          initialized: true,
+        }));
+      } else {
+        setState(prev => ({
+          ...prev,
+          error: 'Authentication sync failed. Please refresh the page.',
           loading: false,
           initialized: true,
         }));
       }
-    } catch (error) {
-      console.error('Critical failure in loadUserData:', error);
-      setState(prev => ({
-        ...prev,
-        error: 'Authentication sync failed',
-        loading: false,
-        initialized: true,
-      }));
     }
   }, []);
 
