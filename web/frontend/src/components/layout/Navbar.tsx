@@ -34,7 +34,7 @@ export function Navbar() {
   return (
     <header className={`fixed w-full top-0 left-0 z-50 transition-all duration-500 ${scrolled ? 'py-3' : 'py-6'}`}>
       <div className="container mx-auto px-4">
-        <div className={`flex items-center justify-between h-16 px-6 rounded-[2rem] transition-all duration-500 border ${scrolled ? 'bg-white/80 backdrop-blur-xl shadow-lg border-slate-200/50' : 'bg-transparent border-transparent'}`}>
+        <div className={`flex items-center justify-between h-16 px-6 rounded-[2rem] transition-all duration-500 border ${scrolled ? 'bg-white/90 backdrop-blur-xl shadow-lg border-slate-200/50' : 'bg-primary border-primary/20 shadow-xl shadow-primary/20'}`}>
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
             <Link href="/" className="flex items-center group">
@@ -42,7 +42,7 @@ export function Navbar() {
                 <img 
                   src="/logo.png" 
                   alt="AsaforVTU Logo" 
-                  className="h-full w-full object-contain"
+                  className={`h-full w-full object-contain transition-all duration-500 ${scrolled ? '' : 'brightness-0 invert'}`}
                 />
               </div>
               <span className={`ml-2 font-bold text-2xl transition-colors duration-300 ${scrolled ? 'text-slate-900' : 'text-white'}`}>AsaforVTU</span>
@@ -65,12 +65,12 @@ export function Navbar() {
           {/* Auth Buttons - Desktop */}
           <div className="hidden md:flex items-center space-x-4">
             <Link href="/login">
-              <Button variant="ghost" className={`font-semibold rounded-xl ${scrolled ? 'text-slate-700 hover:bg-slate-100' : 'text-white hover:bg-white/10'}`}>
+              <Button variant="ghost" className={`font-semibold rounded-xl ${scrolled ? 'text-slate-700 hover:bg-slate-100' : 'text-white hover:bg-white/20'}`}>
                 Sign In
               </Button>
             </Link>
             <Link href="/register">
-              <Button className="bg-primary hover:bg-primary/90 text-white font-semibold px-6 rounded-xl shadow-lg shadow-primary/20">
+              <Button className={`${scrolled ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-primary hover:bg-slate-100'} font-semibold px-6 rounded-xl transition-all duration-300 shadow-md`}>
                 Get Started
               </Button>
             </Link>
