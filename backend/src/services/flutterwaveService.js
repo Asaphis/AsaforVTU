@@ -30,10 +30,10 @@ class FlutterwaveService {
       tx_ref,
       amount,
       currency: 'NGN',
-      redirect_url: redirectUrl || process.env.FLW_REDIRECT_URL || 'https://osghub.com/payment-complete',
+      redirect_url: redirectUrl || process.env.FLW_REDIRECT_URL || 'https://asaforvtu.onrender.com/payment-complete',
       customer: {
-        email: customer.email || 'user@osghub.com',
-        name: customer.name || 'OSGHUB User',
+        email: customer.email || 'user@Asafor.com',
+        name: customer.name || 'Asafor User',
         phonenumber: customer.phone || undefined,
       },
       meta: {
@@ -117,3 +117,4 @@ class FlutterwaveService {
 }
 
 module.exports = new FlutterwaveService();
+

@@ -301,7 +301,7 @@ function AddUserForm({ onDone }: { onDone: () => void }) {
   const [saving, setSaving] = useState(false);
   const [requireVerification, setRequireVerification] = useState(false);
   const [verificationLink, setVerificationLink] = useState<string | undefined>(undefined);
-  const [redirectUrl, setRedirectUrl] = useState("https://osghub.com/login");
+  const [redirectUrl, setRedirectUrl] = useState("https://asaforvtu.onrender.com/login");
   return (
     <div className="space-y-4">
       <InputGroup>
@@ -327,7 +327,7 @@ function AddUserForm({ onDone }: { onDone: () => void }) {
       {requireVerification && (
         <InputGroup>
           <Label>Redirect URL</Label>
-          <RawInput placeholder="https://osghub.com/login" value={redirectUrl} onChange={e => setRedirectUrl(e.target.value)} />
+          <RawInput placeholder="https://asaforvtu.onrender.com/login" value={redirectUrl} onChange={e => setRedirectUrl(e.target.value)} />
         </InputGroup>
       )}
       {verificationLink ? (
@@ -425,3 +425,4 @@ function AddAdminForm() {
     </div>
   );
 }
+

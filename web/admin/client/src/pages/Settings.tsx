@@ -106,9 +106,9 @@ export default function ApiSettingsPage() {
             <div className="space-y-2">
               <Label>Webhook URL</Label>
               <div className="flex gap-2">
-                <Input readOnly value="https://osghub.com/api/webhook" className="bg-muted" />
+                <Input readOnly value="https://asaforvtu.onrender.com/api/webhook" className="bg-muted" />
                 <Button variant="outline" onClick={() => {
-                  navigator.clipboard.writeText("https://osghub.com/api/webhook");
+                  navigator.clipboard.writeText("https://asaforvtu.onrender.com/api/webhook");
                   toast({ title: "Copied", description: "Webhook URL copied to clipboard" });
                 }}>Copy</Button>
               </div>
@@ -122,3 +122,4 @@ export default function ApiSettingsPage() {
     </div>
   );
 }
+

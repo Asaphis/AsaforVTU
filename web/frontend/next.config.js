@@ -49,7 +49,7 @@ const nextConfig = {
         "https://identitytoolkit.googleapis.com",
         "https://securetoken.googleapis.com",
         "http://localhost:5000",
-        "https://osghubvtubackend.onrender.com",
+        "https://asaforvtubackend.onrender.com",
       ].join(' '),
       "frame-ancestors 'self'",
       "base-uri 'self'",
@@ -72,3 +72,4 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
+

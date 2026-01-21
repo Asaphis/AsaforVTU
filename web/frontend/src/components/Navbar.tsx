@@ -15,13 +15,13 @@ export function Navbar() {
           <div className="w-10 h-10 relative">
             <Image
               src="/logo.png"
-              alt="OSGHUB"
+              alt="Asafor"
               fill
               className="object-contain"
             />
           </div>
           <span className="font-bold text-lg">
-            <span className="text-[#0A1F44]">OSGHUB</span>
+            <span className="text-[#0A1F44]">Asafor</span>
             <span className="text-[#F97316]">VTU</span>
           </span>
         </Link>
@@ -82,3 +82,4 @@ export function Navbar() {
     </nav>
   );
 }
+

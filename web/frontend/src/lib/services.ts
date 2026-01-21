@@ -19,7 +19,7 @@ const resolveBackendUrl = (): string => {
   }
   if (envUrlLocal) return envUrlLocal as string;
   if (envUrl) return envUrl as string;
-  return 'https://osghubvtubackend.onrender.com';
+  return 'https://asaforvtubackend.onrender.com';
 };
 
 export interface ServiceDoc {
@@ -369,3 +369,4 @@ export const transferWallet = async (amount: number, fromWalletType: 'cashback' 
   }
   return { success: true, message: 'Transfer successful' };
 };
+

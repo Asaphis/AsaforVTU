@@ -293,7 +293,7 @@ const createUser = async (req, res) => {
     let verificationLink;
     if (requireVerification) {
       try {
-        const url = redirectUrl || 'https://osghub.com/login';
+        const url = redirectUrl || 'https://asaforvtu.onrender.com/login';
         verificationLink = await auth.generateEmailVerificationLink(email, { url });
       } catch (e) {}
     }
@@ -479,7 +479,7 @@ const generateVerificationLink = async (req, res) => {
       targetEmail = u.email;
     }
     if (!targetEmail) return res.status(400).json({ error: 'email or uid required' });
-    const url = redirectUrl || 'https://osghub.com/login';
+    const url = redirectUrl || 'https://asaforvtu.onrender.com/login';
     const link = await auth.generateEmailVerificationLink(targetEmail, { url });
     res.json({ success: true, email: targetEmail, verificationLink: link });
   } catch (error) {
@@ -488,3 +488,4 @@ const generateVerificationLink = async (req, res) => {
 };
 
 module.exports.generateVerificationLink = generateVerificationLink;
+

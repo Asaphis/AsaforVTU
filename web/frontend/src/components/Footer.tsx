@@ -6,7 +6,7 @@ export function Footer() {
       <div className="container-main">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div>
-            <h3 className="font-bold text-lg mb-4">OSGHUB VTU</h3>
+            <h3 className="font-bold text-lg mb-4">Asafor VTU</h3>
             <p className="text-gray-300 text-sm">
               Your trusted platform for instant digital services
             </p>
@@ -30,14 +30,15 @@ export function Footer() {
           </div>
           <div>
             <h4 className="font-semibold mb-4">Contact</h4>
-            <p className="text-sm text-gray-300">support@osghub.com</p>
+            <p className="text-sm text-gray-300">support@Asafor.com</p>
             <p className="text-sm text-gray-300">+234 800 123 4567</p>
           </div>
         </div>
         <div className="border-t border-gray-700 pt-8 text-center text-gray-400 text-sm">
-          <p>&copy; {new Date().getFullYear()} OSGHUB VTU. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Asafor VTU. All rights reserved.</p>
         </div>
       </div>
     </footer>
   );
 }
+

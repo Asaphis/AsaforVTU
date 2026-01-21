@@ -13,10 +13,10 @@ const { db } = require('./config/firebase');
 app.use(helmet());
 const originsEnv = process.env.CORS_ALLOWED_ORIGINS;
 const defaultOrigins = [
-  'https://osghub.com',
-  'https://www.osghub.com',
-  'https://osghubvtu.onrender.com',
-  'https://osghubadminpanel.onrender.com',
+  'https://asaforvtu.onrender.com',
+  'https://www.Asafor.com',
+  'https://asaforvtu.onrender.com',
+  'https://asaforadmin.onrender.com',
   'http://localhost:3000',
   'http://localhost:5000',
   'http://localhost:5001'
@@ -29,8 +29,8 @@ const corsOptions = {
     if (!isAllowed && origin) {
       try {
         const host = new URL(origin).hostname.toLowerCase();
-        // Allow any subdomain of osghub.com
-        if (host === 'osghub.com' || host.endsWith('.osghub.com')) {
+        // Allow any subdomain of Asafor.com
+        if (host === 'Asafor.com' || host.endsWith('.Asafor.com')) {
           isAllowed = true;
         }
       } catch {}
@@ -56,7 +56,7 @@ app.use(morgan('dev'));
 
 // Routes
 app.get('/', (req, res) => {
-  res.status(200).json({ message: 'OSGHUB VTU Backend is running' });
+  res.status(200).json({ message: 'Asafor VTU Backend is running' });
 });
 // Public Plans endpoint for user frontend
 app.get('/api/plans', async (_req, res) => {
@@ -102,3 +102,4 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
+

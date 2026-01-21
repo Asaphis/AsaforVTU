@@ -4,7 +4,7 @@ function resolveBackend() {
   const envUrlLocal = process.env.NEXT_PUBLIC_VTU_BACKEND_URL_LOCAL;
   if (envUrlLocal) return envUrlLocal as string;
   if (envUrl) return envUrl as string;
-  return 'https://osghubvtubackend.onrender.com';
+  return 'https://asaforvtubackend.onrender.com';
 }
 
 export async function POST(req: Request) {
@@ -32,3 +32,4 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify({ error: 'Internal Server Error', details: String(error) }), { status: 500 });
   }
 }
+

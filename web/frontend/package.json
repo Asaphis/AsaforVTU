@@ -1,5 +1,5 @@
 {
-  "name": "osghub-vtu",
+  "name": "Asafor-vtu",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -44,3 +44,4 @@
     "zod": "^3.22.4"
   }
 }
+

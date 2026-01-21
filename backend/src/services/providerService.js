@@ -11,7 +11,7 @@ class ProviderService {
       'Authorization': `Bearer ${this.apiKey}`,
       'X-API-Key': this.apiKey,
       'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent': 'OSGHUB-VTU/1.0'
+      'User-Agent': 'Asafor-VTU/1.0'
     };
   }
 
@@ -23,7 +23,7 @@ class ProviderService {
       netInput = network.value || network.id || network.name || network.label || JSON.stringify(network);
     }
 
-    // OSGHUB might send "MTN", "mtn", "01", etc.
+    // Asafor might send "MTN", "mtn", "01", etc.
     // IA Café expects: "mtn", "airtel", "glo", "9mobile"
     const net = String(netInput).toLowerCase();
     
@@ -296,3 +296,4 @@ class ProviderService {
 }
 
 module.exports = new ProviderService();
+

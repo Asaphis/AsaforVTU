@@ -1,7 +1,7 @@
 {
-  "name": "osghub-vtu-backend",
+  "name": "Asafor-vtu-backend",
   "version": "1.0.0",
-  "description": "Backend for OSGHUB VTU Platform",
+  "description": "Backend for Asafor VTU Platform",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -26,3 +26,4 @@
     "nodemon": "^3.0.0"
   }
 }
+

@@ -92,7 +92,7 @@ class _WebViewAppState extends State<WebViewApp> {
   bool _isOffline = false;
   Future<bool> _hasRealConnection() async {
     try {
-      final result = await InternetAddress.lookup('osghubvtu.onrender.com');
+      final result = await InternetAddress.lookup('asaforvtu.onrender.com');
       if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) return true;
     } catch (_) {}
     try {
@@ -174,7 +174,7 @@ class _WebViewAppState extends State<WebViewApp> {
           },
         ),
       )
-      ..loadRequest(Uri.parse('https://osghubvtu.onrender.com/login'));
+      ..loadRequest(Uri.parse('https://asaforvtu.onrender.com/login'));
 
     if (controller.platform is AndroidWebViewController) {
       AndroidWebViewController.enableDebugging(true);
@@ -189,7 +189,7 @@ class _WebViewAppState extends State<WebViewApp> {
     _appLinks = AppLinks();
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
       debugPrint('Received deep link: $uri');
-      if (uri.toString().contains("osghubvtu.onrender.com")) {
+      if (uri.toString().contains("asaforvtu.onrender.com")) {
         _controller.loadRequest(uri);
       }
     });
@@ -283,3 +283,4 @@ class _WebViewAppState extends State<WebViewApp> {
     );
   }
 }
+

@@ -41,7 +41,7 @@ class NotificationService {
         return;
       }
       const apiKey = process.env.SMS_TERMII_API_KEY || '';
-      const senderId = process.env.SMS_SENDER_ID || 'OSGHUB';
+      const senderId = process.env.SMS_SENDER_ID || 'Asafor';
       const channel = process.env.SMS_CHANNEL || 'dnd';
       if (!apiKey) {
         console.warn('SMS provider API key missing');
@@ -66,3 +66,4 @@ class NotificationService {
 }
 
 module.exports = new NotificationService();
+

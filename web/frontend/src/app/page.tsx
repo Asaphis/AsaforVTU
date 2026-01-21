@@ -29,7 +29,7 @@ export default function Landing() {
                 <span className="text-primary">Made Simple.</span>
               </h1>
               <p className="text-xl text-gray-800 max-w-[600px]">
-                The smartest way to buy airtime, data bundles, and pay utility bills. Instant delivery, zero downtime with OSGHUB.
+                The smartest way to buy airtime, data bundles, and pay utility bills. Instant delivery, zero downtime with Asafor.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <Link href="/register">
@@ -154,7 +154,7 @@ export default function Landing() {
         <div className="container px-4 md:px-6 relative z-10 text-center space-y-6">
           <h2 className="text-3xl md:text-5xl font-bold text-white">Ready to get started?</h2>
           <p className="text-white/90 text-xl max-w-2xl mx-auto">
-            Join thousands of users who trust OSGHUB for their daily transactions.
+            Join thousands of users who trust Asafor for their daily transactions.
           </p>
           <div className="pt-4">
             <Link href="/register">
@@ -222,3 +222,4 @@ function PricingCard({ title, price, features, isPopular }: { title: string, pri
 
 import { Users } from "lucide-react";
 import { ServiceSlider } from "@/components/ServiceSlider";
+

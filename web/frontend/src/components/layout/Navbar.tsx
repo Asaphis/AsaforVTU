@@ -41,11 +41,11 @@ export function Navbar() {
               <div className="h-8 w-auto flex items-center">
                 <img 
                   src="/logo.png" 
-                  alt="OSGHub VTU Logo" 
+                  alt="Asafor VTU Logo" 
                   className="h-full w-auto"
                 />
               </div>
-              <span className="ml-2 font-bold text-xl text-white">OSGHub VTU</span>
+              <span className="ml-2 font-bold text-xl text-white">Asafor VTU</span>
             </Link>
           </div>
 
@@ -122,3 +122,4 @@ export function Navbar() {
     </header>
   );
 }
+

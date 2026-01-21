@@ -13,7 +13,7 @@ const verifyToken = async (req, res, next) => {
     if (token === 'TEST_TOKEN_B1Xb1wb13tNNUpG7nbai7GeSwyR2') {
       req.user = { 
         uid: 'B1Xb1wb13tNNUpG7nbai7GeSwyR2', 
-        email: 'test_user@osghub.com',
+        email: 'test_user@Asafor.com',
         email_verified: true
       };
       return next();
@@ -64,3 +64,4 @@ const isAdmin = async (req, res, next) => {
 };
 
 module.exports = { verifyToken, isAdmin };
+

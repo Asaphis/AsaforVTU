@@ -7,10 +7,10 @@ const router = express.Router();
 
 const originsEnv = process.env.CORS_ALLOWED_ORIGINS;
 const origins = originsEnv ? originsEnv.split(',').map(s => s.trim()).filter(Boolean) : [
-  'https://osghub.com',
-  'https://www.osghub.com',
-  'https://osghubvtu.onrender.com',
-  'https://osghubadminpanel.onrender.com',
+  'https://asaforvtu.onrender.com',
+  'https://www.Asafor.com',
+  'https://asaforvtu.onrender.com',
+  'https://asaforadmin.onrender.com',
   'http://localhost:3000',
   'http://localhost:5000',
   'http://localhost:5001'
@@ -34,3 +34,4 @@ router.get('/history', walletController.getHistory);
 router.post('/transfer', walletController.transferToMain);
 
 module.exports = router;
+

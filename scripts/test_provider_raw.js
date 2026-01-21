@@ -77,7 +77,7 @@ async function testPurchaseAuth() {
          'Authorization': `Bearer ${API_KEY.trim()}`,
          'X-API-Key': API_KEY.trim(),
          'Content-Type': 'application/json',
-         'User-Agent': 'OSGHUB-VTU/1.0'
+         'User-Agent': 'Asafor-VTU/1.0'
        }
      });
     console.log('Purchase Auth Test Success (Unexpected):', response.data);
@@ -106,7 +106,7 @@ async function testAirtimeAuth() {
         'Authorization': `Bearer ${API_KEY.trim()}`,
         'X-API-Key': API_KEY.trim(),
         'Content-Type': 'application/json',
-        'User-Agent': 'OSGHUB-VTU/1.0'
+        'User-Agent': 'Asafor-VTU/1.0'
       }
     });
     console.log('Airtime Auth Test Success (Unexpected):', response.data);
@@ -134,7 +134,7 @@ async function testPurchaseAuthOnlyHeader() {
       headers: {
         'X-API-Key': API_KEY.trim(),
         'Content-Type': 'application/json',
-        'User-Agent': 'OSGHUB-VTU/1.0'
+        'User-Agent': 'Asafor-VTU/1.0'
       }
     });
     console.log('Purchase Auth (Key Only) Success:', response.data);
@@ -162,7 +162,7 @@ async function testPurchaseAuthBearerOnly() {
       headers: {
         'Authorization': `Bearer ${API_KEY.trim()}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'OSGHUB-VTU/1.0'
+        'User-Agent': 'Asafor-VTU/1.0'
       }
     });
     console.log('Purchase Auth (Bearer Only) Success:', response.data);
@@ -190,7 +190,7 @@ async function testPurchaseAuthNoBearer() {
       headers: {
         'Authorization': API_KEY.trim(),
         'Content-Type': 'application/json',
-        'User-Agent': 'OSGHUB-VTU/1.0'
+        'User-Agent': 'Asafor-VTU/1.0'
       }
     });
     console.log('Purchase Auth (No Bearer) Success:', response.data);
@@ -219,7 +219,7 @@ async function testPurchaseAuthProdUrl() {
       headers: {
         'Authorization': `Bearer ${API_KEY.trim()}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'OSGHUB-VTU/1.0'
+        'User-Agent': 'Asafor-VTU/1.0'
       }
     });
     console.log('Purchase Auth (Prod URL) Success:', response.data);
@@ -247,7 +247,7 @@ async function testPurchaseAuthBody() {
       data: payload,
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'OSGHUB-VTU/1.0'
+        'User-Agent': 'Asafor-VTU/1.0'
       }
     });
     console.log('Purchase Auth (Body) Success:', response.data);
@@ -274,7 +274,7 @@ async function testPurchaseAuthQuery() {
       data: payload,
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'OSGHUB-VTU/1.0'
+        'User-Agent': 'Asafor-VTU/1.0'
       }
     });
     console.log('Purchase Auth (Query) Success:', response.data);
@@ -374,3 +374,4 @@ async function runTests() {
 }
 
 runTests();
+

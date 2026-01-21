@@ -61,10 +61,10 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             <div className="flex items-center justify-center mb-6 gap-3">
               <img 
                 src="/logo.png" 
-                alt="OSGHub VTU Logo" 
+                alt="Asafor VTU Logo" 
                 className="h-12 w-auto"
               />
-              <span className="text-3xl font-bold text-white">OSGHub VTU</span>
+              <span className="text-3xl font-bold text-white">Asafor VTU</span>
             </div>
             <h1 className="text-4xl xl:text-5xl font-bold text-white mb-4 leading-tight">
               Your One-Stop
@@ -103,3 +103,4 @@ export function AuthLayout({ children }: AuthLayoutProps) {
     </div>
   );
 }
+

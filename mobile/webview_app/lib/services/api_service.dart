@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // Update this with your actual backend URL
-  static const String baseUrl = 'https://osghubvtubackend.onrender.com/api'; 
+  static const String baseUrl = 'https://asaforvtubackend.onrender.com/api'; 
 
   /// Initiate Payment
   /// Returns a map with 'tx_ref' and 'link'
@@ -63,3 +63,4 @@ class ApiService {
     }
   }
 }
+
