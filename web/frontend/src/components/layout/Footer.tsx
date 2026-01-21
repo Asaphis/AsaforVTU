@@ -12,9 +12,9 @@ export function Footer() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 flex items-center justify-center">
-                <img src="/logo.png" alt="AsaPhis Logo" className="w-full h-full object-contain" />
+                <img src="/logo.png" alt="AsaforVTU Logo" className="w-full h-full object-contain" />
               </div>
-              <span className="font-bold text-lg">AsaPhis</span>
+              <span className="font-bold text-lg">AsaforVTU</span>
             </div>
             <p className="text-muted-foreground text-sm">
               Your trusted partner for all digital transactions. Fast, secure, and reliable services.
@@ -74,7 +74,7 @@ export function Footer() {
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                   <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
-                <span>support@AsaPhisvtu.com</span>
+                <span>support@AsaforVTUvtu.com</span>
               </li>
               <li className="flex items-start gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mt-0.5">
@@ -90,7 +90,7 @@ export function Footer() {
         {/* Copyright */}
         <div className="border-t border-border mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-sm text-muted-foreground">
-            &copy; {currentYear} AsaPhis. All rights reserved.
+            &copy; {currentYear} AsaforVTU. All rights reserved.
           </p>
           <div className="flex gap-6 mt-4 md:mt-0">
             <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link>

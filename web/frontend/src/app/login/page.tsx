@@ -52,10 +52,10 @@ export default function LoginPage() {
           <div className="lg:hidden flex items-center gap-2 mb-4">
             <img
               src="/logo.png"
-              alt="AsaPhis Logo"
+              alt="AsaforVTU Logo"
               className="h-8 w-8 rounded-md"
             />
-            <span className="font-semibold text-foreground">AsaPhis</span>
+            <span className="font-semibold text-foreground">AsaforVTU</span>
           </div>
           <h1 className="text-3xl font-bold text-foreground" data-testid="text-login-heading">
             Welcome back

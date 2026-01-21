@@ -41,11 +41,11 @@ export function Navbar() {
               <div className="h-10 w-auto flex items-center">
                 <img 
                   src="/logo.png" 
-                  alt="AsaPhis Logo" 
+                  alt="AsaforVTU Logo" 
                   className="h-full w-auto object-contain"
                 />
               </div>
-              <span className="ml-2 font-bold text-xl text-white">AsaPhis</span>
+              <span className="ml-2 font-bold text-xl text-white">AsaforVTU</span>
             </Link>
           </div>
 

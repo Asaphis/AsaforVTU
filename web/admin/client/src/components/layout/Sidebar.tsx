@@ -36,8 +36,8 @@ export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform">
       <div className="flex h-16 items-center justify-center border-b border-sidebar-border bg-white px-6">
-        <img src={logoUrl} alt="AsaPhis Logo" className="h-10 w-auto object-contain" />
-        <span className="ml-2 font-bold text-xl text-primary">AsaPhis</span>
+        <img src={logoUrl} alt="AsaforVTU Logo" className="h-10 w-auto object-contain" />
+        <span className="ml-2 font-bold text-xl text-primary">AsaforVTU</span>
       </div>
 
       <div className="flex h-[calc(100vh-4rem)] flex-col justify-between px-3 py-4">
