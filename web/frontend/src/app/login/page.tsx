@@ -33,22 +33,15 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[DEBUG] Login: Form submitted', { email: formData.email });
+    console.log('[DEBUG] LOGIN ATTEMPT START');
     try {
-      console.log('[DEBUG] Login: Calling handleLogin');
+      console.log('[DEBUG] Login credentials:', { email: formData.email });
       await handleLogin(formData);
-      console.log('[DEBUG] Login: handleLogin promise resolved');
-      // Force a manual redirect if the router push in useAuthForm didn't work
-      setTimeout(() => {
-        console.log('[DEBUG] Login: Timeout check - current path:', window.location.pathname);
-        if (window.location.pathname.includes('/login')) {
-          console.log('[DEBUG] Login: Still on login page, forcing redirect');
-          window.location.href = '/dashboard';
-        }
-      }, 2000);
-    } catch (err) {
-      console.error('[DEBUG] Login: handleLogin caught error:', err);
-      alert('Login error: ' + (err as Error).message);
+      console.log('[DEBUG] handleLogin call successful');
+    } catch (err: any) {
+      console.error('[DEBUG] LOGIN EXCEPTION:', err);
+      // Force UI feedback for ANY error
+      alert("System Error: " + (err.message || "Unknown error"));
     }
   };
 

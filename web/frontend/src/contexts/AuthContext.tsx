@@ -41,7 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Load user data from Firestore
   const loadUserData = useCallback(async (firebaseUser: FirebaseUser | null) => {
+    console.log('[DEBUG] loadUserData called', { uid: firebaseUser?.uid });
     if (!firebaseUser) {
+      console.log('[DEBUG] No firebaseUser, resetting state');
       setState(prev => ({
         ...prev,
         user: null,
@@ -52,9 +54,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      console.log('[DEBUG] AuthContext: loadUserData starting for:', firebaseUser.uid);
+      console.log('[DEBUG] Fetching Firestore doc for:', firebaseUser.uid);
       const userRef = doc(db, 'users', firebaseUser.uid);
       const userDoc = await getDoc(userRef);
+      console.log('[DEBUG] Firestore getDoc finished', { exists: userDoc.exists() });
 
       if (userDoc.exists()) {
         console.log('[DEBUG] AuthContext: User document found in Firestore');
