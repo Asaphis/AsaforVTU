@@ -42,10 +42,6 @@ const signUpSchema = baseSignUpSchema.refine(
 // API payload schema (no confirmPassword required)
 const apiSignUpSchema = baseSignUpSchema.omit({ confirmPassword: true });
 
-// Schema for API payload (no confirmPassword)
-// (duplicate declaration removed; already defined above)
-
-
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
@@ -84,14 +80,9 @@ export function useAuthForm() {
   };
 
   const handleSignUp = async (data: SignUpData) => {
-    console.log('[DEBUG] handleSignUp start', { email: data.email, username: data.username });
-    // Validate payload against API schema (no confirmPassword)
     const { isValid, errors } = validateForm(data, apiSignUpSchema);
     setErrors(errors);
-    if (!isValid) {
-      console.warn('[DEBUG] handleSignUp validation failed', errors);
-      throw new Error('Form validation failed: ' + JSON.stringify(errors));
-    }
+    if (!isValid) return;
 
     setIsLoading(true);
     try {
@@ -105,12 +96,9 @@ export function useAuthForm() {
         referralUsername: data.referralUsername,
       });
 
-      console.log('[DEBUG] handleSignUp success', { email: data.email });
       addNotification('success', 'Account created!', 'Please check your inbox for the verification email.');
     } catch (error: any) {
-      console.error('[DEBUG] handleSignUp error', error);
       addNotification('error', 'Error', error.message || 'Failed to create account. Please try again.');
-      throw error; // rethrow so callers can react (and we log in the page)
     } finally {
       setIsLoading(false);
     }
@@ -129,11 +117,9 @@ export function useAuthForm() {
         rememberMe: data.rememberMe,
       });
 
-      console.log('[DEBUG] useAuthForm: signIn successful, redirecting to /dashboard');
       addNotification('success', 'Welcome back!', 'You have been successfully logged in.');
       router.push('/dashboard');
     } catch (error: any) {
-      console.error('[DEBUG] useAuthForm: Login error:', error);
       const msg = error.message || 'Invalid email or password. Please try again.';
       addNotification('error', 'Login failed', msg);
       setErrors(prev => ({ ...prev, general: msg }));

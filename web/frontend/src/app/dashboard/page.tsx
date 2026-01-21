@@ -52,7 +52,6 @@ export default function Dashboard() {
         const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(3));
         const snap = await getDocs(q);
         const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // Filter active announcements manually if flag is missing on old ones, or just show all for now to debug
         setAnnouncements(data.filter((a: any) => a.active !== false));
       } catch (e) {
         console.error('Announcements load failed', e);
@@ -64,8 +63,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!initialized || loading) return;
     if (user && !user.isVerified) {
-      console.log('[DEBUG] User is not verified, but allowing dashboard access');
-      // router.push('/verify');
+      router.push('/verify');
     }
     const sm = sessionStorage.getItem('showMainBalance') === 'true';
     const sc = sessionStorage.getItem('showCashbackBalance') === 'true';
@@ -87,6 +85,7 @@ export default function Dashboard() {
     };
     loadRecent();
   }, [user]);
+
   const handleWithdraw = async (type: 'referral' | 'cashback') => {
     if (!user || processingWithdrawal) return;
     

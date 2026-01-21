@@ -41,9 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Load user data from Firestore
   const loadUserData = useCallback(async (firebaseUser: FirebaseUser | null) => {
-    console.log('[DEBUG] loadUserData called', { uid: firebaseUser?.uid });
     if (!firebaseUser) {
-      console.log('[DEBUG] No firebaseUser, resetting state');
       setState(prev => ({
         ...prev,
         user: null,
@@ -54,15 +52,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      console.log('[DEBUG] Fetching Firestore doc for:', firebaseUser.uid);
       const userRef = doc(db, 'users', firebaseUser.uid);
       const userDoc = await getDoc(userRef);
-      console.log('[DEBUG] Firestore getDoc finished', { exists: userDoc.exists() });
 
       if (userDoc.exists()) {
-        console.log('[DEBUG] AuthContext: User document found in Firestore');
         let userData = userDoc.data() as Omit<UserProfile, 'uid'>;
-        
+
+        // If auth says email is verified but Firestore isn't updated, fix it
+        if (firebaseUser.emailVerified && !userData.isVerified) {
+          await updateDoc(userRef, { isVerified: true, updatedAt: new Date().toISOString() });
+          userData = { ...userData, isVerified: true };
+        }
+
         // Ensure walletBalance and accountStatus exist
         if (typeof userData.walletBalance === 'undefined') {
           userData.walletBalance = 0;
@@ -71,23 +72,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Sync balance from Backend (Source of Truth)
         try {
            const token = await firebaseUser.getIdToken();
-           console.log('[DEBUG] AuthContext: Fetching balance from backend');
            const backendBalances = await getWalletBalance(token);
            if (backendBalances) {
              userData.walletBalance = backendBalances.mainBalance;
              userData.cashbackBalance = backendBalances.cashbackBalance;
              userData.referralBalance = backendBalances.referralBalance;
-             console.log('[DEBUG] AuthContext: Balance synced successfully');
            }
         } catch (err) {
-           console.error('[DEBUG] AuthContext: Failed to sync wallet balance', err);
+           console.error('Failed to sync wallet balance from backend', err);
         }
 
         if (!userData.accountStatus) {
+          await updateDoc(userRef, { accountStatus: 'active' });
           userData.accountStatus = 'active';
         }
 
-        console.log('[DEBUG] AuthContext: Updating state with user data');
         setState(prev => ({
           ...prev,
           user: { uid: firebaseUser.uid, ...userData },
@@ -95,11 +94,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           initialized: true,
         }));
       } else {
-        console.log('[DEBUG] AuthContext: User document NOT found, creating one...');
-        // ... (creation logic stays same)
+        // Create user document if it doesn't exist
+        const newUser: Omit<UserProfile, 'uid'> = {
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || '',
+          emailVerified: firebaseUser.emailVerified,
+          phoneNumber: firebaseUser.phoneNumber || null,
+          metadata: {
+            creationTime: firebaseUser.metadata.creationTime,
+            lastSignInTime: firebaseUser.metadata.lastSignInTime,
+          },
+          fullName: firebaseUser.displayName || '',
+          username: firebaseUser.email?.split('@')[0] || '',
+          phone: firebaseUser.phoneNumber || '',
+          pinHash: '',
+          referral: undefined,
+          isVerified: firebaseUser.emailVerified,
+          walletBalance: 0,
+          referralBalance: 0,
+          cashbackBalance: 0,
+          accountStatus: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+        
+        setState(prev => ({
+          ...prev,
+          user: { uid: firebaseUser.uid, ...newUser },
+          loading: false,
+          initialized: true,
+        }));
       }
     } catch (error) {
-      console.error('[DEBUG] AuthContext: Error in loadUserData:', error);
       console.error('Error loading user data:', error);
       setState(prev => ({
         ...prev,
@@ -112,9 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Set up auth state listener
   useEffect(() => {
-    console.log('[DEBUG] AuthContext: Setting up onAuthStateChanged listener');
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('[DEBUG] AuthContext: onAuthStateChanged triggered', { hasUser: !!firebaseUser });
       await loadUserData(firebaseUser);
     });
 
@@ -127,48 +153,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
-      // Create user with email and password first
-      // This ensures we are authenticated before querying Firestore,
-      // which is required if security rules block unauthenticated reads.
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const { user } = userCredential;
 
       try {
-        // Check username uniqueness (now authenticated)
         const usernameQuery = query(
           collection(db, 'users'),
           where('username', '==', data.username)
         );
         const usernameSnapshot = await getDocs(usernameQuery);
         if (!usernameSnapshot.empty) {
-          // Username is taken, clean up the auth user
           await user.delete();
           throw new Error('This username is already taken. Please choose another one.');
         }
       } catch (checkError: any) {
-        // If it's our custom error, rethrow it
         if (checkError.message === 'This username is already taken. Please choose another one.') {
           throw checkError;
         }
-        
-        // If it's a permission error, it means we can't check uniqueness (e.g. rules prevent listing users).
-        // We log a warning but proceed with registration to avoid blocking the user.
-        // Ideally, uniqueness should be enforced by security rules or a Cloud Function.
         console.warn('Skipping username uniqueness check due to error:', checkError);
       }
 
-      // Update user profile
       await firebaseUpdateProfile(user, {
         displayName: data.fullName,
       });
 
-      // Send email verification using Firebase-hosted flow
       await firebaseSendEmailVerification(user);
 
-      // Hash the transaction PIN
       const pinHash = await generateHash(data.transactionPin);
 
-      // Create user document in Firestore (with wallet initialization)
       const userDoc: Omit<UserProfile, 'uid'> = {
         email: user.email || '',
         displayName: data.fullName,
@@ -194,7 +206,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await setDoc(doc(db, 'users', user.uid), userDoc);
 
-      // Update state with new user data
       setState(prev => ({
         ...prev,
         user: { uid: user.uid, ...userDoc },
@@ -220,48 +231,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign in with email and password
   const signIn = async ({ email, password, rememberMe = false }: LoginCredentials) => {
-    console.log('[DEBUG] AuthContext: signIn called for', email);
     setState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const { user } = userCredential;
-      console.log('[DEBUG] AuthContext: Firebase Auth successful for', user.uid);
 
-      // Force refresh of ID token to ensure we have the latest verification status
       await user.reload();
-      console.log('[DEBUG] AuthContext: User reloaded');
 
-      // Check if email is verified
       if (!user.emailVerified) {
-        console.log('[DEBUG] Email not verified, allowing login');
+        throw new Error('Please verify your email before signing in. Check your inbox for the verification link.');
       }
 
-      // If email is verified, make sure Firestore reflects it
       try {
         const userRef = doc(db, 'users', user.uid);
         await updateDoc(userRef, { isVerified: true, updatedAt: new Date().toISOString() });
-        console.log('[DEBUG] AuthContext: Firestore updated');
       } catch (err) {
-        // Non-fatal: log and continue
         console.warn('Could not update isVerified in Firestore:', err);
       }
 
-      // Load user data
-      console.log('[DEBUG] AuthContext: Loading user data...');
       await loadUserData(user);
-      console.log('[DEBUG] AuthContext: loadUserData finished');
       
       return user;
     } catch (error: any) {
-      console.error('[DEBUG] AuthContext: signIn error:', error);
+      console.error('Error signing in:', error);
       const errorMessage = error.message || 'Failed to sign in';
       setState(prev => ({ ...prev, error: errorMessage, loading: false }));
-      throw error;
+      throw new Error(errorMessage);
     }
   };
 
-  // Sign out
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
@@ -280,7 +279,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Reset password
   const resetPassword = async (email: string) => {
     try {
       await firebaseSendPasswordResetEmail(auth, email);
@@ -290,14 +288,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Send email verification
   const verifyEmail = async () => {
     if (!auth.currentUser) {
       throw new Error('No user is currently signed in');
     }
     
     try {
-      // Resend verification using Firebase-hosted flow
       await firebaseSendEmailVerification(auth.currentUser);
     } catch (error) {
       console.error('Error sending email verification:', error);
@@ -305,7 +301,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Verify transaction PIN
   const verifyTransactionPin = async (pin: string): Promise<boolean> => {
     if (!state.user) return false;
     
@@ -318,7 +313,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Update user profile
   const updateProfile = async (data: Partial<UserProfile>) => {
     if (!auth.currentUser) {
       throw new Error('No user is currently signed in');
@@ -327,7 +321,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const updates: Record<string, any> = { ...data, updatedAt: new Date().toISOString() };
       
-      // Update Firebase Auth profile if display name or photo URL changed
       if (data.displayName || data.photoURL) {
         await firebaseUpdateProfile(auth.currentUser, {
           displayName: data.displayName || auth.currentUser.displayName || '',
@@ -335,10 +328,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      // Update Firestore document
       await updateDoc(doc(db, 'users', auth.currentUser.uid), updates);
       
-      // Update local state
       if (state.user) {
         setState(prev => ({
           ...prev,
@@ -351,7 +342,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Refresh user data
   const refreshUser = async () => {
     if (auth.currentUser) {
       await loadUserData(auth.currentUser);

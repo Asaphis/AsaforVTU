@@ -33,16 +33,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[DEBUG] LOGIN ATTEMPT START');
-    try {
-      console.log('[DEBUG] Login credentials:', { email: formData.email });
-      await handleLogin(formData);
-      console.log('[DEBUG] handleLogin call successful');
-    } catch (err: any) {
-      console.error('[DEBUG] LOGIN EXCEPTION:', err);
-      // Force UI feedback for ANY error
-      alert("System Error: " + (err.message || "Unknown error"));
-    }
+    await handleLogin(formData);
   };
 
   const handleSocialLogin = async (provider: "google" | "apple") => {
@@ -232,4 +223,3 @@ export default function LoginPage() {
     </AuthLayout>
   );
 }
-
