@@ -57,37 +57,38 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         />
 
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-16 w-full">
-          <div className="mb-8">
-            <div className="flex items-center justify-center mb-6 gap-3">
-              <img 
-                src="/logo.png" 
-                alt="AsaforVTU Logo" 
-                className="h-12 w-auto object-contain"
-              />
-              <span className="text-3xl font-bold text-white">AsaforVTU</span>
+          <div className="mb-12">
+            <div className="flex items-center mb-10 gap-4">
+              <div className="bg-white p-3 rounded-3xl shadow-2xl shadow-white/20">
+                <img 
+                  src="/logo.png" 
+                  alt="AsaforVTU Logo" 
+                  className="h-12 w-12 object-contain"
+                />
+              </div>
+              <span className="text-4xl font-black text-white tracking-tighter">AsaforVTU</span>
             </div>
-            <h1 className="text-4xl xl:text-5xl font-bold text-white mb-4 leading-tight">
-              Your One-Stop
+            <h1 className="text-5xl xl:text-7xl font-black text-white mb-6 leading-[1.1] tracking-tight">
+              The Future of
               <br />
-              <span className="text-accent">VTU Platform</span>
+              <span className="text-accent">Digital VTU</span>
             </h1>
-            <p className="text-gray-300 text-lg max-w-md">
-              Recharge airtime, buy data, pay bills, and more. Fast, secure, and
-              reliable services at your fingertips.
+            <p className="text-slate-200 text-xl max-w-md font-medium leading-relaxed opacity-90">
+              Join the most reliable platform for airtime, data, and bill payments across Nigeria.
             </p>
           </div>
 
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-8">
             {features.map((feature, index) => (
-              <div key={index} className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
-                  <feature.icon className="w-5 h-5 text-primary-foreground" />
+              <div key={index} className="flex items-center gap-6 group">
+                <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-all duration-500 group-hover:rotate-6">
+                  <feature.icon className="w-7 h-7 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold mb-1">
+                  <h3 className="text-white text-lg font-black tracking-tight mb-1">
                     {feature.title}
                   </h3>
-                  <p className="text-gray-300 text-sm">
+                  <p className="text-slate-300 text-sm font-medium opacity-80">
                     {feature.description}
                   </p>
                 </div>

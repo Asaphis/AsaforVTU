@@ -47,208 +47,158 @@ export default function LoginPage() {
 
   return (
     <AuthLayout>
-      <Card className="bg-card/90 border-border shadow-lg">
-        <CardHeader className="space-y-1 pb-6">
-          <div className="lg:hidden flex items-center gap-2 mb-4">
+      <div className="w-full space-y-10 p-10 bg-white/80 backdrop-blur-xl rounded-[3rem] shadow-2xl border border-slate-100 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-accent to-primary"></div>
+        <div className="space-y-2">
+          <div className="lg:hidden flex items-center justify-center gap-3 mb-6">
             <img
               src="/logo.png"
               alt="AsaforVTU Logo"
-              className="h-8 w-8 rounded-md"
+              className="h-12 w-12 object-contain"
             />
-            <span className="font-semibold text-foreground">AsaforVTU</span>
+            <span className="font-black text-2xl text-slate-900 tracking-tight">AsaforVTU</span>
           </div>
-          <h1 className="text-3xl font-bold text-foreground" data-testid="text-login-heading">
-            Welcome back
+          <h1 className="text-center text-4xl font-black text-slate-950 tracking-tight">
+            Welcome Back
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Sign in to your account to continue
+          <p className="text-center text-slate-500 font-semibold">
+            Sign in to your secure account
           </p>
-        </CardHeader>
-        <CardContent className="space-y-6">
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-foreground">
-                Email address
+              <Label htmlFor="email" className="text-sm font-black text-slate-700 ml-1">
+                Email Address
               </Label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="name@example.com"
+                  placeholder="name@company.com"
                   value={formData.email}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  className="h-12 pl-11 bg-background border-border focus:ring-ring"
+                  className="h-14 pl-12 bg-white border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 font-bold"
                   disabled={isLoading}
-                  aria-describedby={errors.email ? "email-error" : undefined}
-                  data-testid="input-email"
                 />
               </div>
-              {errors.email && (
-                <p id="email-error" className="text-sm text-destructive" data-testid="text-email-error">
-                  {errors.email}
-                </p>
-              )}
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="password" className="text-sm font-medium text-foreground">
+              <div className="flex items-center justify-between gap-2 px-1">
+                <Label htmlFor="password" className="text-sm font-black text-slate-700">
                   Password
                 </Label>
                 <Link
                   href="/forgot-password"
-                  className="text-sm text-primary hover:underline"
-                  data-testid="link-forgot-password"
+                  className="text-sm text-primary font-black hover:text-primary/80 transition-colors"
                 >
                   Forgot password?
                 </Link>
               </div>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
+                  placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                  className="h-12 pl-11 pr-11 bg-background border-border focus:ring-ring"
+                  className="h-14 pl-12 pr-12 bg-white border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 font-bold"
                   disabled={isLoading}
-                  aria-describedby={errors.password ? "password-error" : undefined}
-                  data-testid="input-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  data-testid="button-toggle-password"
+                  className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              {errors.password && (
-                <p id="password-error" className="text-sm text-destructive" data-testid="text-password-error">
-                  {errors.password}
-                </p>
-              )}
             </div>
+          </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="rememberMe"
-                checked={formData.rememberMe}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, rememberMe: checked as boolean })
-                }
-                disabled={isLoading}
-                data-testid="checkbox-remember-me"
-              />
-              <Label
-                htmlFor="rememberMe"
-                className="text-sm text-muted-foreground cursor-pointer"
-              >
-                Remember me for 30 days
-              </Label>
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+          <div className="flex items-center gap-3 px-1">
+            <Checkbox
+              id="rememberMe"
+              checked={formData.rememberMe}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, rememberMe: checked as boolean })
+              }
+              className="h-5 w-5 rounded-lg border-slate-200 text-primary focus:ring-primary"
               disabled={isLoading}
-              data-testid="button-sign-in"
+            />
+            <Label
+              htmlFor="rememberMe"
+              className="text-sm font-bold text-slate-600 cursor-pointer"
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign in"
-              )}
-            </Button>
-          </form>
-
-          {errors.general && (
-            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-              {errors.general}
-            </div>
-          )}
-
-          {needsVerification && (
-            <div className="p-4 rounded-lg bg-blue-50 border border-blue-100">
-              <div className="text-sm text-blue-900 mb-2">
-                Please verify your email to continue. Check your inbox for the verification link.
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10"
-                onClick={() => handleResendVerification(formData.email)}
-                disabled={isLoading}
-              >
-                Resend verification email
-              </Button>
-            </div>
-          )}
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">
-                Or continue with
-              </span>
-            </div>
+              Remember me for 30 days
+            </Label>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-12"
-              onClick={() => handleSocialLogin("google")}
-              disabled={isLoading || socialLoading}
-              data-testid="button-google-login"
-            >
-              <SiGoogle className="w-4 h-4 mr-2" />
-              Google
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-12"
-              onClick={() => handleSocialLogin("apple")}
-              disabled={isLoading || socialLoading}
-              data-testid="button-apple-login"
-            >
-              <SiApple className="w-4 h-4 mr-2" />
-              Apple
-            </Button>
-          </div>
+          <Button
+            type="submit"
+            className="w-full h-14 bg-primary text-white text-lg font-black rounded-2xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 disabled:opacity-50"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              "Sign In"
+            )}
+          </Button>
+        </form>
 
-          <p className="text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link
-              href="/register"
-              className="text-primary font-medium hover:underline"
-              data-testid="link-register"
-            >
-              Sign up
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-slate-100" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-4 text-slate-400 font-black tracking-widest">
+              Or connect with
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-14 rounded-2xl border-2 border-slate-100 font-bold hover:bg-slate-50 transition-all"
+            onClick={() => handleSocialLogin("google")}
+            disabled={isLoading || socialLoading}
+          >
+            <SiGoogle className="w-5 h-5 mr-3 text-red-500" />
+            Google
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-14 rounded-2xl border-2 border-slate-100 font-bold hover:bg-slate-50 transition-all"
+            onClick={() => handleSocialLogin("apple")}
+            disabled={isLoading || socialLoading}
+          >
+            <SiApple className="w-5 h-5 mr-3 text-black" />
+            Apple
+          </Button>
+        </div>
+
+        <p className="text-center text-sm font-bold text-slate-500">
+          New to AsaforVTU?{" "}
+          <Link
+            href="/register"
+            className="text-primary font-black hover:text-primary/80 transition-colors"
+          >
+            Create Account
+          </Link>
+        </p>
+      </div>
     </AuthLayout>
   );
 }
