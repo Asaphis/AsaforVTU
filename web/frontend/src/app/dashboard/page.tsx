@@ -13,7 +13,7 @@ import { collection, query, where, getDocs, orderBy, limit } from 'firebase/fire
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user, loading, refreshUser } = useAuth();
+  const { user, loading, initialized, refreshUser } = useAuth();
   const [showMain, setShowMain] = useState(false);
   const [showCashback, setShowCashback] = useState(false);
   const [showReferral, setShowReferral] = useState(false);
@@ -62,12 +62,8 @@ export default function Dashboard() {
   }, [user]);
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    if (!user.isVerified) {
+    if (!initialized || loading) return;
+    if (user && !user.isVerified) {
       router.push('/verify');
     }
     const sm = sessionStorage.getItem('showMainBalance') === 'true';
@@ -76,7 +72,7 @@ export default function Dashboard() {
     setShowMain(sm);
     setShowCashback(sc);
     setShowReferral(sr);
-  }, [user, loading, router]);
+  }, [initialized, user, loading, router]);
 
   useEffect(() => {
     const loadRecent = async () => {
