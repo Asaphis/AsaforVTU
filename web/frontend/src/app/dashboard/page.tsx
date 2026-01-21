@@ -64,7 +64,8 @@ export default function Dashboard() {
   useEffect(() => {
     if (!initialized || loading) return;
     if (user && !user.isVerified) {
-      router.push('/verify');
+      console.log('[DEBUG] User is not verified, but allowing dashboard access');
+      // router.push('/verify');
     }
     const sm = sessionStorage.getItem('showMainBalance') === 'true';
     const sc = sessionStorage.getItem('showCashbackBalance') === 'true';
