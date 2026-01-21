@@ -9,8 +9,13 @@ export default function DashboardGuard({ children }: { children: React.ReactNode
   const router = useRouter();
 
   useEffect(() => {
-    if (initialized && !loading && !user) {
-      router.replace('/login');
+    if (initialized && !loading) {
+      if (!user) {
+        console.log('[DEBUG] DashboardGuard: No user found, redirecting to login');
+        router.replace('/login');
+      } else {
+        console.log('[DEBUG] DashboardGuard: User authenticated:', user.uid);
+      }
     }
   }, [initialized, loading, user, router]);
 
