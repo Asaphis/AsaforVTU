@@ -40,30 +40,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const loadUserData = useCallback(async (firebaseUser: FirebaseUser | null) => {
+    console.log('[Auth] loadUserData triggered. User:', firebaseUser?.uid || 'null');
+    
     if (!firebaseUser) {
       setState(prev => ({ ...prev, user: null, loading: false, initialized: true }));
       return;
     }
 
     try {
-      if (!db) throw new Error('Firestore not initialized');
+      if (!db) {
+        console.error('[Auth] Firestore (db) is null. Firebase failed to initialize.');
+        throw new Error('Database connection failed. Please check your configuration.');
+      }
 
+      console.log('[Auth] Attempting to fetch user doc from Firestore...');
       const userRef = doc(db, 'users', firebaseUser.uid);
       const userDoc = await getDoc(userRef);
 
       if (userDoc.exists()) {
         const userData = userDoc.data() as Omit<UserProfile, 'uid'>;
-        
-        // Final, "Correct" loading sequence:
-        // 1. Load from Firestore
-        // 2. Fetch fresh balance from backend
-        // 3. Only then set state to initialized
+        console.log('[Auth] Firestore user data loaded successfully');
         
         let finalUserData = { ...userData };
+        
+        // Blocking fetch for fresh data to ensure accuracy, but with a timeout
         try {
+          console.log('[Auth] Fetching fresh wallet balance from backend...');
           const token = await firebaseUser.getIdToken();
-          const backendBalances = await getWalletBalance(token);
+          
+          const backendBalances = await Promise.race([
+            getWalletBalance(token),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Backend Timeout')), 5000))
+          ]) as any;
+
           if (backendBalances) {
+            console.log('[Auth] Backend sync successful');
             finalUserData = {
               ...finalUserData,
               walletBalance: backendBalances.mainBalance,
@@ -71,9 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               referralBalance: backendBalances.referralBalance,
             };
           }
-        } catch (e) {
-          console.error('[Auth] Backend sync failed:', e);
-          // If backend fails, we still proceed with Firestore data to avoid blocking the user
+        } catch (e: any) {
+          console.warn('[Auth] Backend sync failed or timed out:', e.message);
+          // Proceed with Firestore data if backend fails
         }
 
         setState(prev => ({
@@ -84,13 +95,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           error: null
         }));
       } else {
-        throw new Error('User document not found in database');
+        console.error('[Auth] User document not found in Firestore for UID:', firebaseUser.uid);
+        throw new Error('User account not found in database. Please contact support.');
       }
     } catch (error: any) {
-      console.error('[Auth] Data load error:', error);
+      console.error('[Auth] Critical loading error:', error);
       setState(prev => ({
         ...prev,
-        error: error.message || 'Failed to sync user data',
+        error: error.message || 'Synchronization failed',
         loading: false,
         initialized: true
       }));
