@@ -37,7 +37,7 @@ export default function Login() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "admin@Asafor.com",
+      email: "admin@AsaPhis.com",
       password: "",
     },
   });
@@ -48,7 +48,7 @@ export default function Login() {
       await signInAdmin(values.email, values.password);
       toast({
         title: "Welcome back!",
-        description: "Successfully logged in to Asafor Admin.",
+        description: "Successfully logged in to AsaPhis Admin.",
       });
       setLocation("/");
     } catch (error: any) {
@@ -80,12 +80,12 @@ export default function Login() {
       <Card className="w-full max-w-md border-0 shadow-xl bg-white/80 backdrop-blur-sm z-10">
         <CardHeader className="space-y-4 text-center pb-8">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 p-2">
-            <img src={logoUrl} alt="Asafor Logo" className="h-full w-full object-contain" />
+            <img src={logoUrl} alt="AsaPhis Logo" className="h-full w-full object-contain" />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold tracking-tight text-primary">Admin Login</CardTitle>
             <CardDescription className="text-base">
-              Enter your credentials to access the Asafor dashboard
+              Enter your credentials to access the AsaPhis dashboard
             </CardDescription>
           </div>
         </CardHeader>
@@ -101,7 +101,7 @@ export default function Login() {
                     <FormControl>
                       <div className="relative">
                         <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input className="pl-9 bg-white" placeholder="admin@Asafor.com" {...field} />
+                        <Input className="pl-9 bg-white" placeholder="admin@AsaPhis.com" {...field} />
                       </div>
                     </FormControl>
                     <FormMessage />

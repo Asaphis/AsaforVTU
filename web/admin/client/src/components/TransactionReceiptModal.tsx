@@ -34,7 +34,7 @@ export default function TransactionReceiptModal({
       const image = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.href = image;
-      link.download = `Asafor-Receipt-${transaction.id || 'tx'}.png`;
+      link.download = `AsaPhis-Receipt-${transaction.id || 'tx'}.png`;
       link.click();
     } catch (err) {
       console.error('Failed to download receipt:', err);
@@ -101,7 +101,7 @@ export default function TransactionReceiptModal({
                 <div className="w-16 h-16 bg-blue-900 rounded-full flex items-center justify-center mb-4 shadow-lg">
                    <span className="text-white font-bold text-xl">OSG</span>
                 </div>
-                <h2 className="text-2xl font-bold text-[#0A1F44]">Asafor VTU</h2>
+                <h2 className="text-2xl font-bold text-[#0A1F44]">AsaPhis VTU</h2>
                 <p className="text-sm text-gray-500 uppercase tracking-widest mt-1">Transaction Receipt</p>
             </div>
 
@@ -150,8 +150,8 @@ export default function TransactionReceiptModal({
             <div className="border-t border-dashed border-gray-300 my-6"></div>
 
             <div className="text-xs text-gray-400">
-                <p>Support: support@Asafor.com</p>
-                <p className="mt-1">Thank you for using Asafor VTU</p>
+                <p>Support: support@AsaPhis.com</p>
+                <p className="mt-1">Thank you for using AsaPhis VTU</p>
             </div>
         </div>
 
