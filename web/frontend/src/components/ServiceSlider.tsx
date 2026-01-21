@@ -73,24 +73,30 @@ export function ServiceSlider() {
   }, {});
 
   return (
-    <section className="py-8 md:py-12 bg-white border-t border-b border-gray-100">
+    <section className="py-16 md:py-24 bg-slate-50/30">
       <div className="container px-4 mx-auto">
-        <h2 className="sr-only">Our Services</h2>
+        <div className="flex flex-col md:flex-row items-end justify-between mb-12 gap-6">
+          <div className="space-y-4">
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Our Services</h2>
+            <p className="text-slate-500 font-medium max-w-xl">Quickly access our most popular digital services with just one click.</p>
+          </div>
+          <div className="service-swiper-pagination !static !w-auto" />
+        </div>
         <Swiper
           ref={swiperRef}
           modules={[Autoplay, Navigation, Pagination, A11y]}
-          spaceBetween={16}
-          slidesPerView={2.5}
+          spaceBetween={24}
+          slidesPerView={2.2}
           autoplay={{
-            delay: 3000,
+            delay: 4000,
             disableOnInteraction: false,
             pauseOnMouseEnter: true,
           }}
           pagination={{
             clickable: true,
             el: '.service-swiper-pagination',
-            bulletClass: 'w-2 h-2 rounded-full bg-gray-300 mx-1 inline-block',
-            bulletActiveClass: 'bg-primary w-4',
+            bulletClass: 'w-2.5 h-2.5 rounded-full bg-slate-200 mx-1.5 inline-block transition-all duration-300 cursor-pointer hover:bg-slate-300',
+            bulletActiveClass: '!bg-primary !w-8',
           }}
           a11y={{
             enabled: true,
@@ -105,34 +111,27 @@ export function ServiceSlider() {
             640: { slidesPerView: 4 },
             768: { slidesPerView: 5 },
             1024: { slidesPerView: 6 },
-            1280: { slidesPerView: 8 },
+            1280: { slidesPerView: 7 },
           }}
-          className="w-full pb-8"
+          className="w-full !overflow-visible"
         >
           {services.map((service) => (
-            <SwiperSlide key={service.id}>
+            <SwiperSlide key={service.id} className="h-auto">
               <div 
-                className="flex flex-col items-center p-3 rounded-xl bg-white border border-gray-100 hover:border-primary/20 hover:shadow-sm transition-all duration-300 h-full cursor-pointer group"
+                className="flex flex-col items-center p-6 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 h-full cursor-pointer group"
                 role="button"
                 tabIndex={0}
                 onClick={() => {
-                  // Handle service click (e.g., navigate to service page)
                   console.log(`Selected service: ${service.name}`);
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    console.log(`Selected service: ${service.name}`);
-                  }
-                }}
               >
-                <div className="w-14 h-14 md:w-16 md:h-16 mb-2 flex items-center justify-center bg-white rounded-lg p-2 group-hover:bg-primary/5 transition-colors duration-300">
+                <div className="w-20 h-20 mb-6 flex items-center justify-center bg-slate-50 rounded-2xl p-4 group-hover:bg-primary/5 group-hover:rotate-3 transition-all duration-500 shadow-inner">
                   <Image
                     src={service.icon}
                     alt={`${service.name} logo`}
-                    width={48}
-                    height={48}
-                    className="object-contain w-full h-full"
+                    width={64}
+                    height={64}
+                    className="object-contain w-full h-full transition-transform duration-500 group-hover:scale-110"
                     loading="lazy"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
@@ -141,11 +140,11 @@ export function ServiceSlider() {
                     }}
                   />
                 </div>
-                <span className="text-xs md:text-sm font-medium text-gray-800 text-center leading-tight">
+                <span className="text-sm md:text-base font-black text-slate-900 text-center leading-tight mb-1">
                   {service.name}
                 </span>
                 {service.category && (
-                  <span className="mt-1 text-[10px] text-gray-500 font-medium">
+                  <span className="text-[10px] uppercase tracking-widest text-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                     {service.category}
                   </span>
                 )}
@@ -153,9 +152,6 @@ export function ServiceSlider() {
             </SwiperSlide>
           ))}
         </Swiper>
-        
-        {/* Custom pagination */}
-        <div className="service-swiper-pagination text-center mt-4" />
       </div>
     </section>
   );

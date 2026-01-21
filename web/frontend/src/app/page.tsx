@@ -150,15 +150,18 @@ export default function Landing() {
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
   return (
-    <Card className="border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 rounded-[2.5rem] p-4 bg-white/50 backdrop-blur-sm">
-      <CardHeader>
-        <div className="h-14 w-14 rounded-[1.25rem] bg-primary/5 flex items-center justify-center mb-6 shadow-inner">
-          {icon}
+    <Card className="group border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(11,79,108,0.1)] hover:-translate-y-3 transition-all duration-700 rounded-[3rem] p-6 bg-white relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-150"></div>
+      <CardHeader className="relative z-10">
+        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/10 to-transparent flex items-center justify-center mb-8 shadow-sm group-hover:from-primary/20 group-hover:rotate-6 transition-all duration-500">
+          <div className="text-primary transform group-hover:scale-110 transition-transform duration-500">
+            {icon}
+          </div>
         </div>
-        <CardTitle className="text-2xl font-bold text-slate-900">{title}</CardTitle>
+        <CardTitle className="text-2xl font-black text-slate-900 mb-2">{title}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <CardDescription className="text-lg text-slate-600 leading-relaxed">{description}</CardDescription>
+      <CardContent className="relative z-10">
+        <CardDescription className="text-lg text-slate-600 leading-relaxed font-medium">{description}</CardDescription>
       </CardContent>
     </Card>
   )
