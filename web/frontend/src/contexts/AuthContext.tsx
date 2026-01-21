@@ -39,118 +39,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initialized: false,
   });
 
-  // Load user data from Firestore
   const loadUserData = useCallback(async (firebaseUser: FirebaseUser | null) => {
     if (!firebaseUser) {
-      setState(prev => ({
-        ...prev,
-        user: null,
-        loading: false,
-        initialized: true,
-      }));
+      setState(prev => ({ ...prev, user: null, loading: false, initialized: true }));
       return;
     }
 
     try {
-      // Step 1: Check if DB is initialized. If not, this is a config error.
-      if (!db) {
-        throw new Error('Database not initialized. Check Firebase configuration.');
-      }
+      if (!db) throw new Error('Firestore not initialized');
 
       const userRef = doc(db, 'users', firebaseUser.uid);
       const userDoc = await getDoc(userRef);
 
       if (userDoc.exists()) {
-        let userData = userDoc.data() as Omit<UserProfile, 'uid'>;
-
-        // Ensure critical fields exist with defaults
-        if (typeof userData.walletBalance === 'undefined') userData.walletBalance = 0;
-        if (typeof userData.cashbackBalance === 'undefined') userData.cashbackBalance = 0;
-        if (typeof userData.referralBalance === 'undefined') userData.referralBalance = 0;
-
-        // Step 2: Immediate state update so user can see dashboard
-        setState(prev => ({
-          ...prev,
-          user: { uid: firebaseUser.uid, ...userData },
-          loading: false,
-          initialized: true,
-          error: null,
-        }));
-
-        // Step 3: Background Sync (Non-blocking)
+        const userData = userDoc.data() as Omit<UserProfile, 'uid'>;
+        
+        // Final, "Correct" loading sequence:
+        // 1. Load from Firestore
+        // 2. Fetch fresh balance from backend
+        // 3. Only then set state to initialized
+        
+        let finalUserData = { ...userData };
         try {
-           const token = await firebaseUser.getIdToken();
-           const backendBalances = await getWalletBalance(token);
-           
-           if (backendBalances) {
-             const updatedData = {
-               ...userData,
-               walletBalance: backendBalances.mainBalance,
-               cashbackBalance: backendBalances.cashbackBalance,
-               referralBalance: backendBalances.referralBalance,
-             };
-             
-             setState(prev => ({
-               ...prev,
-               user: { uid: firebaseUser.uid, ...updatedData },
-             }));
-           }
-        } catch (err) {
-           console.warn('[Auth] Background sync failed (harmless):', err);
-        }
-      } else {
-        // Step 4: Handle new user or missing document
-        console.warn('[Auth] User document missing, creating temporary profile');
-        const tempUser: UserProfile = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          displayName: firebaseUser.displayName || '',
-          fullName: firebaseUser.displayName || '',
-          username: firebaseUser.email?.split('@')[0] || '',
-          phone: '',
-          pinHash: '',
-          walletBalance: 0,
-          referralBalance: 0,
-          cashbackBalance: 0,
-          accountStatus: 'active',
-          isVerified: firebaseUser.emailVerified,
-          emailVerified: firebaseUser.emailVerified,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          metadata: {
-            creationTime: firebaseUser.metadata.creationTime || new Date().toISOString(),
-            lastSignInTime: firebaseUser.metadata.lastSignInTime || new Date().toISOString(),
+          const token = await firebaseUser.getIdToken();
+          const backendBalances = await getWalletBalance(token);
+          if (backendBalances) {
+            finalUserData = {
+              ...finalUserData,
+              walletBalance: backendBalances.mainBalance,
+              cashbackBalance: backendBalances.cashbackBalance,
+              referralBalance: backendBalances.referralBalance,
+            };
           }
-        };
+        } catch (e) {
+          console.error('[Auth] Backend sync failed:', e);
+          // If backend fails, we still proceed with Firestore data to avoid blocking the user
+        }
 
         setState(prev => ({
           ...prev,
-          user: tempUser,
+          user: { uid: firebaseUser.uid, ...finalUserData },
           loading: false,
           initialized: true,
-          error: null,
+          error: null
         }));
+      } else {
+        throw new Error('User document not found in database');
       }
     } catch (error: any) {
-      console.error('[Auth] Critical synchronization error:', error);
-      
-      // Check for specific Firebase configuration errors
-      const errorMsg = error.message || '';
-      if (errorMsg.includes('invalid-api-key') || errorMsg.includes('configuration-not-found')) {
-        setState(prev => ({
-          ...prev,
-          error: 'Firebase Configuration Error: Please check your API keys.',
-          loading: false,
-          initialized: true,
-        }));
-      } else {
-        setState(prev => ({
-          ...prev,
-          error: 'Authentication sync failed. Please refresh the page.',
-          loading: false,
-          initialized: true,
-        }));
-      }
+      console.error('[Auth] Data load error:', error);
+      setState(prev => ({
+        ...prev,
+        error: error.message || 'Failed to sync user data',
+        loading: false,
+        initialized: true
+      }));
     }
   }, []);
 
@@ -166,9 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       await userCredential.user.reload();
-      if (!userCredential.user.emailVerified) {
-        throw new Error('Please verify your email.');
-      }
+      if (!userCredential.user.emailVerified) throw new Error('Please verify your email.');
       await loadUserData(userCredential.user);
       return userCredential.user;
     } catch (error: any) {
