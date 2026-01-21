@@ -32,30 +32,30 @@ export function Navbar() {
   ];
 
   return (
-    <header className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-primary backdrop-blur-md shadow-sm' : 'bg-transparent'}`}>
+    <header className={`fixed w-full top-0 left-0 z-50 transition-all duration-500 ${scrolled ? 'py-3' : 'py-6'}`}>
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className={`flex items-center justify-between h-16 px-6 rounded-[2rem] transition-all duration-500 border ${scrolled ? 'bg-white/80 backdrop-blur-xl shadow-lg border-slate-200/50' : 'bg-transparent border-transparent'}`}>
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
-            <Link href="/" className="flex items-center">
-              <div className="h-10 w-auto flex items-center">
+            <Link href="/" className="flex items-center group">
+              <div className="h-10 w-auto flex items-center transition-transform duration-300 group-hover:scale-110">
                 <img 
                   src="/logo.png" 
                   alt="AsaforVTU Logo" 
                   className="h-full w-auto object-contain"
                 />
               </div>
-              <span className="ml-2 font-bold text-xl text-white">AsaforVTU</span>
+              <span className={`ml-2 font-bold text-xl transition-colors duration-300 ${scrolled ? 'text-slate-900' : 'text-white'}`}>AsaforVTU</span>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-10">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
                 href={link.href}
-                className={`text-sm font-medium transition-colors hover:text-white ${pathname === link.href ? 'text-white font-semibold' : 'text-white/80'}`}
+                className={`text-sm font-semibold transition-all duration-300 hover:scale-105 ${scrolled ? 'text-slate-600 hover:text-primary' : 'text-white/90 hover:text-white'}`}
               >
                 {link.name}
               </Link>
@@ -63,17 +63,15 @@ export function Navbar() {
           </nav>
 
           {/* Auth Buttons - Desktop */}
-          <div className="hidden md:flex items-center space-x-3">
+          <div className="hidden md:flex items-center space-x-4">
             <Link href="/login">
-              <Button variant="ghost" className="text-white/80 hover:text-white">
-                <LogIn className="w-4 h-4 mr-2" />
+              <Button variant="ghost" className={`font-semibold rounded-xl ${scrolled ? 'text-slate-700 hover:bg-slate-100' : 'text-white hover:bg-white/10'}`}>
                 Sign In
               </Button>
             </Link>
             <Link href="/register">
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                <UserPlus className="w-4 h-4 mr-2" />
-                Sign Up
+              <Button className="bg-primary hover:bg-primary/90 text-white font-semibold px-6 rounded-xl shadow-lg shadow-primary/20">
+                Get Started
               </Button>
             </Link>
           </div>

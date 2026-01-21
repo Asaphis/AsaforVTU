@@ -18,33 +18,33 @@ export function Topbar() {
   const [, setLocation] = useLocation();
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-primary px-6 shadow-sm">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" className="text-primary-foreground md:hidden">
+    <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between px-8 bg-transparent">
+      <div className="flex items-center gap-6 w-full max-w-4xl">
+        <Button variant="ghost" size="icon" className="md:hidden bg-white shadow-md rounded-2xl">
           <Menu className="h-6 w-6" />
         </Button>
-        <div className="relative hidden md:block">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-primary/70" />
+        <div className="relative hidden md:block w-full">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             type="search"
-            placeholder="Search anything..."
-            className="w-64 rounded-full border-none bg-white/10 pl-9 text-white placeholder:text-white/70 focus-visible:bg-white focus-visible:text-foreground focus-visible:ring-0"
+            placeholder="Quick search..."
+            className="w-full h-12 rounded-[1.25rem] border-none bg-white shadow-sm pl-12 pr-4 text-slate-900 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all duration-300"
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" className="relative text-primary-foreground hover:bg-white/10">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent animate-pulse" />
+      <div className="flex items-center gap-6">
+        <Button variant="ghost" size="icon" className="relative h-12 w-12 bg-white shadow-sm rounded-2xl hover:bg-slate-50 transition-all">
+          <Bell className="h-5 w-5 text-slate-600" />
+          <span className="absolute right-3.5 top-3.5 h-2.5 w-2.5 rounded-full bg-accent border-2 border-white" />
         </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-white/20 hover:ring-white">
-              <Avatar className="h-9 w-9">
+            <Button variant="ghost" className="relative h-12 w-12 rounded-2xl p-0 overflow-hidden shadow-sm border border-slate-100 transition-all hover:scale-105">
+              <Avatar className="h-full w-full">
                 <AvatarImage src={user?.photoURL || ""} alt={user?.email || "Admin"} />
-                <AvatarFallback className="bg-primary-foreground text-primary font-bold">
+                <AvatarFallback className="bg-primary text-white font-black">
                   {(user?.displayName || user?.email || "A").charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
