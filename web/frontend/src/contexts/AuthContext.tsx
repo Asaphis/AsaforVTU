@@ -60,8 +60,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('[DEBUG] AuthContext: User document found in Firestore');
         let userData = userDoc.data() as Omit<UserProfile, 'uid'>;
         
-        // ... rest of the logic ...
-        console.log('[DEBUG] AuthContext: State updating with user data');
+        // Ensure walletBalance and accountStatus exist
+        if (typeof userData.walletBalance === 'undefined') {
+          userData.walletBalance = 0;
+        }
+
+        // Sync balance from Backend (Source of Truth)
+        try {
+           const token = await firebaseUser.getIdToken();
+           console.log('[DEBUG] AuthContext: Fetching balance from backend');
+           const backendBalances = await getWalletBalance(token);
+           if (backendBalances) {
+             userData.walletBalance = backendBalances.mainBalance;
+             userData.cashbackBalance = backendBalances.cashbackBalance;
+             userData.referralBalance = backendBalances.referralBalance;
+             console.log('[DEBUG] AuthContext: Balance synced successfully');
+           }
+        } catch (err) {
+           console.error('[DEBUG] AuthContext: Failed to sync wallet balance', err);
+        }
+
+        if (!userData.accountStatus) {
+          userData.accountStatus = 'active';
+        }
+
+        console.log('[DEBUG] AuthContext: Updating state with user data');
         setState(prev => ({
           ...prev,
           user: { uid: firebaseUser.uid, ...userData },
@@ -86,7 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Set up auth state listener
   useEffect(() => {
+    console.log('[DEBUG] AuthContext: Setting up onAuthStateChanged listener');
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('[DEBUG] AuthContext: onAuthStateChanged triggered', { hasUser: !!firebaseUser });
       await loadUserData(firebaseUser);
     });
 
