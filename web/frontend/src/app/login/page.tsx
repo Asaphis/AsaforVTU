@@ -124,6 +124,27 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {errors.general && (
+            <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-bold">
+              <p className="mb-2">{errors.general}</p>
+              {needsVerification && (
+                <div className="mt-3 pt-3 border-t border-destructive/20">
+                  <p className="text-sm font-semibold mb-2">Need to verify your email?</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleResendVerification(formData.email)}
+                    disabled={isLoading || !formData.email}
+                    className="w-full bg-white hover:bg-slate-50 text-destructive border-destructive/30 font-bold"
+                  >
+                    Resend Verification Email
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center gap-3 px-1">
             <Checkbox
               id="rememberMe"

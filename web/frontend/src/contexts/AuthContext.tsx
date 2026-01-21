@@ -253,9 +253,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const { user } = userCredential;
 
+      // Force refresh of ID token to ensure we have the latest verification status
+      await user.reload();
+
       // Check if email is verified
       if (!user.emailVerified) {
-        throw new Error('Please verify your email before signing in.');
+        throw new Error('Please verify your email before signing in. Check your inbox for the verification link.');
       }
 
       // If email is verified, make sure Firestore reflects it

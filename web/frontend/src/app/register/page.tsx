@@ -98,6 +98,8 @@ export default function RegisterPage() {
         acceptTerms: formData.acceptTerms,
         referralUsername: formData.referralUsername || ''
       });
+      // Redirect to verification page after successful signup
+      router.push('/verify-email-sent?email=' + encodeURIComponent(formData.email));
     } catch (error: any) {
       setFormErrors(prev => ({ ...prev, general: error.message || 'Registration failed' }));
     }
