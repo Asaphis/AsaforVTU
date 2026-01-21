@@ -42,7 +42,7 @@ export function Navbar() {
                 <img 
                   src="/logo.png" 
                   alt="AsaforVTU Logo" 
-                  className={`h-full w-full object-contain transition-all duration-500 ${scrolled ? '' : 'brightness-0 invert'}`}
+                  className="h-full w-full object-contain transition-all duration-500"
                 />
               </div>
               <span className={`ml-2 font-bold text-2xl transition-colors duration-300 ${scrolled ? 'text-slate-900' : 'text-white'}`}>AsaforVTU</span>
