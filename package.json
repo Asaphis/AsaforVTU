@@ -1,0 +1,18 @@
+{
+  "name": "osghub-root",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd web/frontend && npm install && npm run build",
+    "prestart": "node -e \"process.exit(0)\"",
+    "start": "cd web/frontend && npm run start"
+  },
+  "engines": {
+    "node": ">=18.18.0 <23.0.0"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.4.0"
+  }
+}
