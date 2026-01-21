@@ -129,9 +129,11 @@ export function useAuthForm() {
         rememberMe: data.rememberMe,
       });
 
+      console.log('[DEBUG] useAuthForm: signIn successful, redirecting to /dashboard');
       addNotification('success', 'Welcome back!', 'You have been successfully logged in.');
       router.push('/dashboard');
     } catch (error: any) {
+      console.error('[DEBUG] useAuthForm: Login error:', error);
       const msg = error.message || 'Invalid email or password. Please try again.';
       addNotification('error', 'Login failed', msg);
       setErrors(prev => ({ ...prev, general: msg }));
