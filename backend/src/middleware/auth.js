@@ -1,7 +1,17 @@
-const { auth, db } = require('../config/firebase');
+const { auth, db, firebaseInitialized } = require('../config/firebase');
 
 const verifyToken = async (req, res, next) => {
   try {
+    // Check if Firebase is initialized
+    if (!firebaseInitialized || !auth) {
+      console.error('[Auth Middleware] Firebase not initialized');
+      return res.status(503).json({ 
+        error: 'Authentication service unavailable',
+        details: 'Firebase not configured. Please check server logs and ensure FIREBASE_* environment variables are set.',
+        code: 'FIREBASE_NOT_INITIALIZED'
+      });
+    }
+
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Unauthorized: No token provided' });
@@ -19,21 +29,50 @@ const verifyToken = async (req, res, next) => {
       return next();
     }
 
-    const decodedToken = await auth.verifyIdToken(token);
-    
-    req.user = decodedToken; // Attach user info to req.user = decodedToken;
-    next();
-  } catch (error) {
-    console.error('Token verification error:', error);
-    if (error.code === 'auth/id-token-expired') {
-      return res.status(401).json({ error: 'Unauthorized: Token expired' });
+    try {
+      const decodedToken = await auth.verifyIdToken(token);
+      req.user = decodedToken;
+      next();
+    } catch (verifyError) {
+      console.error('[Auth Middleware] Token verification failed:', {
+        code: verifyError.code,
+        message: verifyError.message,
+      });
+      
+      if (verifyError.code === 'auth/id-token-expired') {
+        return res.status(401).json({ error: 'Unauthorized: Token expired' });
+      }
+      
+      // Check if it's an invalid API key error from Firebase
+      if (verifyError.code === 'auth/invalid-api-key' || verifyError.message?.includes('invalid-api-key')) {
+        return res.status(503).json({ 
+          error: 'Authentication service error',
+          details: 'Invalid Firebase API key. Server configuration issue.',
+          code: 'FIREBASE_INVALID_API_KEY'
+        });
+      }
+      
+      return res.status(403).json({ error: 'Unauthorized: Invalid token' });
     }
-    return res.status(403).json({ error: 'Unauthorized: Invalid token' });
+  } catch (error) {
+    console.error('[Auth Middleware] Unexpected error:', error);
+    return res.status(500).json({ 
+      error: 'Authentication error',
+      details: error.message 
+    });
   }
 };
 
 const isAdmin = async (req, res, next) => {
   try {
+    if (!firebaseInitialized || !db) {
+      console.error('[Admin Check] Firebase not initialized');
+      return res.status(503).json({ 
+        error: 'Authorization service unavailable',
+        code: 'FIREBASE_NOT_INITIALIZED'
+      });
+    }
+
     const allowed = (process.env.ADMIN_EMAILS || 'osglimited7@gmail.com')
       .split(',')
       .map((s) => s.trim().toLowerCase())
@@ -51,14 +90,22 @@ const isAdmin = async (req, res, next) => {
     }
     const uid = req.user && req.user.uid;
     if (!uid) return res.status(403).json({ error: 'Forbidden: Admins only' });
-    const userDoc = await db.collection('users').doc(uid).get();
-    const role = userDoc.exists ? (userDoc.data().role || userDoc.data().roles) : null;
-    const isRoleAdmin = role === 'admin' || (Array.isArray(role) && role.includes('admin'));
-    if (isRoleAdmin) {
-      return next();
+    
+    try {
+      const userDoc = await db.collection('users').doc(uid).get();
+      const role = userDoc.exists ? (userDoc.data().role || userDoc.data().roles) : null;
+      const isRoleAdmin = role === 'admin' || (Array.isArray(role) && role.includes('admin'));
+      if (isRoleAdmin) {
+        return next();
+      }
+    } catch (dbError) {
+      console.error('[Admin Check] Database error:', dbError);
+      return res.status(500).json({ error: 'Admin check failed', details: dbError.message });
     }
+    
     return res.status(403).json({ error: 'Forbidden: Admins only' });
   } catch (e) {
+    console.error('[Admin Check] Unexpected error:', e);
     return res.status(500).json({ error: 'Admin check failed', details: e.message });
   }
 };
