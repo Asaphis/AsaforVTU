@@ -20,25 +20,40 @@ export default function Landing() {
       <section className="relative pt-32 pb-24 overflow-hidden bg-white">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent -z-10"></div>
         <div className="container px-4 md:px-6 relative z-10">
-          <div className="flex flex-col items-center text-center space-y-8 max-w-4xl mx-auto">
-            <div className="inline-flex items-center rounded-full border px-4 py-1.5 text-sm font-medium border-primary/20 bg-primary/5 text-primary backdrop-blur-sm animate-in fade-in slide-in-from-bottom-3 duration-1000">
-              <Zap className="w-4 h-4 mr-2 text-accent" /> Secure & Instant Digital Services
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="flex flex-col space-y-8 animate-in fade-in slide-in-from-left duration-1000">
+              <div className="inline-flex items-center self-start rounded-full border px-4 py-1.5 text-sm font-medium border-primary/20 bg-primary/5 text-primary backdrop-blur-sm">
+                <Zap className="w-4 h-4 mr-2 text-accent" /> Secure & Instant Digital Services
+              </div>
+              <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-950 leading-[1.1]">
+                Digital Top-ups <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/80 to-accent">Made Simple.</span>
+              </h1>
+              <p className="text-xl text-slate-600 leading-relaxed">
+                The smartest way to buy airtime, data bundles, and pay utility bills. 
+                Experience premium, secure delivery with AsaforVTU.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <Link href="/register">
+                  <Button size="lg" className="h-14 px-10 text-lg font-semibold rounded-2xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300">Get Started Now</Button>
+                </Link>
+                <Link href="/register">
+                  <Button size="lg" variant="outline" className="h-14 px-10 text-lg font-semibold rounded-2xl border-2 hover:bg-slate-50 transition-all duration-300">Buy Data Guest</Button>
+                </Link>
+              </div>
             </div>
-            <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-950 leading-[1.1]">
-              The Future of <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/80 to-accent">Digital Economy.</span>
-            </h1>
-            <p className="text-xl text-slate-600 max-w-2xl leading-relaxed">
-              Experience the fastest way to top up airtime, data, and pay bills. 
-              AsaforVTU provides a premium, secure gateway for all your digital needs.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 pt-6 w-full sm:w-auto">
-              <Link href="/register" className="w-full sm:w-auto">
-                <Button size="lg" className="h-14 px-10 text-lg font-semibold rounded-2xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300">Get Started Free</Button>
-              </Link>
-              <Link href="/services" className="w-full sm:w-auto">
-                <Button size="lg" variant="outline" className="h-14 px-10 text-lg font-semibold rounded-2xl border-2 hover:bg-slate-50 transition-all duration-300">Explore Services</Button>
-              </Link>
+            <div className="relative animate-in fade-in zoom-in duration-1000">
+              <div className="absolute -inset-4 bg-primary/20 rounded-full blur-3xl opacity-50 animate-pulse"></div>
+              <div className="relative w-full h-auto aspect-video max-w-full">
+                <Image
+                  src={heroImage}
+                  alt="Digital Connectivity"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover rounded-3xl shadow-2xl border border-white/20 hover:scale-[1.02] transition-transform duration-500"
+                  priority
+                />
+              </div>
             </div>
           </div>
         </div>
