@@ -192,14 +192,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign in with email and password
   const signIn = async ({ email, password, rememberMe = false }: LoginCredentials) => {
+    console.log('[DEBUG] AuthContext: signIn called for', email);
     setState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const { user } = userCredential;
+      console.log('[DEBUG] AuthContext: Firebase Auth successful for', user.uid);
 
       // Force refresh of ID token to ensure we have the latest verification status
       await user.reload();
+      console.log('[DEBUG] AuthContext: User reloaded');
 
       // Check if email is verified
       if (!user.emailVerified) {
@@ -210,22 +213,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const userRef = doc(db, 'users', user.uid);
         await updateDoc(userRef, { isVerified: true, updatedAt: new Date().toISOString() });
+        console.log('[DEBUG] AuthContext: Firestore updated');
       } catch (err) {
         // Non-fatal: log and continue
         console.warn('Could not update isVerified in Firestore:', err);
       }
 
       // Load user data
-      console.log('[DEBUG] AuthContext: signIn success, loading user data for:', user.uid);
+      console.log('[DEBUG] AuthContext: Loading user data...');
       await loadUserData(user);
-      console.log('[DEBUG] AuthContext: loadUserData completed');
+      console.log('[DEBUG] AuthContext: loadUserData finished');
       
       return user;
     } catch (error: any) {
-      console.error('Error signing in:', error);
+      console.error('[DEBUG] AuthContext: signIn error:', error);
       const errorMessage = error.message || 'Failed to sign in';
       setState(prev => ({ ...prev, error: errorMessage, loading: false }));
-      throw new Error(errorMessage);
+      throw error;
     }
   };
 
