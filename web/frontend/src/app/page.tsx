@@ -65,61 +65,46 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="pt-16 pb-24 bg-muted/50">
+      <section id="features" className="py-24 bg-white relative overflow-hidden">
         <div className="container px-4 md:px-6">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-4">
-            <h2 className="text-3xl font-bold tracking-tight">Everything you need</h2>
-            <p className="text-muted-foreground text-lg">
-              We provide a seamless experience for all your digital transaction needs.
+          <div className="text-center max-w-3xl mx-auto mb-20 space-y-4">
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-950">Everything you need</h2>
+            <p className="text-slate-600 text-lg max-w-2xl mx-auto">
+              We provide a premium, seamless experience for all your digital transaction needs with industry-leading security.
             </p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
             <FeatureCard 
-              icon={<Zap className="h-6 w-6 text-primary" />}
+              icon={<Zap className="h-7 w-7 text-primary" />}
               title="Instant Airtime"
-              description="Top up any network instantly with our automated system. No delays, no waiting."
+              description="Top up any network instantly with our automated system. No delays, just speed."
             />
             <FeatureCard 
-              icon={<Globe className="h-6 w-6 text-secondary" />}
+              icon={<Globe className="h-7 w-7 text-secondary" />}
               title="Data Bundles"
-              description="Get affordable data plans for MTN, Glo, Airtel, and 9mobile starting from ₦150."
+              description="Get affordable data plans for all networks starting from ₦150. Stay connected always."
             />
             <FeatureCard 
-              icon={<Shield className="h-6 w-6 text-green-500" />}
+              icon={<Shield className="h-7 w-7 text-green-500" />}
               title="Secure Wallet"
               description="Your funds are protected with bank-grade security and two-factor authentication."
-            />
-            <FeatureCard 
-              icon={<Smartphone className="h-6 w-6 text-purple-500" />}
-              title="Bill Payment"
-              description="Pay for electricity, cable TV, and other utilities with just a few clicks."
-            />
-            <FeatureCard 
-              icon={<Clock className="h-6 w-6 text-orange-500" />}
-              title="24/7 Availability"
-              description="Our services are always online. Transaction anytime, anywhere."
-            />
-            <FeatureCard 
-              icon={<Users className="h-6 w-6 text-blue-500" />}
-              title="Reseller API"
-              description="Developers can integrate our robust API to build their own VTU platforms."
             />
           </div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-24">
+      <section id="pricing" className="py-24 bg-slate-50/50">
         <div className="container px-4 md:px-6">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-4">
-            <h2 className="text-3xl font-bold tracking-tight">Simple Pricing</h2>
-            <p className="text-muted-foreground text-lg">
-              Competitive rates for resellers and individuals.
+          <div className="text-center max-w-2xl mx-auto mb-20 space-y-4">
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight">Simple Pricing</h2>
+            <p className="text-slate-600 text-lg">
+              Competitive rates tailored for both resellers and individuals.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             <PricingCard 
               title="Starter"
               price="0"
@@ -134,28 +119,28 @@ export default function Landing() {
             <PricingCard 
               title="Enterprise"
               price="Custom"
-              features={["Wholesale Rates", "Dedicated Account Manager", "White Label Solution", "Higher Limits"]}
+              features={["Wholesale Rates", "Account Manager", "White Label Solution", "Higher Limits"]}
             />
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 bg-primary text-white relative overflow-hidden">
-        <div className="container px-4 md:px-6 relative z-10 text-center space-y-6">
-          <h2 className="text-3xl md:text-5xl font-bold text-white">Ready to get started?</h2>
-          <p className="text-white/90 text-xl max-w-2xl mx-auto">
-            Join thousands of users who trust AsaforVTU for their daily transactions.
+      <section className="py-32 bg-primary text-white relative overflow-hidden">
+        <div className="container px-4 md:px-6 relative z-10 text-center space-y-8">
+          <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight">Ready to join the future?</h2>
+          <p className="text-white/80 text-xl max-w-2xl mx-auto leading-relaxed font-medium">
+            Join over 10,000+ users who trust AsaforVTU for their daily digital needs. Secure your future today.
           </p>
-          <div className="pt-4">
+          <div className="pt-6">
             <Link href="/register">
-              <Button size="lg" className="h-14 px-8 text-lg font-bold bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Button size="lg" className="h-16 px-12 text-xl font-black bg-accent hover:bg-accent/90 text-white rounded-[1.5rem] shadow-2xl shadow-accent/20 transition-all duration-300 hover:scale-105">
                 Create Free Account
               </Button>
             </Link>
           </div>
         </div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-white/10 rounded-full blur-3xl -z-10"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-white/5 rounded-full blur-[100px] -z-10"></div>
       </section>
 
       <Footer />
@@ -165,15 +150,15 @@ export default function Landing() {
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
   return (
-    <Card className="border-none shadow-md hover:shadow-xl transition-shadow duration-300">
+    <Card className="border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 rounded-[2.5rem] p-4 bg-white/50 backdrop-blur-sm">
       <CardHeader>
-        <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center mb-4">
+        <div className="h-14 w-14 rounded-[1.25rem] bg-primary/5 flex items-center justify-center mb-6 shadow-inner">
           {icon}
         </div>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle className="text-2xl font-bold text-slate-900">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <CardDescription className="text-base">{description}</CardDescription>
+        <CardDescription className="text-lg text-slate-600 leading-relaxed">{description}</CardDescription>
       </CardContent>
     </Card>
   )
@@ -181,31 +166,33 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
 
 function PricingCard({ title, price, features, isPopular }: { title: string, price: string, features: string[], isPopular?: boolean }) {
   return (
-    <Card className={`relative flex flex-col ${isPopular ? 'border-primary shadow-lg scale-105 z-10' : ''}`}>
+    <Card className={`relative flex flex-col p-4 rounded-[3rem] transition-all duration-500 border-2 ${isPopular ? 'border-primary shadow-2xl shadow-primary/20 scale-105 z-10 bg-white' : 'border-slate-100 shadow-xl bg-white/80'}`}>
       {isPopular && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-bold">
+        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-accent text-white px-6 py-1.5 rounded-full text-xs font-black tracking-widest shadow-lg">
           MOST POPULAR
         </div>
       )}
-      <CardHeader>
-        <CardTitle className="text-xl">{title}</CardTitle>
-        <div className="mt-4">
-          <span className="text-4xl font-bold">₦{price}</span>
-          {price !== "Custom" && <span className="text-muted-foreground">/one-time</span>}
+      <CardHeader className="text-center pt-8">
+        <CardTitle className="text-2xl font-black text-slate-900 uppercase tracking-tight">{title}</CardTitle>
+        <div className="mt-6">
+          <span className="text-5xl font-black text-primary">₦{price}</span>
+          {price !== "Custom" && <span className="text-slate-500 font-medium text-lg ml-2">/one-time</span>}
         </div>
       </CardHeader>
-      <CardContent className="flex-1">
-        <ul className="space-y-3">
+      <CardContent className="flex-1 pt-8 px-6">
+        <ul className="space-y-4">
           {features.map((feature, i) => (
-            <li key={i} className="flex items-center gap-2 text-sm">
-              <Check className="h-4 w-4 text-green-500" />
+            <li key={i} className="flex items-center gap-3 text-base font-medium text-slate-700">
+              <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <Check className="h-3.5 w-3.5 text-green-600 stroke-[3]" />
+              </div>
               {feature}
             </li>
           ))}
         </ul>
       </CardContent>
-      <CardFooter>
-        <Button className="w-full" variant={isPopular ? "default" : "outline"}>Choose Plan</Button>
+      <CardFooter className="pb-8 pt-6">
+        <Button className={`w-full h-14 rounded-2xl font-bold text-lg transition-all duration-300 ${isPopular ? 'bg-primary shadow-lg shadow-primary/20 hover:scale-[1.02]' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>Choose {title}</Button>
       </CardFooter>
     </Card>
   )

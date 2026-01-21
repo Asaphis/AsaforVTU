@@ -20,35 +20,37 @@ export default function SignUpForm() {
   };
 
   return (
-    <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-md">
+    <div className="max-w-md w-full space-y-10 p-10 bg-white/80 backdrop-blur-xl rounded-[3rem] shadow-2xl border border-slate-100 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-accent to-primary"></div>
       <div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Create an account
+        <h2 className="text-center text-4xl font-black text-slate-950 tracking-tight">
+          Join AsaforVTU
         </h2>
+        <p className="mt-4 text-center text-slate-500 font-medium">Create your secure account in seconds</p>
       </div>
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <div className="bg-red-50 border border-red-100 text-red-600 px-6 py-4 rounded-2xl text-sm font-bold flex items-center" role="alert">
           <span className="block sm:inline">{error}</span>
         </div>
       )}
-      <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-        <div className="rounded-md shadow-sm -space-y-px">
+      <form className="mt-8 space-y-8" onSubmit={handleSubmit}>
+        <div className="space-y-5">
           <div>
-            <label htmlFor="displayName" className="sr-only">Display Name</label>
+            <label htmlFor="displayName" className="block text-sm font-bold text-slate-700 ml-1 mb-2">Full Name</label>
             <input
               id="displayName"
               name="displayName"
               type="text"
               required
-              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-              placeholder="Display Name"
+              className="appearance-none block w-full h-14 px-5 border-2 border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 font-medium"
+              placeholder="John Doe"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
             />
           </div>
           <div>
-            <label htmlFor="email-address" className="sr-only">
-              Email address
+            <label htmlFor="email-address" className="block text-sm font-bold text-slate-700 ml-1 mb-2">
+              Email Address
             </label>
             <input
               id="email-address"
@@ -56,15 +58,15 @@ export default function SignUpForm() {
               type="email"
               autoComplete="email"
               required
-              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-              placeholder="Email address"
+              className="appearance-none block w-full h-14 px-5 border-2 border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 font-medium"
+              placeholder="name@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div>
-            <label htmlFor="password" className="sr-only">
-              Password
+            <label htmlFor="password" className="block text-sm font-bold text-slate-700 ml-1 mb-2">
+              Create Password
             </label>
             <input
               id="password"
@@ -72,8 +74,8 @@ export default function SignUpForm() {
               type="password"
               autoComplete="new-password"
               required
-              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-              placeholder="Password (min 6 characters)"
+              className="appearance-none block w-full h-14 px-5 border-2 border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 font-medium"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -84,17 +86,17 @@ export default function SignUpForm() {
           <button
             type="submit"
             disabled={loading}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            className="group relative w-full h-14 flex justify-center items-center px-4 border border-transparent text-lg font-black rounded-2xl text-white bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 disabled:opacity-50"
           >
-            {loading ? 'Creating Account...' : 'Sign up'}
+            {loading ? 'Processing...' : 'Create Account'}
           </button>
         </div>
       </form>
-      <div className="text-center">
-        <p className="text-sm text-gray-600">
-          Already have an account?{' '}
-          <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
-            Sign in
+      <div className="text-center pt-2">
+        <p className="text-sm font-bold text-slate-500">
+          Already a member?{' '}
+          <Link href="/login" className="text-primary hover:text-primary/80 transition-colors font-black">
+            Sign In Instead
           </Link>
         </p>
       </div>

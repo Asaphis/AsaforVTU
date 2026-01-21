@@ -5,19 +5,20 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
   
   return (
-    <footer className="bg-background border-t">
-      <div className="container px-4 md:px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="bg-slate-900 text-white relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary opacity-50"></div>
+      <div className="container px-4 md:px-6 py-20 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Company Info */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 flex items-center justify-center">
-                <img src="/logo.png" alt="AsaforVTU Logo" className="w-full h-full object-contain" />
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 flex items-center justify-center bg-white/10 rounded-2xl backdrop-blur-md">
+                <img src="/logo.png" alt="AsaforVTU Logo" className="w-full h-full object-contain brightness-0 invert" />
               </div>
-              <span className="font-bold text-lg">AsaforVTU</span>
+              <span className="font-black text-2xl tracking-tight">AsaforVTU</span>
             </div>
-            <p className="text-muted-foreground text-sm">
-              Your trusted partner for all digital transactions. Fast, secure, and reliable services.
+            <p className="text-slate-400 text-base leading-relaxed">
+              Empowering the digital economy with instant, secure, and reliable VTU services. Your trusted partner for seamless transactions.
             </p>
             <div className="flex items-center gap-4 pt-2">
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
