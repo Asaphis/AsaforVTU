@@ -1,5 +1,5 @@
 // lib/firebase.ts
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -13,24 +13,33 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-console.log('[DEBUG] Firebase Config:', {
-  hasApiKey: !!firebaseConfig.apiKey,
-  projectId: firebaseConfig.projectId,
-  authDomain: firebaseConfig.authDomain
-});
+// Check if any of the required config values are missing
+const isConfigValid = !!firebaseConfig.apiKey && 
+                     !!firebaseConfig.projectId && 
+                     firebaseConfig.apiKey !== 'MISSING_API_KEY';
 
-let app;
+let app: any;
+
 try {
-  app = initializeApp(firebaseConfig);
-  console.log('[DEBUG] Firebase App initialized');
+  if (!isConfigValid) {
+    console.warn('Firebase configuration is missing or invalid. Check your environment variables.');
+  }
+  
+  // Initialize Firebase
+  app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+  console.log('Firebase initialized successfully');
 } catch (error) {
-  console.error('[DEBUG] Firebase initialization ERROR:', error);
-  app = {
-    auth: () => ({ onAuthStateChanged: () => () => {} }),
-    firestore: () => ({}),
-    storage: () => ({}),
-  } as any;
+  console.error('Firebase initialization error:', error);
+  // Fallback to avoid crashing
+  if (getApps().length > 0) {
+    app = getApp();
+  } else {
+    // If it still fails, initialize with config anyway, 
+    // it will throw descriptive errors later when used
+    app = initializeApp(firebaseConfig);
+  }
 }
+
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
