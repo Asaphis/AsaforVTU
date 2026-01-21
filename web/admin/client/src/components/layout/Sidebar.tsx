@@ -14,8 +14,8 @@ import {
   MessageSquare
 } from "lucide-react";
 import { signOut } from "@/lib/firebase";
-// Use the copied admin logo in public assets
-const logoUrl = "/assets/IMG-20251201-WA0053.jpg";
+// Use the brand logo
+const logoUrl = "/logo.png";
 
 export function Sidebar() {
   const [location] = useLocation();
@@ -36,7 +36,8 @@ export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform">
       <div className="flex h-16 items-center justify-center border-b border-sidebar-border bg-white px-6">
-        <img src={logoUrl} alt="Asafor Logo" className="h-10 w-auto" />
+        <img src={logoUrl} alt="AsaPhis Logo" className="h-10 w-auto object-contain" />
+        <span className="ml-2 font-bold text-xl text-primary">AsaPhis</span>
       </div>
 
       <div className="flex h-[calc(100vh-4rem)] flex-col justify-between px-3 py-4">
