@@ -5,15 +5,15 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
   
   return (
-    <footer className="bg-slate-900 text-white relative overflow-hidden">
+    <footer className="bg-slate-900 text-white relative overflow-hidden pb-0">
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary opacity-50"></div>
-      <div className="container px-4 md:px-6 py-20 relative z-10">
+      <div className="container px-4 md:px-6 pt-20 pb-12 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Company Info */}
           <div className="space-y-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 flex items-center justify-center bg-white/10 rounded-2xl backdrop-blur-md">
-                <img src="/logo.png" alt="AsaforVTU Logo" className="w-full h-full object-contain brightness-0 invert" />
+                <img src="/logo.png" alt="AsaforVTU Logo" className="w-full h-full object-contain" />
               </div>
               <span className="font-black text-2xl tracking-tight">AsaforVTU</span>
             </div>
