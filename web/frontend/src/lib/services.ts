@@ -8,18 +8,22 @@ import { auth } from '@/lib/firebase';
 const resolveBackendUrl = (): string => {
   const envUrl = process.env.NEXT_PUBLIC_VTU_BACKEND_URL;
   const envUrlLocal = process.env.NEXT_PUBLIC_VTU_BACKEND_URL_LOCAL;
+  
+  // LOGGING: Identify which URL is being used
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.toLowerCase();
+    console.log('[Backend Resolve] Current Host:', host);
+    
     if (host.includes('localhost') || host.includes('127.0.0.1')) {
-      return envUrlLocal || envUrl || 'http://localhost:5000';
-    }
-    if (envUrl) {
-      return envUrl as string;
+      const url = envUrlLocal || envUrl || 'http://localhost:5000';
+      console.log('[Backend Resolve] Using Local URL:', url);
+      return url;
     }
   }
-  if (envUrlLocal) return envUrlLocal as string;
-  if (envUrl) return envUrl as string;
-  return 'https://asaforvtubackend.onrender.com';
+  
+  const url = envUrl || 'https://asaforvtubackend.onrender.com';
+  console.log('[Backend Resolve] Using Production URL:', url);
+  return url;
 };
 
 export interface ServiceDoc {
@@ -54,6 +58,8 @@ export const purchaseAirtimeViaCloud = async (
 
 export const getWalletBalance = async (token?: string): Promise<{ mainBalance: number; cashbackBalance: number; referralBalance: number } | null> => {
   const backendUrl = resolveBackendUrl();
+  console.log('[API Request] Fetching wallet balance from:', `${backendUrl}/api/wallet`);
+  
   try {
     const idToken = token || (auth.currentUser ? await auth.currentUser.getIdToken() : '');
     const res = await fetch(`${backendUrl}/api/wallet`, {
@@ -64,10 +70,15 @@ export const getWalletBalance = async (token?: string): Promise<{ mainBalance: n
       },
     });
 
-    if (!res.ok) throw new Error('Failed to fetch balance');
-    return await res.json();
+    if (!res.ok) {
+      console.error('[API Error] Wallet balance fetch failed with status:', res.status);
+      throw new Error(`Failed to fetch balance: ${res.status}`);
+    }
+    const data = await res.json();
+    console.log('[API Success] Wallet balance received:', data);
+    return data;
   } catch (error) {
-    console.error('Get Balance Error:', error);
+    console.error('[API Network Error] getWalletBalance failed:', error);
     return null;
   }
 };
@@ -162,7 +173,6 @@ export const purchaseAirtime = async (
      }
    }
    
-   // If the retry also failed with 401, force logout
    if (res.status === 401) {
      console.error('Request failed with 401 after refresh, forcing logout');
      await auth.signOut();
@@ -228,7 +238,6 @@ export const purchaseData = async (
      }
    }
    
-   // If the retry also failed with 401, force logout
    if (res.status === 401) {
      console.error('Request failed with 401 after refresh, forcing logout');
      await auth.signOut();
@@ -369,4 +378,3 @@ export const transferWallet = async (amount: number, fromWalletType: 'cashback' 
   }
   return { success: true, message: 'Transfer successful' };
 };
-
