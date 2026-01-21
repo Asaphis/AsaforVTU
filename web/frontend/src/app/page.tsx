@@ -65,28 +65,32 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-24 bg-white relative overflow-hidden">
-        <div className="container px-4 md:px-6">
-          <div className="text-center max-w-3xl mx-auto mb-20 space-y-4">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-950">Everything you need</h2>
-            <p className="text-slate-600 text-lg max-w-2xl mx-auto">
+      <section id="features" className="py-24 bg-slate-50 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent -z-10"></div>
+        <div className="container px-4 md:px-6 relative z-10">
+          <div className="text-center max-w-3xl mx-auto mb-20 space-y-6">
+            <div className="inline-flex items-center rounded-full border px-4 py-1 text-sm font-bold border-primary/20 bg-white text-primary shadow-sm">
+              ✨ Premium Experience
+            </div>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight text-slate-950">Everything you need</h2>
+            <p className="text-slate-600 text-xl max-w-2xl mx-auto leading-relaxed">
               We provide a premium, seamless experience for all your digital transaction needs with industry-leading security.
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-10">
             <FeatureCard 
-              icon={<Zap className="h-7 w-7 text-primary" />}
+              icon={<Zap className="h-8 w-8 text-primary" />}
               title="Instant Airtime"
               description="Top up any network instantly with our automated system. No delays, just speed."
             />
             <FeatureCard 
-              icon={<Globe className="h-7 w-7 text-secondary" />}
+              icon={<Globe className="h-8 w-8 text-secondary" />}
               title="Data Bundles"
               description="Get affordable data plans for all networks starting from ₦150. Stay connected always."
             />
             <FeatureCard 
-              icon={<Shield className="h-7 w-7 text-green-500" />}
+              icon={<Shield className="h-8 w-8 text-green-500" />}
               title="Secure Wallet"
               description="Your funds are protected with bank-grade security and two-factor authentication."
             />
@@ -150,18 +154,18 @@ export default function Landing() {
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
   return (
-    <Card className="group border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(11,79,108,0.1)] hover:-translate-y-3 transition-all duration-700 rounded-[3rem] p-6 bg-white relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-150"></div>
-      <CardHeader className="relative z-10">
-        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/10 to-transparent flex items-center justify-center mb-8 shadow-sm group-hover:from-primary/20 group-hover:rotate-6 transition-all duration-500">
-          <div className="text-primary transform group-hover:scale-110 transition-transform duration-500">
+    <Card className="group border border-slate-200/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_30px_60px_rgba(11,79,108,0.12)] hover:-translate-y-4 transition-all duration-700 rounded-[3.5rem] p-8 bg-white relative overflow-hidden">
+      <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/5 rounded-full transition-transform duration-700 group-hover:scale-150"></div>
+      <CardHeader className="relative z-10 p-0 mb-8">
+        <div className="h-20 w-20 rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-center shadow-sm group-hover:bg-primary group-hover:border-primary transition-all duration-500 group-hover:rotate-6">
+          <div className="text-primary group-hover:text-white transform group-hover:scale-110 transition-all duration-500">
             {icon}
           </div>
         </div>
-        <CardTitle className="text-2xl font-black text-slate-900 mb-2">{title}</CardTitle>
+        <CardTitle className="text-3xl font-black text-slate-900 mb-3 tracking-tight">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="relative z-10">
-        <CardDescription className="text-lg text-slate-600 leading-relaxed font-medium">{description}</CardDescription>
+      <CardContent className="relative z-10 p-0">
+        <CardDescription className="text-xl text-slate-600 leading-relaxed font-semibold">{description}</CardDescription>
       </CardContent>
     </Card>
   )
