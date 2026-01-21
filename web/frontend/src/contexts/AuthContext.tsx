@@ -53,9 +53,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Database connection failed. Please check your configuration.');
       }
 
-      console.log('[Auth] Attempting to fetch user doc from Firestore...');
+      console.log('[Auth] Attempting to fetch user doc from Firestore for UID:', firebaseUser.uid);
       const userRef = doc(db, 'users', firebaseUser.uid);
-      const userDoc = await getDoc(userRef);
+      
+      let userDoc;
+      try {
+        userDoc = await getDoc(userRef);
+      } catch (getDocError: any) {
+        console.error('[Auth] Firestore getDoc failed:', getDocError);
+        // If it's a permission error, it might be due to rules or key issues
+        if (getDocError.code === 'permission-denied') {
+          throw new Error('Permission denied. Please ensure your Firestore rules are published and your API key is valid.');
+        }
+        throw getDocError;
+      }
 
       if (userDoc.exists()) {
         const userData = userDoc.data() as Omit<UserProfile, 'uid'>;
@@ -63,7 +74,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         let finalUserData = { ...userData };
         
-        // Blocking fetch for fresh data to ensure accuracy, but with a timeout
         try {
           console.log('[Auth] Fetching fresh wallet balance from backend...');
           const token = await firebaseUser.getIdToken();
@@ -84,7 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (e: any) {
           console.warn('[Auth] Backend sync failed or timed out:', e.message);
-          // Proceed with Firestore data if backend fails
         }
 
         setState(prev => ({
@@ -95,11 +104,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           error: null
         }));
       } else {
-        console.error('[Auth] User document not found in Firestore for UID:', firebaseUser.uid);
-        throw new Error('User account not found in database. Please contact support.');
+        // AUTO-HEAL: If user exists in Auth but not in Firestore, create the profile automatically
+        console.warn('[Auth] User exists in Auth but missing Firestore doc. Creating one now...');
+        
+        const newUser: Omit<UserProfile, 'uid'> = {
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || '',
+          fullName: firebaseUser.displayName || '',
+          username: firebaseUser.email?.split('@')[0] || 'user_' + firebaseUser.uid.substring(0, 5),
+          phone: firebaseUser.phoneNumber || '',
+          pinHash: '',
+          walletBalance: 0,
+          referralBalance: 0,
+          cashbackBalance: 0,
+          accountStatus: 'active',
+          isVerified: firebaseUser.emailVerified,
+          emailVerified: firebaseUser.emailVerified,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          metadata: {
+            creationTime: firebaseUser.metadata.creationTime || new Date().toISOString(),
+            lastSignInTime: firebaseUser.metadata.lastSignInTime || new Date().toISOString(),
+          }
+        };
+
+        try {
+          await setDoc(userRef, newUser);
+          console.log('[Auth] Firestore document created automatically');
+        } catch (setDocError: any) {
+          console.error('[Auth] Failed to auto-create user document:', setDocError);
+          throw new Error('Account exists but could not initialize profile. Check Firestore permissions.');
+        }
+
+        setState(prev => ({
+          ...prev,
+          user: { uid: firebaseUser.uid, ...newUser },
+          loading: false,
+          initialized: true,
+          error: null
+        }));
       }
     } catch (error: any) {
       console.error('[Auth] Critical loading error:', error);
+      
       setState(prev => ({
         ...prev,
         error: error.message || 'Synchronization failed',
