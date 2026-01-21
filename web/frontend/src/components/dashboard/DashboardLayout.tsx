@@ -48,7 +48,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex flex-col h-full">
           <div className="p-4">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-[#0A1F44]">Asafor VTU</span>
+              <span className="font-bold text-[#0A1F44]">AsaPhis</span>
             </div>
           </div>
           <nav className="px-2 space-y-1">
@@ -224,7 +224,7 @@ function MobileSidebar({
           <div className="fixed inset-0 bg-black/30 z-50" onClick={() => setOpen(false)} />
           <div className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50 flex flex-col">
             <div className="flex items-center justify-between p-4 border-b">
-              <span className="font-bold text-[#0A1F44]">Asafor VTU</span>
+              <span className="font-bold text-[#0A1F44]">AsaPhis</span>
               <button className="p-2 rounded-md border border-gray-200" onClick={() => setOpen(false)}>
                 <X />
               </button>

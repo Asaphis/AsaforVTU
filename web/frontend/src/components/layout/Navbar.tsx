@@ -32,20 +32,20 @@ export function Navbar() {
   ];
 
   return (
-    <header className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-[#0A1F44] backdrop-blur-md shadow-sm' : 'bg-transparent'}`}>
+    <header className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-primary backdrop-blur-md shadow-sm' : 'bg-transparent'}`}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
             <Link href="/" className="flex items-center">
-              <div className="h-8 w-auto flex items-center">
+              <div className="h-10 w-auto flex items-center">
                 <img 
                   src="/logo.png" 
-                  alt="Asafor VTU Logo" 
-                  className="h-full w-auto"
+                  alt="AsaPhis Logo" 
+                  className="h-full w-auto object-contain"
                 />
               </div>
-              <span className="ml-2 font-bold text-xl text-white">Asafor VTU</span>
+              <span className="ml-2 font-bold text-xl text-white">AsaPhis</span>
             </Link>
           </div>
 

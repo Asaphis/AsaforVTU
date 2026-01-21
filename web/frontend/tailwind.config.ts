@@ -12,20 +12,26 @@ const config: Config = {
       colors: {
         // Main colors
         primary: {
-          DEFAULT: '#0A1F44',
+          DEFAULT: '#0B4F6C',
           foreground: '#F8FAFC',
         },
         accent: {
-          DEFAULT: '#F97316',
+          DEFAULT: '#C58A17',
           foreground: '#FFFFFF',
         },
         success: {
-          DEFAULT: '#16A34A',
+          DEFAULT: '#4CAF50',
           foreground: '#FFFFFF',
         },
         error: {
           DEFAULT: '#DC2626',
           foreground: '#FFFFFF',
+        },
+        // Brand Specific Colors
+        brand: {
+          blue: '#0B4F6C',
+          gold: '#C58A17',
+          green: '#4CAF50',
         },
         // Background colors
         background: {

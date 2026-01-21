@@ -10,15 +10,15 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:5000'),
-  title: 'Asafor VTU - Instant Digital Services',
-  description: 'Buy airtime, data, electricity and more instantly with Asafor VTU',
+  title: 'AsaPhis - Instant Digital Services',
+  description: 'Buy airtime, data, electricity and more instantly with AsaPhis',
   icons: {
     icon: '/logo.png',
     shortcut: '/logo.png',
     apple: '/logo.png',
   },
   openGraph: {
-    title: 'Asafor VTU',
+    title: 'AsaPhis',
     description: 'Instant digital services platform',
     images: ['/logo.png'],
   },

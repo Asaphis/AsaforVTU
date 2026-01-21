@@ -206,10 +206,10 @@ export default function RegisterPage() {
           <div className="lg:hidden flex items-center gap-2 mb-4">
             <img
               src="/logo.png"
-              alt="Asafor VTU Logo"
+              alt="AsaPhis Logo"
               className="h-8 w-8 rounded-md"
             />
-            <span className="font-semibold text-foreground">Asafor VTU</span>
+            <span className="font-semibold text-foreground">AsaPhis</span>
           </div>
           <h1 className="text-3xl font-bold text-foreground" data-testid="text-register-heading">
             Create account

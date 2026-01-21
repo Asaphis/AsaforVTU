@@ -61,10 +61,10 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             <div className="flex items-center justify-center mb-6 gap-3">
               <img 
                 src="/logo.png" 
-                alt="Asafor VTU Logo" 
-                className="h-12 w-auto"
+                alt="AsaPhis Logo" 
+                className="h-12 w-auto object-contain"
               />
-              <span className="text-3xl font-bold text-white">Asafor VTU</span>
+              <span className="text-3xl font-bold text-white">AsaPhis</span>
             </div>
             <h1 className="text-4xl xl:text-5xl font-bold text-white mb-4 leading-tight">
               Your One-Stop
