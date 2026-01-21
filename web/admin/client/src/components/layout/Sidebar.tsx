@@ -37,7 +37,9 @@ export function Sidebar() {
     <aside className="fixed left-4 top-4 bottom-4 z-40 w-64 rounded-[2.5rem] border border-slate-200/50 bg-white/80 backdrop-blur-xl shadow-2xl transition-all duration-500">
       <div className="flex h-24 items-center justify-center px-8">
         <div className="flex items-center gap-3">
-          <img src={logoUrl} alt="AsaforVTU Logo" className="h-10 w-auto object-contain animate-pulse" />
+          <div className="h-12 w-12 flex items-center justify-center">
+            <img src={logoUrl} alt="AsaforVTU Logo" className="h-full w-full object-contain animate-pulse" />
+          </div>
           <span className="font-black text-2xl bg-gradient-to-br from-primary to-primary/60 bg-clip-text text-transparent">AsaforVTU</span>
         </div>
       </div>

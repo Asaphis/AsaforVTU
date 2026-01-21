@@ -38,14 +38,14 @@ export function Navbar() {
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
             <Link href="/" className="flex items-center group">
-              <div className="h-10 w-auto flex items-center transition-transform duration-300 group-hover:scale-110">
+              <div className="h-14 w-14 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
                 <img 
                   src="/logo.png" 
                   alt="AsaforVTU Logo" 
-                  className="h-full w-auto object-contain"
+                  className="h-full w-full object-contain"
                 />
               </div>
-              <span className={`ml-2 font-bold text-xl transition-colors duration-300 ${scrolled ? 'text-slate-900' : 'text-white'}`}>AsaforVTU</span>
+              <span className={`ml-2 font-bold text-2xl transition-colors duration-300 ${scrolled ? 'text-slate-900' : 'text-white'}`}>AsaforVTU</span>
             </Link>
           </div>
 
