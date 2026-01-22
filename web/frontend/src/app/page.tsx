@@ -23,13 +23,13 @@ export default function Landing() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="flex flex-col space-y-8 animate-in fade-in slide-in-from-left duration-1000">
               <div className="inline-flex items-center self-start rounded-full border px-4 py-1.5 text-sm font-medium border-primary/20 bg-primary/5 text-primary backdrop-blur-sm">
-                <Zap className="w-4 h-4 mr-2 text-accent" /> Secure & Instant Digital Services
+                <Zap className="w-4 h-4 mr-2 text-primary" /> Secure & Instant Digital Services
               </div>
               <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-950 leading-[1.1]">
                 Digital Top-ups <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/80 to-accent">Made Simple.</span>
+                <span className="text-primary">Made Simple.</span>
               </h1>
-              <p className="text-xl text-slate-600 leading-relaxed">
+              <p className="text-xl text-slate-600 leading-relaxed max-w-lg">
                 The smartest way to buy airtime, data bundles, and pay utility bills. 
                 Experience premium, secure delivery with AsaforVTU.
               </p>
