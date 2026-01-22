@@ -13,30 +13,39 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Standard Initialization
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 let storage: FirebaseStorage;
 
-// Standard Initialization - Fail gracefully if config is missing
 try {
-  if (firebaseConfig.apiKey) {
-    if (!getApps().length) {
-      app = initializeApp(firebaseConfig);
-    } else {
-      app = getApp();
-    }
+  // Use placeholder values if env vars are missing to prevent crash on initialization
+  const effectiveConfig = {
+    apiKey: firebaseConfig.apiKey || 'missing-api-key',
+    authDomain: firebaseConfig.authDomain || 'missing-auth-domain',
+    projectId: firebaseConfig.projectId || 'missing-project-id',
+    storageBucket: firebaseConfig.storageBucket || 'missing-storage-bucket',
+    messagingSenderId: firebaseConfig.messagingSenderId || 'missing-sender-id',
+    appId: firebaseConfig.appId || 'missing-app-id',
+  };
 
-    auth = getAuth(app);
-    db = getFirestore(app);
-    storage = getStorage(app);
-    console.log('[Firebase] Initialized successfully');
+  if (!getApps().length) {
+    app = initializeApp(effectiveConfig);
   } else {
-    console.warn('[Firebase] API Key missing. Firebase features will be disabled.');
+    app = getApp();
   }
+
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
 } catch (error) {
   console.error('[Firebase] Initialization Error:', error);
-  // Don't throw to prevent crashing the entire app
+  // Fallback to avoid 'used before assigned' errors
+  app = {} as any;
+  auth = {} as any;
+  db = {} as any;
+  storage = {} as any;
 }
 
 export { app, auth, db, storage };
