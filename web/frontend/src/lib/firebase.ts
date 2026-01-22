@@ -20,18 +20,8 @@ let db: Firestore;
 let storage: FirebaseStorage;
 
 try {
-  // Use placeholder values if env vars are missing to prevent crash on initialization
-  const effectiveConfig = {
-    apiKey: firebaseConfig.apiKey || 'missing-api-key',
-    authDomain: firebaseConfig.authDomain || 'missing-auth-domain',
-    projectId: firebaseConfig.projectId || 'missing-project-id',
-    storageBucket: firebaseConfig.storageBucket || 'missing-storage-bucket',
-    messagingSenderId: firebaseConfig.messagingSenderId || 'missing-sender-id',
-    appId: firebaseConfig.appId || 'missing-app-id',
-  };
-
   if (!getApps().length) {
-    app = initializeApp(effectiveConfig);
+    app = initializeApp(firebaseConfig);
   } else {
     app = getApp();
   }
@@ -41,11 +31,13 @@ try {
   storage = getStorage(app);
 } catch (error) {
   console.error('[Firebase] Initialization Error:', error);
-  // Fallback to avoid 'used before assigned' errors
-  app = {} as any;
-  auth = {} as any;
-  db = {} as any;
-  storage = {} as any;
+  // Re-throw if in production or handle gracefully in a way that's not mocking
+  // For now, we allow the app to load but these will be undefined if initialization failed
+  // We use casting to satisfy TypeScript while maintaining the "real" state
+  app = (undefined as unknown) as FirebaseApp;
+  auth = (undefined as unknown) as Auth;
+  db = (undefined as unknown) as Firestore;
+  storage = (undefined as unknown) as FirebaseStorage;
 }
 
 export { app, auth, db, storage };
