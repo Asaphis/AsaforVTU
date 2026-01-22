@@ -34,7 +34,7 @@ export default function RootLayout({
       <head>
         <meta name="color-scheme" content="light" />
       </head>
-      <body className={`${inter.className} bg-background-light dark:bg-background-dark`}>
+      <body className={`${inter.className} min-h-screen selection:bg-primary/20`}>
         <NotificationProvider>
           <AuthProvider>
             {children}
