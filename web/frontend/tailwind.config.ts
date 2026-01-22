@@ -11,16 +11,22 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#0A1F44',
+          DEFAULT: '#0B4F6C',
           foreground: '#F8FAFC',
         },
         accent: {
-          DEFAULT: '#F97316',
+          DEFAULT: '#C58A17',
+          foreground: '#FFFFFF',
+        },
+        success: {
+          DEFAULT: '#4CAF50',
           foreground: '#FFFFFF',
         },
         brand: {
-          navy: '#0A1F44',
-          orange: '#F97316',
+          blue: '#0B4F6C',
+          gold: '#C58A17',
+          green: '#4CAF50',
+          navy: '#0B4F6C',
           slate: '#0F172A',
           ghost: '#F8FAFC',
         }

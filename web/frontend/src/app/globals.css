@@ -3,20 +3,20 @@
 @tailwind utilities;
 
 :root {
-  /* Brand colors matching landing page and auth */
+  /* Brand colors matching AsaPhis palette */
   --background: 210 40% 98%; /* #F8FAFC */
   --foreground: 222.2 84% 4.9%; /* #0F172A */
-  --primary: 216 100% 14%; /* #0A1F44 Navy Blue */
+  --primary: 198 81% 24%; /* #0B4F6C Brand Blue */
   --primary-foreground: 210 40% 98%;
-  --accent: 25 95% 53%; /* #F97316 Orange */
+  --accent: 40 78% 43%; /* #C58A17 Brand Gold */
   --accent-foreground: 0 0% 100%;
-  --success: 142 76% 36%;
+  --success: 122 39% 49%; /* #4CAF50 Brand Green */
   --error: 0 84% 60%;
   --muted: 220 6% 90%;
   --muted-foreground: 215 16% 47%;
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
-  --ring: 216 100% 14%;
+  --ring: 198 81% 24%;
   --radius: 0.75rem;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -24,17 +24,17 @@
 .dark {
   --background: 222.2 84% 4.9%;
   --foreground: 210 40% 98%;
-  --primary: 217.2 91.2% 59.8%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --accent: 25 95% 53%;
+  --primary: 198 81% 35%;
+  --primary-foreground: 210 40% 98%;
+  --accent: 40 78% 43%;
   --accent-foreground: 0 0% 100%;
-  --success: 142 76% 36%;
+  --success: 122 39% 49%;
   --error: 0 84% 60%;
   --muted: 217.2 32.6% 17.5%;
   --muted-foreground: 215 20.2% 65.1%;
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
-  --ring: 224.3 76.3% 48%;
+  --ring: 198 81% 45%;
 }
 
 @layer base {
@@ -51,15 +51,20 @@
 
 @layer components {
   .dashboard-card {
-    @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all duration-300;
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all duration-300 relative overflow-hidden;
+  }
+
+  .dashboard-card::before {
+    content: '';
+    @apply absolute top-0 right-0 w-32 h-32 bg-[#0B4F6C]/5 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none;
   }
 
   .nav-item {
-    @apply flex items-center px-4 py-3 text-gray-600 rounded-xl transition-all duration-200 hover:bg-gray-50 hover:text-[#0A1F44];
+    @apply flex items-center px-4 py-3 text-gray-600 rounded-xl transition-all duration-200 hover:bg-[#0B4F6C]/5 hover:text-[#0B4F6C];
   }
 
   .nav-item-active {
-    @apply flex items-center px-4 py-3 bg-[#0A1F44]/5 text-[#0A1F44] font-medium rounded-xl border-l-4 border-[#F97316];
+    @apply flex items-center px-4 py-3 bg-[#0B4F6C]/10 text-[#0B4F6C] font-semibold rounded-xl border-l-4 border-[#C58A17];
   }
 
   .action-button {
@@ -67,20 +72,45 @@
   }
 
   .btn-primary {
-    @apply action-button bg-[#0A1F44] text-white hover:bg-[#0A1F44]/90 shadow-sm shadow-[#0A1F44]/20;
+    @apply action-button bg-[#0B4F6C] text-white hover:bg-[#0B4F6C]/90 shadow-lg shadow-[#0B4F6C]/20;
   }
 
   .btn-accent {
-    @apply action-button bg-[#F97316] text-white hover:bg-[#F97316]/90 shadow-sm shadow-[#F97316]/20;
+    @apply action-button bg-[#C58A17] text-white hover:bg-[#C58A17]/90 shadow-lg shadow-[#C58A17]/20;
+  }
+
+  .btn-success {
+    @apply action-button bg-[#4CAF50] text-white hover:bg-[#4CAF50]/90 shadow-lg shadow-[#4CAF50]/20;
   }
 
   .service-card {
-    @apply flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-[#F97316]/30 hover:shadow-lg hover:shadow-[#F97316]/5 transition-all duration-300;
+    @apply flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-[#C58A17]/30 hover:shadow-xl hover:shadow-[#0B4F6C]/5 transition-all duration-300 group;
   }
 
   .service-icon {
-    @apply w-12 h-12 mb-3 rounded-xl flex items-center justify-center bg-gray-50 text-gray-600 group-hover:bg-[#F97316]/10 group-hover:text-[#F97316] transition-colors;
+    @apply w-12 h-12 mb-3 rounded-xl flex items-center justify-center bg-gray-50 text-gray-600 group-hover:bg-[#C58A17]/10 group-hover:text-[#C58A17] transition-all duration-300 transform group-hover:scale-110;
   }
+}
+
+.tech-pattern {
+  background-image: radial-gradient(#0B4F6C 0.5px, transparent 0.5px);
+  background-size: 20px 20px;
+  opacity: 0.05;
+}
+
+.asaphis-symbol {
+  @apply relative overflow-hidden;
+}
+
+.asaphis-symbol::after {
+  content: '';
+  @apply absolute inset-0 opacity-10 pointer-events-none;
+  background-image: linear-gradient(45deg, #0B4F6C 25%, transparent 25%), 
+    linear-gradient(-45deg, #0B4F6C 25%, transparent 25%), 
+    linear-gradient(45deg, transparent 75%, #0B4F6C 75%), 
+    linear-gradient(-45deg, transparent 75%, #0B4F6C 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
 }
 
 .glass-morphism {
