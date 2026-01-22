@@ -20,10 +20,10 @@ try {
       return s;
     };
 
-    const projectId = sanitize(process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+    const projectId = sanitize(process.env.FIREBASE_PROJECT_ID);
     const clientEmail = sanitize(process.env.FIREBASE_CLIENT_EMAIL);
     let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-    const storageBucket = sanitize(process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+    const storageBucket = sanitize(process.env.FIREBASE_STORAGE_BUCKET);
 
     // Enhanced diagnostics
     const diagnostics = {
