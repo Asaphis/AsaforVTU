@@ -132,8 +132,16 @@ export default function Dashboard() {
 
   if (loading || !user) {
     return (
-      <div className="py-12">
-        <div className="h-48 rounded-2xl bg-gray-100 animate-pulse" />
+      <div className="space-y-8 animate-pulse">
+        <div className="h-16 bg-gray-100 rounded-2xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 h-64 bg-gray-100 rounded-[2rem]" />
+          <div className="h-64 bg-gray-100 rounded-2xl" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="h-48 bg-gray-100 rounded-2xl" />
+          <div className="h-48 bg-gray-100 rounded-2xl" />
+        </div>
       </div>
     );
   }

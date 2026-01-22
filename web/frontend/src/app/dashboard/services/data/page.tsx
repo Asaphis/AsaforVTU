@@ -125,83 +125,105 @@ export default function DataPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
           {loading ? (
-            <div className="card text-center py-12">Loading service...</div>
+            <div className="dashboard-card text-center py-20 animate-pulse bg-gray-50 border-none">
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl mx-auto mb-4" />
+              <div className="h-4 w-32 bg-gray-100 mx-auto rounded" />
+            </div>
           ) : error ? (
-            <div className="card text-center py-12 text-destructive">Error loading service: {error}</div>
+            <div className="dashboard-card text-center py-20 border-red-100 bg-red-50/30">
+              <p className="text-red-500 font-bold uppercase tracking-widest text-sm">Error loading service</p>
+              <p className="text-xs text-red-400 mt-2">{error}</p>
+            </div>
           ) : !service ? (
-            <div className="card text-center py-12">Service not available</div>
+            <div className="dashboard-card text-center py-20 bg-gray-50 border-none">
+              <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">Service currently unavailable</p>
+            </div>
           ) : (
             <>
-              <h1 className="text-4xl font-bold text-[#0A1F44] mb-4 flex items-center gap-3">
-                <Wifi size={40} className="text-[#F97316]" />
-                {service.name}
-              </h1>
-              <p className="text-gray-600 text-lg mb-8">{service.description || 'Buy affordable data bundles.'}</p>
-
-              <form onSubmit={handlePurchase} className="card space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Network</label>
-                  <select 
-                    className="input-field"
-                    value={network.value}
-                    onChange={(e) => {
-                      const n = NETWORKS.find(nn => nn.value === e.target.value) || NETWORKS[0];
-                      setNetwork(n);
-                      const plans = (dynamicPlans[n.value] || DATA_PLANS[n.value] || dynamicPlans[NETWORKS[0].value] || DATA_PLANS[NETWORKS[0].value] || []);
-                      setSelectedPlan(plans[0]);
-                    }}
-                  >
-                    {NETWORKS.map(n => (
-                      <option key={n.value} value={n.value}>{n.label}</option>
-                    ))}
-                  </select>
+              <div className="text-center mb-10">
+                <div className="w-20 h-20 rounded-[2rem] bg-[#0A1F44] flex items-center justify-center text-[#F97316] mx-auto mb-6 shadow-xl shadow-blue-900/20">
+                  <Wifi size={40} />
                 </div>
+                <h1 className="text-4xl font-black text-[#0A1F44] tracking-tight uppercase">
+                  {service.name}
+                </h1>
+                <p className="text-gray-400 font-medium mt-2">{service.description || 'Buy affordable data bundles instantly.'}</p>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                  <input 
-                    type="tel" 
-                    placeholder="080..." 
-                    className="input-field"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                    required
-                    minLength={11}
-                  />
-                </div>
+              <form onSubmit={handlePurchase} className="dashboard-card border-none shadow-brand p-10 space-y-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#F97316]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+                
+                <div className="space-y-6 relative z-10">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Select Network</label>
+                    <div className="grid grid-cols-4 gap-3">
+                      {NETWORKS.map(n => (
+                        <button
+                          key={n.value}
+                          type="button"
+                          onClick={() => {
+                            setNetwork(n);
+                            const plans = (dynamicPlans[n.value] || DATA_PLANS[n.value] || []);
+                            setSelectedPlan(plans[0]);
+                          }}
+                          className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all ${
+                            network.value === n.value 
+                              ? 'bg-[#0A1F44] border-[#0A1F44] text-white shadow-lg shadow-blue-900/20 scale-[1.05]' 
+                              : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-200'
+                          }`}
+                        >
+                          {n.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Data Plan</label>
-                  <select 
-                    className="input-field"
-                    value={selectedPlan?.variation_id || ''}
-                    onChange={(e) => {
-                        const plans = DATA_PLANS[network.value] || [];
-                        const plan = plans.find(p => p.variation_id === e.target.value) || plans[0];
-                        setSelectedPlan(plan);
-                    }}
-                  >
-                    {((dynamicPlans[network.value] || DATA_PLANS[network.value] || [])).map(plan => (
-                      <option key={plan.variation_id} value={plan.variation_id}>
-                        {plan.name} - ₦{plan.price.toLocaleString()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Phone Number</label>
+                    <input 
+                      type="tel" 
+                      placeholder="080..." 
+                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0A1F44]/20 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44] text-lg"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                      required
+                      minLength={11}
+                    />
+                  </div>
 
-                <div className="bg-blue-50 p-4 rounded-lg flex justify-between items-center text-sm text-blue-900">
-                    <span>Wallet Balance:</span>
-                    <span className="font-bold">₦{user?.walletBalance?.toLocaleString() ?? '0.00'}</span>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Data Plan</label>
+                    <select 
+                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0A1F44]/20 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44] appearance-none"
+                      value={selectedPlan?.variation_id || ''}
+                      onChange={(e) => {
+                          const plans = (dynamicPlans[network.value] || DATA_PLANS[network.value] || []);
+                          const plan = plans.find(p => p.variation_id === e.target.value) || plans[0];
+                          setSelectedPlan(plan);
+                      }}
+                    >
+                      {((dynamicPlans[network.value] || DATA_PLANS[network.value] || [])).map(plan => (
+                        <option key={plan.variation_id} value={plan.variation_id}>
+                          {plan.name} - ₦{plan.price.toLocaleString()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-[#0A1F44]/5 border border-[#0A1F44]/5 flex justify-between items-center">
+                    <span className="text-[10px] font-black text-[#0A1F44]/60 uppercase tracking-widest">Available Balance</span>
+                    <span className="text-lg font-black text-[#0A1F44]">₦{user?.walletBalance?.toLocaleString() ?? '0.00'}</span>
+                  </div>
                 </div>
 
                 <button 
                     type="submit" 
-                    className="btn-accent w-full" 
+                    className="w-full py-5 rounded-2xl bg-[#F97316] text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-[#F97316]/90 transition-all shadow-xl shadow-orange-900/20 disabled:opacity-30 relative z-10" 
                     disabled={!service.enabled || processing}
                 >
-                  {processing ? 'Processing...' : service.enabled ? `Buy ${selectedPlan?.name?.split('(')[0] || 'Data Plan'}` : 'Coming soon'}
+                  {processing ? 'PROCESSING...' : service.enabled ? `PURCHASE ${selectedPlan?.name?.split('(')[0] || 'DATA'}` : 'COMING SOON'}
                 </button>
               </form>
             </>

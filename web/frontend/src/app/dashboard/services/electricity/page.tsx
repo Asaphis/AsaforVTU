@@ -60,28 +60,27 @@ export default function ElectricityPage() {
   if (!service) return <div className="p-8 text-center">Service not available</div>;
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold text-[#0A1F44] mb-6 flex items-center gap-3">
-        <div className="p-3 bg-orange-100 rounded-lg">
-          <Zap className="text-orange-600" size={24} />
+    <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="text-center mb-10">
+        <div className="w-20 h-20 rounded-[2rem] bg-[#0A1F44] flex items-center justify-center text-[#F97316] mx-auto mb-6 shadow-xl shadow-blue-900/20">
+          <Zap size={40} />
         </div>
-        Electricity Bill
-      </h1>
+        <h1 className="text-4xl font-black text-[#0A1F44] tracking-tight uppercase">
+          {service.name}
+        </h1>
+        <p className="text-gray-400 font-medium mt-2">{service.description || 'Pay electricity bills across all networks instantly.'}</p>
+      </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
-          <p className="text-sm text-blue-800">
-            Wallet Balance: <span className="font-bold">₦{user?.walletBalance.toLocaleString()}</span>
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select Disco</label>
+      <form onSubmit={handleSubmit} className="dashboard-card border-none shadow-brand p-10 space-y-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#F97316]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+        
+        <div className="space-y-6 relative z-10">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Select Provider (Disco)</label>
             <select 
               value={provider}
               onChange={(e) => setProvider(e.target.value)}
-              className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A1F44]"
+              className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0A1F44]/20 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44] appearance-none"
             >
               <option value="ikedc">Ikeja Electric (IKEDC)</option>
               <option value="ekedc">Eko Electric (EKEDC)</option>
@@ -95,40 +94,45 @@ export default function ElectricityPage() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Meter Number</label>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Meter Number</label>
             <input 
               type="text" 
               value={meterNumber}
               onChange={(e) => setMeterNumber(e.target.value)}
               placeholder="Enter meter number"
-              className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A1F44]"
+              className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0A1F44]/20 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44] text-lg"
               required
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Amount (₦)</label>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Payment Amount (₦)</label>
             <input 
               type="number" 
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="Enter amount"
               min="100"
-              className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A1F44]"
+              className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0A1F44]/20 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44] text-lg"
               required
             />
           </div>
 
-          <button 
-            type="submit" 
-            disabled={!service.enabled || processing}
-            className="w-full py-3 px-4 bg-[#0A1F44] text-white rounded-lg font-medium hover:bg-[#0A1F44]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {processing ? 'Processing...' : 'Pay Bill'}
-          </button>
-        </form>
-      </div>
+          <div className="p-5 rounded-2xl bg-[#0A1F44]/5 border border-[#0A1F44]/5 flex justify-between items-center">
+            <span className="text-[10px] font-black text-[#0A1F44]/60 uppercase tracking-widest">Available Balance</span>
+            <span className="text-lg font-black text-[#0A1F44]">₦{user?.walletBalance?.toLocaleString() ?? '0.00'}</span>
+          </div>
+        </div>
+
+        <button 
+          type="submit" 
+          disabled={!service.enabled || processing}
+          className="w-full py-5 rounded-2xl bg-[#0A1F44] text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-[#0A1F44]/90 transition-all shadow-xl shadow-blue-900/20 disabled:opacity-30 relative z-10"
+        >
+          {processing ? 'PROCESSING...' : 'PAY BILL NOW'}
+        </button>
+      </form>
 
       <TransactionPinModal 
         isOpen={showPinModal}
