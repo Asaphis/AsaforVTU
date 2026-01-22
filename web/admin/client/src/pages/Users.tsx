@@ -75,37 +75,37 @@ export default function UsersPage() {
   }, [users, searchTerm]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-8 animate-in fade-in duration-700">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-foreground">User Management</h2>
-          <p className="text-muted-foreground">Manage and view all registered users.</p>
+          <h2 className="text-4xl font-black text-white tracking-tighter mb-2">User Directory</h2>
+          <p className="text-slate-400 font-medium">Managing the platform's core community and access levels.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-4">
           <Dialog>
             <DialogTrigger asChild>
-              <Button className="shadow-lg shadow-primary/20">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add New User
+              <Button className="bg-primary hover:bg-primary/90 text-white font-black rounded-2xl px-6 h-12 shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 border-0">
+                <UserPlus className="mr-2 h-5 w-5" />
+                Enroll New User
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] bg-slate-900 border-white/10 text-white rounded-[2rem] shadow-3xl">
               <DialogHeader>
-                <DialogTitle>Add New User</DialogTitle>
+                <DialogTitle className="text-2xl font-black tracking-tight italic">Enroll Platform User</DialogTitle>
               </DialogHeader>
               <AddUserForm onDone={async () => { await reloadUsers(); }} />
             </DialogContent>
           </Dialog>
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline" className="shadow">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add Admin
+              <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10 font-black rounded-2xl px-6 h-12 shadow-xl transition-all hover:scale-105 active:scale-95">
+                <ShieldCheck className="mr-2 h-5 w-5 text-primary" />
+                Auth Admin
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] bg-slate-900 border-white/10 text-white rounded-[2rem] shadow-3xl">
               <DialogHeader>
-                <DialogTitle>Create Admin Account</DialogTitle>
+                <DialogTitle className="text-2xl font-black tracking-tight italic">Authorize New Admin</DialogTitle>
               </DialogHeader>
               <AddAdminForm />
             </DialogContent>
@@ -113,170 +113,135 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <Card className="border-none shadow-sm">
-        <CardHeader className="pb-4">
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>
-            A list of all users including their name, email, balance, and status.
-          </CardDescription>
-          <div className="flex items-center gap-2 mt-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search users..."
-                className="pl-9"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+      <Card className="border-0 shadow-2xl bg-white/5 backdrop-blur-xl rounded-[2.5rem] ring-1 ring-white/10 overflow-hidden">
+        <CardHeader className="p-10 pb-6 bg-white/[0.02]">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <CardTitle className="text-2xl font-black text-white tracking-tight">Active Accounts</CardTitle>
+              <CardDescription className="text-slate-500 font-medium mt-1 uppercase tracking-widest text-[10px]">
+                Comprehensive list of registered ecosystem members
+              </CardDescription>
             </div>
-            <Button variant="outline" size="icon">
-              <Filter className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-4 w-full md:w-auto">
+              <div className="relative flex-1 md:w-80 group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-primary transition-colors" />
+                <Input
+                  placeholder="Identify user..."
+                  className="pl-12 h-12 bg-white/5 border-white/10 rounded-2xl text-white placeholder:text-slate-600 focus-visible:ring-primary/40 focus-visible:bg-white/10 transition-all duration-500"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                <Filter className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {loading ? (
-            <div className="p-6 text-sm text-muted-foreground">Loading users...</div>
+            <div className="p-20 text-center">
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Syncing with database...</p>
+            </div>
           ) : (
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead>Wallet Balance</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+            <TableHeader className="bg-white/[0.01]">
+              <TableRow className="border-white/5 hover:bg-transparent">
+                <TableHead className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Identity</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Communication</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Onboarding</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Liquidity</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Status</TableHead>
+                <TableHead className="px-10 text-right text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Operations</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.map((user) => (
-                <TableRow key={user.id} className="group">
-                  <TableCell>
+                <TableRow key={user.id} className="border-white/5 hover:bg-white/[0.03] transition-colors group">
+                  <TableCell className="px-10 py-6">
                     <div className="flex flex-col">
-                      <span className="font-medium group-hover:text-primary transition-colors">{user.displayName || user.fullName || user.email || user.uid}</span>
+                      <span className="text-base font-black text-white group-hover:text-primary transition-colors tracking-tight">
+                        {user.displayName || user.fullName || user.email || user.uid}
+                      </span>
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-xs">{user.email || ''}</TableCell>
-                  <TableCell>{user.phone || '-'}</TableCell>
-                  <TableCell>{user.joinedAt ? new Date(user.joinedAt).toLocaleDateString() : '-'}</TableCell>
-                  <TableCell className="font-medium">₦{Number(user.walletBalance || 0).toLocaleString()}</TableCell>
+                  <TableCell className="font-mono text-xs text-slate-400 opacity-60 group-hover:opacity-100 transition-opacity">
+                    {user.email || '—'}
+                  </TableCell>
+                  <TableCell className="text-slate-400 text-sm font-medium">
+                    {user.joinedAt ? new Date(user.joinedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                  </TableCell>
                   <TableCell>
-                    <Badge variant={user.status === 'inactive' ? 'secondary' : 'default'} className={user.status !== 'inactive' ? 'bg-emerald-500 hover:bg-emerald-600' : ''}>
-                      {user.status === 'inactive' ? 'inactive' : 'active'}
+                    <div className="flex flex-col">
+                      <span className="text-lg font-black text-white tracking-tighter">₦{Number(user.walletBalance || 0).toLocaleString()}</span>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-1">Main Wallet</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={user.status === 'inactive' ? 'secondary' : 'default'} 
+                           className={cn(
+                             "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border-0",
+                             user.status !== 'inactive' ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20' : 'bg-slate-500/10 text-slate-400 ring-1 ring-slate-500/20'
+                           )}>
+                      {user.status === 'inactive' ? 'Suspended' : 'Operational'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="px-10 text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
+                        <Button variant="ghost" className="h-12 w-12 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all">
+                          <MoreHorizontal className="h-6 w-6" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() => {
+                      <DropdownMenuContent align="end" className="w-64 rounded-3xl bg-slate-900 border-white/10 shadow-3xl text-slate-300">
+                        <DropdownMenuLabel className="px-5 py-4 text-white font-black text-sm uppercase tracking-widest">User Control</DropdownMenuLabel>
+                        <DropdownMenuSeparator className="bg-white/5" />
+                        <DropdownMenuItem className="px-5 py-3.5 rounded-2xl focus:bg-white/10 focus:text-white cursor-pointer" onClick={() => {
                             const targetUid = String(user.uid || user.id || "");
                             if (!targetUid) return;
                             setLocation(`/users/${encodeURIComponent(targetUid)}`);
-                          }}
-                        >
-                          View Profile
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            const qs = new URLSearchParams({
-                              uid: String(user.uid || user.id || ""),
-                              email: String(user.email || "")
-                            }).toString();
+                          }}>View Profile Intelligence</DropdownMenuItem>
+                        <DropdownMenuItem className="px-5 py-3.5 rounded-2xl focus:bg-white/10 focus:text-white cursor-pointer" onClick={() => {
+                            const qs = new URLSearchParams({ uid: String(user.uid || user.id || ""), email: String(user.email || "") }).toString();
                             setLocation(`/transactions?${qs}`);
-                          }}
-                        >
-                          View Transactions
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
+                          }}>Audit Transactions</DropdownMenuItem>
+                        <DropdownMenuItem className="px-5 py-3.5 rounded-2xl focus:bg-white/10 focus:text-white cursor-pointer" onClick={() => {
                             const userId = String(user.email || user.uid || user.id || "");
                             const qs = new URLSearchParams({ userId }).toString();
                             setLocation(`/wallet?${qs}`);
-                          }}
-                        >
-                          Fund Wallet
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={async () => {
+                          }}>Inject Liquidity</DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-white/5" />
+                        <DropdownMenuItem className="px-5 py-3.5 rounded-2xl focus:bg-primary/20 focus:text-primary cursor-pointer font-bold" onClick={async () => {
                             try {
                               const res = await promoteAdmin({ uid: user.uid || user.id, email: user.email });
-                              toast({ title: 'Promoted to Admin', description: res.email || user.email });
+                              toast({ title: 'Authorization Successful', description: `User ${res.email || user.email} is now an Admin.` });
                               await reloadUsers();
                             } catch (e: any) {
-                              toast({ title: 'Promotion Failed', description: e.message || 'Unable to promote', variant: 'destructive' });
+                              toast({ title: 'Auth Failed', description: e.message, variant: 'destructive' });
                             }
-                          }}
-                        >
-                          Make Admin
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={async () => {
-                            try {
-                              const res = await suspendUser({ uid: user.uid || user.id, email: user.email, suspend: !(user.status === 'inactive') });
-                              toast({ title: res.disabled ? 'User Suspended' : 'User Reinstated', description: res.email || user.email });
-                              await reloadUsers();
-                            } catch (e: any) {
-                              toast({ title: 'Suspend Failed', description: e.message || 'Unable to suspend', variant: 'destructive' });
-                            }
-                          }}
-                        >
-                          {user.status === 'inactive' ? 'Reinstate User' : 'Suspend User'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={async () => {
-                            const pwd = prompt('Enter new password for user');
+                          }}>Elevate to Admin</DropdownMenuItem>
+                        <DropdownMenuItem className="px-5 py-3.5 rounded-2xl focus:bg-white/10 focus:text-white cursor-pointer" onClick={async () => {
+                            const pwd = prompt('Set new cryptographic password');
                             if (!pwd) return;
                             try {
                               const res = await updateUserPassword({ uid: user.uid || user.id, email: user.email, password: pwd });
-                              toast({ title: 'Password Updated', description: res.email || user.email });
-                              await reloadUsers();
+                              toast({ title: 'Credential Reset', description: `Credentials updated for ${res.email || user.email}` });
                             } catch (e: any) {
-                              toast({ title: 'Update Failed', description: e.message || 'Unable to update', variant: 'destructive' });
+                              toast({ title: 'Update Failed', description: e.message, variant: 'destructive' });
                             }
-                          }}
-                        >
-                          Change Password
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={async () => {
-                            const amtStr = prompt('Enter amount to debit (₦)');
-                            const amt = Number(amtStr || '0');
-                            if (!amt || amt <= 0) return;
+                          }}>Reset Credentials</DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-white/5" />
+                        <DropdownMenuItem className="px-5 py-3.5 rounded-2xl text-red-400 focus:bg-red-500/10 focus:text-red-400 font-bold cursor-pointer" onClick={async () => {
                             try {
-                              const res = await debitWallet({ userId: user.email || user.uid || user.id, amount: amt, walletType: "main", description: "Admin debit" });
-                              toast({ title: 'Wallet Debited', description: `New balance: ₦${Number(res.newBalance || 0).toLocaleString()}` });
+                              const res = await suspendUser({ uid: user.uid || user.id, email: user.email, suspend: !(user.status === 'inactive') });
+                              toast({ title: res.disabled ? 'Account Suspended' : 'Account Restored' });
                               await reloadUsers();
                             } catch (e: any) {
-                              toast({ title: 'Debit Failed', description: e.message || 'Unable to debit', variant: 'destructive' });
+                              toast({ title: 'Operation Failed', description: e.message, variant: 'destructive' });
                             }
-                          }}
-                        >
-                          Debit Wallet
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={async () => {
-                            const confirmDelete = confirm(`Delete user ${user.email}? This cannot be undone.`);
-                            if (!confirmDelete) return;
-                            try {
-                              const res = await deleteUser({ uid: user.uid || user.id, email: user.email });
-                              toast({ title: 'User Deleted', description: res.email || user.email });
-                              await reloadUsers();
-                            } catch (e: any) {
-                              toast({ title: 'Delete Failed', description: e.message || 'Unable to delete', variant: 'destructive' });
-                            }
-                          }}
-                        >
-                          Remove User
+                          }}>
+                          {user.status === 'inactive' ? 'Unblock User' : 'Suspend Operations'}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

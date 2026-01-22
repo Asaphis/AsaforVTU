@@ -179,156 +179,146 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-gray-50 overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-80px)] bg-[#0F172A] overflow-hidden animate-in fade-in duration-700">
       {/* Header Bar */}
-      <div className="flex items-center justify-between px-6 py-4 bg-white border-b shadow-sm z-20">
+      <div className="flex items-center justify-between px-10 py-6 bg-white/5 backdrop-blur-xl border-b border-white/10 z-20 shadow-2xl">
         <div>
-          <h1 className="text-xl font-black text-gray-900 flex items-center gap-2">
-             <ShieldCheck className="w-6 h-6 text-blue-600" />
-             ADMIN SUPPORT & BROADCASTS
+          <h1 className="text-2xl font-black text-white flex items-center gap-3 italic tracking-tighter">
+             <ShieldCheck className="w-8 h-8 text-primary shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
+             Command Center Support
           </h1>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Real-time Customer Relations & Updates</p>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1 opacity-70">Real-time Node Communication & Broadcasts</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Badge className="bg-blue-600 hover:bg-blue-700 text-white border-none px-3 py-1 font-bold text-[10px]">
-            {tickets.filter(t => t.status === 'open').length} ACTIVE TICKETS
+        <div className="flex items-center gap-4">
+          <Badge className="bg-primary/10 text-primary border border-primary/20 px-4 py-1.5 font-black text-[10px] rounded-xl uppercase tracking-widest">
+            {tickets.filter(t => t.status === 'open').length} Active Traces
           </Badge>
-          <Badge className="bg-orange-600 text-white border-none px-3 py-1 font-bold text-[10px]">
-            {announcements.length} BROADCASTS
+          <Badge className="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-4 py-1.5 font-black text-[10px] rounded-xl uppercase tracking-widest">
+            {announcements.length} Signal Broadcasts
           </Badge>
         </div>
       </div>
 
       <Tabs defaultValue="tickets" className="flex-grow flex flex-col overflow-hidden">
-        <div className="px-6 bg-white border-b z-10">
-          <TabsList className="bg-transparent h-12 gap-6">
-            <TabsTrigger value="tickets" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none bg-transparent px-0 font-black text-[11px] uppercase tracking-widest">Support Tickets</TabsTrigger>
-            <TabsTrigger value="announcements" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none bg-transparent px-0 font-black text-[11px] uppercase tracking-widest">System Broadcasts</TabsTrigger>
+        <div className="px-10 bg-white/[0.02] border-b border-white/5 z-10">
+          <TabsList className="bg-transparent h-14 gap-10">
+            <TabsTrigger value="tickets" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent px-0 font-black text-[11px] uppercase tracking-[0.25em] text-slate-500 data-[state=active]:text-white transition-all">Support Traces</TabsTrigger>
+            <TabsTrigger value="announcements" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent px-0 font-black text-[11px] uppercase tracking-[0.25em] text-slate-500 data-[state=active]:text-white transition-all">Broadcast Hub</TabsTrigger>
           </TabsList>
         </div>
 
         <TabsContent value="tickets" className="flex-grow flex overflow-hidden m-0">
           <div className="flex w-full overflow-hidden relative">
             {/* Left Sidebar - Ticket List */}
-            <div className={`w-full md:w-[380px] flex flex-col bg-white border-r z-10 transition-all duration-300 ${selectedTicket ? 'hidden md:flex' : 'flex'}`}>
-              <div className="p-4 border-b bg-gray-50/50">
-                <div className="relative">
-                  <History className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <div className="pl-9 pr-4 py-2 bg-white border rounded-xl text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Conversation History
+            <div className={`w-full md:w-[400px] flex flex-col bg-[#0F172A] border-r border-white/5 z-10 transition-all duration-300 ${selectedTicket ? 'hidden md:flex' : 'flex'}`}>
+              <div className="p-6 border-b border-white/5 bg-white/[0.01]">
+                <div className="relative group">
+                  <History className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-primary transition-colors" />
+                  <div className="pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-inner">
+                    Communication Archives
                   </div>
                 </div>
               </div>
               
-              <div className="flex-grow overflow-y-auto scrollbar-hide p-2 space-y-1">
+              <div className="flex-grow overflow-y-auto no-scrollbar p-4 space-y-3">
                 {tickets.map((t) => (
                   <div 
                     key={t.id} 
                     onClick={() => setSelectedTicket(t)}
-                    className={`group p-5 rounded-3xl cursor-pointer transition-all duration-300 border-2 relative ${
+                    className={`group p-6 rounded-[2rem] cursor-pointer transition-all duration-500 border-2 relative overflow-hidden ${
                       selectedTicket?.id === t.id 
-                        ? 'bg-white border-blue-600 shadow-2xl shadow-blue-100 scale-[1.02] z-10' 
-                        : 'bg-white border-transparent hover:border-gray-200 hover:shadow-lg'
+                        ? 'bg-white/10 border-primary shadow-[0_20px_40px_-15px_rgba(0,0,0,0.4)] scale-[1.02] z-10' 
+                        : 'bg-white/5 border-transparent hover:border-white/10 hover:bg-white/[0.08]'
                     }`}
                   >
                     {t.status === 'open' && selectedTicket?.id !== t.id && (
-                      <div className="absolute top-4 right-4 w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse shadow-[0_0_10px_rgba(37,99,235,0.5)]" />
+                      <div className="absolute top-6 right-6 w-2.5 h-2.5 rounded-full bg-primary animate-pulse shadow-[0_0_12px_rgba(var(--primary),0.6)]" />
                     )}
-                    <div className="flex justify-between items-start mb-3">
+                    <div className="flex justify-between items-start mb-4">
                       <div className="flex flex-col">
-                        <span className="text-[11px] font-black text-blue-600 uppercase tracking-tighter truncate max-w-[180px] mb-0.5">{t.userEmail}</span>
-                        <span className="text-[9px] font-bold text-gray-400 uppercase">Ticket ID: {t.id.slice(0,6)}</span>
+                        <span className="text-[11px] font-black text-primary uppercase tracking-tighter truncate max-w-[180px] mb-1 italic">{t.userEmail}</span>
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">TRACE_ID: {t.id.slice(0,8)}</span>
                       </div>
-                      <Badge className={`text-[10px] font-black h-6 uppercase px-3 border-none shadow-sm ${
-                        t.status === 'open' ? 'bg-red-500 text-white' : 
-                        t.status === 'replied' ? 'bg-blue-500 text-white' : 
-                        'bg-green-500 text-white'
-                      }`}>
+                      <Badge className={cn(
+                        "text-[9px] font-black h-6 uppercase px-3 border-0 shadow-lg",
+                        t.status === 'open' ? 'bg-red-500/20 text-red-400 ring-1 ring-red-500/30' : 
+                        t.status === 'replied' ? 'bg-primary/20 text-primary ring-1 ring-primary/30' : 
+                        'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30'
+                      )}>
                         {t.status}
                       </Badge>
                     </div>
-                    <h4 className="text-sm font-black text-gray-900 truncate mb-1.5">{t.subject || "No Subject"}</h4>
-                    <p className="text-xs text-gray-500 line-clamp-2 font-medium leading-relaxed italic border-l-2 border-gray-100 pl-3">{t.lastMessage}</p>
-                      <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-50">
-                      <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">
-                        {t.lastMessageAt?.seconds ? new Date(t.lastMessageAt.seconds * 1000).toLocaleDateString() : 'New'}
+                    <h4 className="text-sm font-black text-white truncate mb-2 tracking-tight group-hover:text-primary transition-colors">{t.subject || "Untitled Session"}</h4>
+                    <p className="text-xs text-slate-400 line-clamp-2 font-medium leading-relaxed italic border-l-2 border-white/10 pl-4">{t.lastMessage}</p>
+                      <div className="flex justify-between items-center mt-5 pt-4 border-t border-white/5">
+                      <span className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">
+                        {t.lastMessageAt?.seconds ? new Date(t.lastMessageAt.seconds * 1000).toLocaleDateString() : 'INITIALIZING'}
                       </span>
-                      <div className="flex items-center gap-1">
-                         <div className={`w-1.5 h-1.5 rounded-full ${t.status === 'open' ? 'bg-red-500' : 'bg-gray-200'}`} />
-                         <span className="text-[9px] font-black text-gray-300 uppercase">System Active</span>
+                      <div className="flex items-center gap-1.5 opacity-40">
+                         <div className={`w-1.5 h-1.5 rounded-full ${t.status === 'open' ? 'bg-red-500' : 'bg-slate-700'}`} />
+                         <span className="text-[8px] font-black text-slate-500 uppercase">NODE ACTIVE</span>
                       </div>
                     </div>
                   </div>
                 ))}
-                {tickets.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-20 text-gray-300">
-                    <MessageSquare className="w-12 h-12 mb-4 opacity-20" />
-                    <p className="text-xs font-black uppercase tracking-widest">No Active Conversations</p>
-                  </div>
-                )}
               </div>
             </div>
 
             {/* Right Area - Chat Content */}
-            <div className={`flex-grow flex flex-col bg-gray-50 overflow-hidden transition-all duration-300 ${!selectedTicket ? 'hidden md:flex' : 'flex'}`}>
+            <div className={`flex-grow flex flex-col bg-[#0F172A] overflow-hidden transition-all duration-300 relative ${!selectedTicket ? 'hidden md:flex' : 'flex'}`}>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(var(--primary),0.05),transparent_70%)] pointer-events-none" />
+              
               {selectedTicket ? (
                 <>
                   {/* Chat Header */}
-                  <div className="bg-white border-b px-6 py-4 flex items-center justify-between z-10 shadow-sm">
-                    <div className="flex items-center gap-4">
-                      <Button variant="ghost" size="icon" className="md:hidden rounded-full hover:bg-gray-100" onClick={() => setSelectedTicket(null)}>
-                        <X className="w-5 h-5 text-gray-500" />
+                  <div className="bg-white/5 backdrop-blur-xl border-b border-white/10 px-8 py-5 flex items-center justify-between z-10 shadow-2xl relative">
+                    <div className="flex items-center gap-5">
+                      <Button variant="ghost" size="icon" className="md:hidden rounded-2xl bg-white/5 border border-white/10 text-white" onClick={() => setSelectedTicket(null)}>
+                        <X className="w-5 h-5" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => deleteTicket(selectedTicket.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full h-10 w-10">
+                      <Button variant="ghost" size="icon" onClick={() => deleteTicket(selectedTicket.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-2xl h-12 w-12 border border-white/5">
                         <Trash2 className="w-5 h-5" />
                       </Button>
-                      <div className="h-12 w-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-100">
-                        <User className="w-6 h-6" />
+                      <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-primary/30 ring-1 ring-white/20">
+                        <User className="w-7 h-7" />
                       </div>
                       <div>
-                        <h3 className="text-base font-black text-gray-900 leading-tight">{selectedTicket.subject}</h3>
-                        <p className="text-[11px] font-bold text-blue-600 truncate max-w-[200px]">{selectedTicket.userEmail}</p>
+                        <h3 className="text-lg font-black text-white leading-tight tracking-tight italic">{selectedTicket.subject}</h3>
+                        <p className="text-[11px] font-black text-primary truncate max-w-[200px] mt-1 uppercase tracking-widest opacity-80">{selectedTicket.userEmail}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                       {selectedTicket.status !== 'solved' && (
-                        <Button variant="outline" size="sm" onClick={() => markAsSolved(selectedTicket.id)} className="h-9 border-2 border-green-500 text-green-600 hover:bg-green-50 rounded-xl font-black text-[10px] px-4 uppercase tracking-wider">
-                          Mark Resolved
+                        <Button variant="outline" size="sm" onClick={() => markAsSolved(selectedTicket.id)} className="h-10 border-0 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black text-[10px] px-6 uppercase tracking-widest shadow-xl shadow-emerald-500/20 transition-all hover:scale-105">
+                          Resolve Session
                         </Button>
                       )}
-                      <div className="px-3 py-1 bg-gray-100 rounded-lg text-[9px] font-black text-gray-400 uppercase">
-                        ID: {selectedTicket.id.slice(0, 8)}
+                      <div className="px-4 py-2 bg-white/5 rounded-xl text-[9px] font-black text-slate-500 uppercase tracking-widest border border-white/5">
+                        X_HASH: {selectedTicket.id.slice(0, 12)}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex-grow overflow-y-auto p-6 space-y-6 bg-[#f0f2f5] pattern-dots relative scroll-smooth">
+                  <div className="flex-grow overflow-y-auto no-scrollbar p-8 space-y-8 bg-transparent relative scroll-smooth z-0">
                     {replies.map((r, i) => (
-                      <div key={r.id || i} className={`flex flex-col ${r.sender === 'admin' ? 'items-end ml-auto' : 'items-start'} max-w-[85%] md:max-w-[75%]`}>
-                        <div className={`p-5 rounded-[2rem] shadow-sm relative ${
+                      <div key={r.id || i} className={`flex flex-col ${r.sender === 'admin' ? 'items-end ml-auto' : 'items-start'} max-w-[85%] md:max-w-[70%]`}>
+                        <div className={`p-6 rounded-[2.5rem] shadow-2xl relative transition-all duration-500 hover:scale-[1.01] ${
                           r.sender === 'admin' 
-                            ? 'bg-blue-600 text-white rounded-tr-none shadow-blue-200/50' 
-                            : 'bg-white border-2 border-gray-100 text-gray-800 rounded-tl-none'
+                            ? 'bg-gradient-to-br from-primary to-indigo-600 text-white rounded-tr-none shadow-primary/20 ring-1 ring-white/20' 
+                            : 'bg-white/10 backdrop-blur-xl border border-white/10 text-slate-200 rounded-tl-none ring-1 ring-white/5'
                         }`}>
-                           {/* Tail */}
-                           <div className={`absolute top-0 w-4 h-4 ${
-                            r.sender === 'admin' 
-                              ? 'right-[-10px] bg-blue-600 [clip-path:polygon(0_0,0_100%,100%_0)]' 
-                              : 'left-[-10px] bg-white border-l-2 border-t-2 border-gray-100 [clip-path:polygon(100%_0,0_0,100%_100%)]'
-                          }`} />
-
-                          <p className="text-sm font-bold leading-relaxed">{r.text}</p>
-                          <div className="flex justify-end items-center gap-2 mt-3 pt-2 border-t border-black/5">
-                            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
-                              {r.createdAt?.seconds ? new Date(r.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                          <p className="text-sm font-bold leading-relaxed tracking-wide">{r.text}</p>
+                          <div className="flex justify-end items-center gap-3 mt-4 pt-3 border-t border-white/10">
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-50">
+                              {r.createdAt?.seconds ? new Date(r.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TRANSMITTING...'}
                             </span>
                             {r.sender === 'admin' && (
-                              r.read ? <CheckCheck className="h-4 w-4 text-blue-200" /> : <Check className="h-4 w-4 text-blue-300" />
+                              r.read ? <CheckCheck className="h-4 w-4 text-white/60" /> : <Check className="h-4 w-4 text-white/30" />
                             )}
                           </div>
                         </div>
-                        <div className={`mt-2 text-[9px] font-black uppercase tracking-widest ${r.sender === 'admin' ? 'text-blue-500 mr-3' : 'text-gray-400 ml-3'}`}>
-                          {r.sender === 'admin' ? 'Admin Team' : 'User Response'}
+                        <div className={`mt-2.5 text-[8px] font-black uppercase tracking-[0.3em] ${r.sender === 'admin' ? 'text-primary mr-5' : 'text-slate-500 ml-5'}`}>
+                          {r.sender === 'admin' ? 'ADMIN_NODE_01' : 'USER_TERMINAL'}
                         </div>
                       </div>
                     ))}
@@ -336,13 +326,13 @@ export default function SupportPage() {
                   </div>
 
                   {/* Chat Input */}
-                  <div className="p-6 bg-white border-t z-10">
-                    <div className="relative group max-w-4xl mx-auto">
+                  <div className="p-8 bg-white/5 backdrop-blur-xl border-t border-white/10 z-10 relative">
+                    <div className="relative group max-w-5xl mx-auto">
                       <Textarea 
-                        placeholder="Type a professional response..." 
+                        placeholder="Type a professional neural response..." 
                         value={replyMsg}
                         onChange={(e) => setReplyMsg(e.target.value)}
-                        className="min-h-[100px] bg-gray-50 border-2 border-gray-100 focus:border-blue-600 focus:bg-white rounded-3xl text-sm font-medium p-5 pr-16 transition-all resize-none shadow-inner"
+                        className="min-h-[120px] bg-white/5 border-2 border-white/5 focus:border-primary/40 focus:bg-white/10 rounded-[2rem] text-sm font-bold text-white p-6 pr-20 transition-all resize-none shadow-3xl placeholder:text-slate-600 outline-none"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
@@ -354,86 +344,98 @@ export default function SupportPage() {
                         size="icon" 
                         onClick={() => handleReply(selectedTicket.id)} 
                         disabled={!replyMsg.trim()} 
-                        className="absolute bottom-4 right-4 h-12 w-12 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-100 disabled:opacity-30 disabled:shadow-none transition-all flex items-center justify-center group-hover:scale-105"
+                        className="absolute bottom-6 right-6 h-14 w-14 rounded-2xl bg-primary hover:bg-primary/90 shadow-2xl shadow-primary/40 disabled:opacity-20 disabled:shadow-none transition-all flex items-center justify-center group-hover:scale-110 active:scale-95 border-0"
                       >
-                        <Send className="h-5 w-5 text-white" />
+                        <Send className="h-6 w-6 text-white" />
                       </Button>
                     </div>
                   </div>
                 </>
               ) : (
-                <div className="flex-grow flex flex-col items-center justify-center text-center p-12 bg-[#f8f9fa]">
-                  <MessageSquare className="h-14 w-14 text-blue-600 opacity-20 mb-4" />
-                  <h3 className="text-xl font-black text-gray-900 mb-2 uppercase tracking-tighter">Support Terminal</h3>
-                  <p className="text-xs max-w-[280px] leading-relaxed text-gray-500 font-bold uppercase tracking-widest opacity-60">Select a conversation to begin.</p>
+                <div className="flex-grow flex flex-col items-center justify-center text-center p-12 bg-transparent">
+                  <div className="h-32 w-32 rounded-[2.5rem] bg-white/5 border border-white/10 flex items-center justify-center mb-8 shadow-3xl animate-pulse">
+                    <MessageSquare className="h-16 w-16 text-primary opacity-40" />
+                  </div>
+                  <h3 className="text-2xl font-black text-white mb-3 uppercase tracking-tighter italic">Support Matrix</h3>
+                  <p className="text-[10px] max-w-[320px] leading-relaxed text-slate-500 font-black uppercase tracking-[0.3em] opacity-60">Establish a neural link with a user session to begin communication protocols.</p>
                 </div>
               )}
             </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="announcements" className="flex-grow flex flex-col overflow-hidden m-0 p-6 bg-gray-50">
-          <div className="max-w-5xl mx-auto w-full space-y-6">
+        <TabsContent value="announcements" className="flex-grow flex flex-col overflow-hidden m-0 p-10 bg-transparent relative">
+          <div className="max-w-6xl mx-auto w-full space-y-10 z-10">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-black text-gray-900 uppercase tracking-tighter">System Broadcasts</h2>
+              <div>
+                <h2 className="text-3xl font-black text-white uppercase tracking-tighter italic">Global Signals</h2>
+                <p className="text-slate-500 font-medium text-sm mt-1">Universal broadcast protocols for ecosystem-wide synchronization.</p>
+              </div>
               <Dialog open={openAnnouncement} onOpenChange={setOpenAnnouncement}>
                 <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl px-6 h-12 uppercase tracking-widest text-[11px] gap-2 shadow-lg shadow-blue-100">
-                    <Plus className="w-4 h-4" /> New Broadcast
+                  <Button className="bg-primary hover:bg-primary/90 text-white font-black rounded-2xl px-8 h-14 shadow-2xl shadow-primary/30 uppercase tracking-widest text-[11px] gap-3 transition-all hover:scale-105 active:scale-95 border-0 italic">
+                    <Plus className="w-5 h-5" /> Initiate Broadcast
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="rounded-3xl border-none shadow-2xl p-8">
-                  <DialogHeader><DialogTitle className="text-2xl font-black text-gray-900">SYSTEM BROADCAST</DialogTitle></DialogHeader>
-                  <div className="space-y-6 py-4">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Announcement Title</Label>
-                      <Input className="h-14 rounded-2xl border-2 border-gray-100 focus:border-blue-600 transition-all font-bold text-gray-900" value={newAnn.title} onChange={e => setNewAnn({...newAnn, title: e.target.value})} placeholder="e.g. Maintenance Scheduled" />
+                <DialogContent className="rounded-[2.5rem] bg-slate-900 border-white/10 shadow-3xl p-10 text-white">
+                  <DialogHeader><DialogTitle className="text-3xl font-black italic tracking-tighter">INITIATE BROADCAST</DialogTitle></DialogHeader>
+                  <div className="space-y-8 py-6">
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Signal Subject</Label>
+                      <Input className="h-14 rounded-2xl bg-white/5 border-2 border-white/5 focus:border-primary/40 focus:bg-white/10 transition-all font-black text-white text-lg px-6 outline-none" value={newAnn.title} onChange={e => setNewAnn({...newAnn, title: e.target.value})} placeholder="e.g. CORE_MAINTENANCE" />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Message Body</Label>
-                      <Textarea className="min-h-[160px] rounded-2xl border-2 border-gray-100 focus:border-blue-600 transition-all font-medium text-gray-800 resize-none p-4" value={newAnn.content} onChange={e => setNewAnn({...newAnn, content: e.target.value})} placeholder="What's the update?" />
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Broadcast Payload</Label>
+                      <Textarea className="min-h-[200px] rounded-[2rem] bg-white/5 border-2 border-white/5 focus:border-primary/40 focus:bg-white/10 transition-all font-bold text-slate-300 resize-none p-6 outline-none text-base" value={newAnn.content} onChange={e => setNewAnn({...newAnn, content: e.target.value})} placeholder="Input transmission data..." />
                     </div>
-                    <Button className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-xl shadow-blue-100 uppercase tracking-widest mt-2" onClick={handleCreateAnn}>PUBLISH TO USERS</Button>
+                    <Button className="w-full h-16 bg-primary hover:bg-primary/90 text-white font-black rounded-2xl shadow-2xl shadow-primary/40 uppercase tracking-[0.2em] text-xs mt-4 border-0 italic transition-all hover:scale-[1.02] active:scale-[0.98]" onClick={handleCreateAnn}>TRANSMIT_TO_ALL_NODES</Button>
                   </div>
                 </DialogContent>
               </Dialog>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {announcements.map((ann) => (
-                <Card key={ann.id} className="border-2 border-transparent hover:border-blue-100 transition-all duration-300 rounded-[2rem] shadow-sm hover:shadow-xl group bg-white overflow-hidden">
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-2xl bg-orange-50 flex items-center justify-center">
-                          <Megaphone className="w-6 h-6 text-orange-600" />
+                <Card key={ann.id} className="border-0 shadow-3xl bg-white/5 backdrop-blur-xl hover:bg-white/[0.08] transition-all duration-500 rounded-[2.5rem] group relative ring-1 ring-white/10 overflow-hidden">
+                  <CardContent className="p-8">
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="flex items-center gap-5">
+                        <div className="h-14 w-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shadow-2xl shadow-orange-500/10 group-hover:scale-110 transition-all duration-500">
+                          <Megaphone className="w-7 h-7 text-orange-400" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-black text-gray-900 leading-tight">{ann.title}</h3>
-                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
-                            {ann.createdAt?.seconds ? new Date(ann.createdAt.seconds * 1000).toLocaleString() : 'Recent'}
+                          <h3 className="text-xl font-black text-white leading-tight tracking-tight italic">{ann.title}</h3>
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.25em] mt-2 italic">
+                            {ann.createdAt?.seconds ? new Date(ann.createdAt.seconds * 1000).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'ESTABLISHING...'}
                           </p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteAnn(ann.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl h-10 w-10">
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteAnn(ann.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-2xl h-12 w-12 border border-white/5 opacity-0 group-hover:opacity-100 transition-all">
                         <Trash2 className="w-5 h-5" />
                       </Button>
                     </div>
-                    <p className="text-sm font-medium text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-2xl border border-gray-100 italic">
+                    <p className="text-base font-bold text-slate-300 leading-relaxed bg-white/5 p-6 rounded-[1.5rem] border border-white/5 italic shadow-inner">
                       {ann.content}
                     </p>
+                    <div className="mt-6 flex justify-end">
+                      <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/5 text-[8px] font-black text-slate-500 uppercase tracking-[0.4em]">Signal Verified</div>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
               {announcements.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-gray-200">
-                  <Megaphone className="w-16 h-16 text-gray-200 mb-4" />
-                  <p className="text-sm font-black text-gray-400 uppercase tracking-widest">No Broadcasts Active</p>
+                <div className="md:col-span-2 flex flex-col items-center justify-center py-32 bg-white/5 backdrop-blur-xl rounded-[3rem] border-2 border-dashed border-white/10 shadow-3xl">
+                  <div className="h-24 w-24 rounded-full bg-white/5 flex items-center justify-center mb-8 animate-pulse">
+                    <Megaphone className="w-12 h-12 text-slate-600 opacity-20" />
+                  </div>
+                  <p className="text-sm font-black text-slate-500 uppercase tracking-[0.4em] italic opacity-60">No Signal Broadcasts Active</p>
                 </div>
               )}
             </div>
           </div>
         </TabsContent>
+      </Tabs>
+    </div>
       </Tabs>
     </div>
   );
