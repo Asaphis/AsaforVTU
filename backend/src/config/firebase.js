@@ -10,29 +10,15 @@ try {
   // Check if firebase is already initialized to avoid errors
   if (!admin.apps.length) {
     // Sanitize env variables that may be pasted with quotes/commas from UIs
-    const sanitize = (val) => {
-      if (!val || typeof val !== 'string') return val;
-      let s = val.trim();
-      if (s.startsWith('"')) s = s.slice(1);
-      if (s.endsWith('"')) s = s.slice(0, -1);
-      // Remove trailing commas sometimes copied from JSON
-      if (s.endsWith(',')) s = s.slice(0, -1);
-      return s;
-    };
-
-    const sanitize = (val) => {
-      if (!val || typeof val !== 'string') return val;
-      return val.trim().replace(/^["']|["']$/g, '');
-    };
-
-    const projectId = sanitize(process.env.FIREBASE_PROJECT_ID);
-    const clientEmail = sanitize(process.env.FIREBASE_CLIENT_EMAIL);
-    const storageBucket = sanitize(process.env.FIREBASE_STORAGE_BUCKET);
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
     let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
     if (projectId && clientEmail && privateKey && storageBucket) {
       try {
-        privateKey = sanitize(privateKey).replace(/\\n/g, '\n');
+        // Fix for private key newlines in production environments
+        privateKey = privateKey.replace(/\\n/g, '\n');
         
         admin.initializeApp({
           credential: admin.credential.cert({
@@ -48,31 +34,11 @@ try {
         firebaseInitialized = true;
         
         console.log('[Firebase] ✅ Successfully initialized');
-        console.log(`[Firebase] Project: ${projectId}`);
-        console.log(`[Firebase] Storage Bucket: ${storageBucket}`);
       } catch (initError) {
-        console.error('[Firebase] ❌ Initialization error:', {
-          code: initError.code,
-          message: initError.message,
-          details: initError,
-        });
-        // Do not throw, allow server to start without Firebase
+        console.error('[Firebase] ❌ Initialization error:', initError);
       }
     } else {
-      console.error('[Firebase] ❌ Missing or invalid credentials:');
-      console.error('[Firebase] - ProjectId:', projectId ? '✓' : '✗');
-      console.error('[Firebase] - ClientEmail:', clientEmail ? '✓' : '✗');
-      console.error('[Firebase] - PrivateKey:', hasValidKey ? '✓' : '✗');
-      console.error('[Firebase] - StorageBucket:', storageBucket ? '✓' : '✗');
-      console.error('[Firebase]');
-      console.error('[Firebase] Action Required:');
-      console.error('[Firebase] 1. Get service account JSON from Firebase Console');
-      console.error('[Firebase] 2. Set environment variables:');
-      console.error('[Firebase]    - FIREBASE_PROJECT_ID');
-      console.error('[Firebase]    - FIREBASE_CLIENT_EMAIL');
-      console.error('[Firebase]    - FIREBASE_PRIVATE_KEY');
-      console.error('[Firebase]    - FIREBASE_STORAGE_BUCKET');
-      console.error('[Firebase] 3. Restart the server');
+      console.error('[Firebase] ❌ Missing required credentials');
     }
   } else {
     console.log('[Firebase] Using existing Firebase app instance');
