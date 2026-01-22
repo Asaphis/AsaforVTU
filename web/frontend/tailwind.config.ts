@@ -10,45 +10,29 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Main colors
         primary: {
-          DEFAULT: '#0B4F6C',
+          DEFAULT: '#0A1F44',
           foreground: '#F8FAFC',
         },
         accent: {
-          DEFAULT: '#C58A17',
+          DEFAULT: '#F97316',
           foreground: '#FFFFFF',
         },
-        success: {
-          DEFAULT: '#4CAF50',
-          foreground: '#FFFFFF',
-        },
-        error: {
-          DEFAULT: '#DC2626',
-          foreground: '#FFFFFF',
-        },
-        // Brand Specific Colors
         brand: {
-          blue: '#0B4F6C',
-          gold: '#C58A17',
-          green: '#4CAF50',
-        },
-        // Background colors
-        background: {
-          light: '#F8FAFC',
-          dark: '#020617',
-        },
-        // Text colors
-        text: {
-          primary: '#0F172A',
-          muted: '#64748B',
-        },
-        // Border colors
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
+          navy: '#0A1F44',
+          orange: '#F97316',
+          slate: '#0F172A',
+          ghost: '#F8FAFC',
+        }
       },
-      // Add custom background images or other utilities if needed
+      borderRadius: {
+        '2xl': '1rem',
+        '3xl': '1.5rem',
+      },
+      boxShadow: {
+        'brand': '0 4px 20px -2px rgba(10, 31, 68, 0.05)',
+        'accent': '0 4px 20px -2px rgba(249, 115, 22, 0.15)',
+      }
     },
   },
   plugins: [],
