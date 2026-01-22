@@ -93,7 +93,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-8 pb-12 animate-in fade-in duration-500">
+    <div className="space-y-8 pb-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
@@ -109,7 +109,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {cards.map((card, i) => (
           <Card key={i} className="border border-slate-200 shadow-sm bg-white hover:shadow-md transition-all duration-200 rounded-2xl overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
@@ -146,7 +146,7 @@ export default function Dashboard() {
             <p className="text-sm text-slate-500 font-medium">Platform earnings over time</p>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="h-[350px] w-full">
+            <div className="h-[320px] w-full">
               {isLoading ? (
                 <Skeleton className="h-full w-full rounded-xl bg-slate-50" />
               ) : chartData.length === 0 ? (
