@@ -85,9 +85,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </nav>
           <div className="mt-auto p-4 bg-gray-50/50 border-t border-gray-100">
-            <div className="px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Settings</div>
+            <div className="px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Settings & Support</div>
             <nav className="space-y-1">
-              {accountItems.slice(0, 2).map(({ href, label, icon: Icon }) => (
+              {accountItems.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}

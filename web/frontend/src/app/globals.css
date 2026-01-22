@@ -88,7 +88,11 @@
   }
 
   .service-icon {
-    @apply w-12 h-12 mb-3 rounded-xl flex items-center justify-center bg-gray-50 text-gray-600 group-hover:bg-[#C58A17]/10 group-hover:text-[#C58A17] transition-all duration-300 transform group-hover:scale-110;
+    @apply w-12 h-12 mb-3 rounded-xl flex items-center justify-center bg-gray-50 text-gray-600 transition-all duration-300 transform;
+  }
+
+  .service-card:hover .service-icon {
+    @apply bg-[#C58A17]/10 text-[#C58A17] scale-110;
   }
 }
 
