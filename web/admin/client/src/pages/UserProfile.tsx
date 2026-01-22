@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRoute, Link } from "wouter";
+import { cn } from "@/lib/utils";
 import { listUsers, getUserTransactions, getFinanceUser } from "@/lib/backend";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -221,7 +222,6 @@ export default function UserProfilePage() {
           </Table>
         </CardContent>
       </Card>
-    </div>
     </div>
   );
 }
