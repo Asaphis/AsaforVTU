@@ -125,40 +125,46 @@ export default function DataPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
           {loading ? (
-            <div className="dashboard-card text-center py-20 animate-pulse bg-gray-50 border-none">
-              <div className="w-16 h-16 bg-gray-100 rounded-2xl mx-auto mb-4" />
-              <div className="h-4 w-32 bg-gray-100 mx-auto rounded" />
+            <div className="dashboard-card text-center py-24 border-none shadow-brand relative overflow-hidden">
+              <div className="tech-pattern absolute inset-0 opacity-[0.05]" />
+              <div className="relative z-10">
+                <div className="w-20 h-20 border-8 border-[#C58A17]/10 border-t-[#C58A17] rounded-[2rem] animate-spin mx-auto mb-6 shadow-2xl" />
+                <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-[10px]">Synchronizing Data Nodes...</p>
+              </div>
             </div>
           ) : error ? (
-            <div className="dashboard-card text-center py-20 border-red-100 bg-red-50/30">
-              <p className="text-red-500 font-bold uppercase tracking-widest text-sm">Error loading service</p>
-              <p className="text-xs text-red-400 mt-2">{error}</p>
+            <div className="dashboard-card text-center py-16 text-red-500 border-none shadow-brand bg-red-50/30">
+              <p className="font-black uppercase tracking-widest">Protocol Sync Error: {error}</p>
             </div>
           ) : !service ? (
-            <div className="dashboard-card text-center py-20 bg-gray-50 border-none">
-              <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">Service currently unavailable</p>
+            <div className="dashboard-card text-center py-16 text-gray-400 border-none shadow-brand">
+              <p className="font-black uppercase tracking-widest">Service Interface Offline</p>
             </div>
           ) : (
             <>
-              <div className="text-center mb-10">
-                <div className="w-20 h-20 rounded-[2rem] bg-[#0A1F44] flex items-center justify-center text-[#F97316] mx-auto mb-6 shadow-xl shadow-blue-900/20">
-                  <Wifi size={40} />
+              <div className="text-center mb-12">
+                <div className="w-24 h-24 rounded-[2.5rem] bg-gray-50 flex items-center justify-center text-[#0B4F6C] mx-auto mb-8 shadow-2xl shadow-[#0B4F6C]/10 border-8 border-white group hover:-rotate-12 transition-transform duration-500">
+                  <Wifi size={48} className="group-hover:scale-110 transition-transform" />
                 </div>
-                <h1 className="text-4xl font-black text-[#0A1F44] tracking-tight uppercase">
+                <h1 className="text-5xl font-black text-[#0B4F6C] tracking-tighter uppercase">
                   {service.name}
                 </h1>
-                <p className="text-gray-400 font-medium mt-2">{service.description || 'Buy affordable data bundles instantly.'}</p>
+                <div className="h-1.5 w-12 bg-[#C58A17] rounded-full mx-auto mt-4" />
+                <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-6 max-w-xs mx-auto leading-relaxed">High-Frequency Broadband Provisioning</p>
               </div>
 
-              <form onSubmit={handlePurchase} className="dashboard-card border-none shadow-brand p-10 space-y-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#F97316]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+              <form onSubmit={handlePurchase} className="dashboard-card border-none shadow-brand p-8 lg:p-12 space-y-10 relative overflow-hidden asaphis-symbol">
+                <div className="tech-pattern absolute inset-0 opacity-[0.03]" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#C58A17]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
                 
-                <div className="space-y-6 relative z-10">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Select Network</label>
-                    <div className="grid grid-cols-4 gap-3">
+                <div className="space-y-8 relative z-10">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 flex items-center gap-2">
+                       <div className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" /> Network Infrastructure
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       {NETWORKS.map(n => (
                         <button
                           key={n.value}
@@ -168,10 +174,10 @@ export default function DataPage() {
                             const plans = (dynamicPlans[n.value] || DATA_PLANS[n.value] || []);
                             setSelectedPlan(plans[0]);
                           }}
-                          className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all ${
+                          className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] border-2 transition-all ${
                             network.value === n.value 
-                              ? 'bg-[#0A1F44] border-[#0A1F44] text-white shadow-lg shadow-blue-900/20 scale-[1.05]' 
-                              : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-200'
+                              ? 'bg-[#0B4F6C] border-[#0B4F6C] text-white shadow-2xl shadow-[#0B4F6C]/30 scale-[1.05]' 
+                              : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-100 hover:bg-white shadow-inner'
                           }`}
                         >
                           {n.label}
@@ -180,50 +186,68 @@ export default function DataPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Phone Number</label>
-                    <input 
-                      type="tel" 
-                      placeholder="080..." 
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0A1F44]/20 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44] text-lg"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                      required
-                      minLength={11}
-                    />
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 flex items-center gap-2">
+                       <div className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" /> Recipient Terminal
+                    </label>
+                    <div className="relative group">
+                       <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#0B4F6C] transition-colors">
+                          <Smartphone size={20} />
+                       </div>
+                       <input 
+                         type="tel" 
+                         placeholder="080 0000 0000" 
+                         className="w-full pl-16 pr-6 py-5 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0B4F6C]/20 focus:bg-white focus:outline-none transition-all font-black text-[#0B4F6C] text-xl tracking-[0.2em] placeholder:text-gray-200 shadow-inner"
+                         value={phone}
+                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                         required
+                         minLength={11}
+                       />
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Data Plan</label>
-                    <select 
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0A1F44]/20 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44] appearance-none"
-                      value={selectedPlan?.variation_id || ''}
-                      onChange={(e) => {
-                          const plans = (dynamicPlans[network.value] || DATA_PLANS[network.value] || []);
-                          const plan = plans.find(p => p.variation_id === e.target.value) || plans[0];
-                          setSelectedPlan(plan);
-                      }}
-                    >
-                      {((dynamicPlans[network.value] || DATA_PLANS[network.value] || [])).map(plan => (
-                        <option key={plan.variation_id} value={plan.variation_id}>
-                          {plan.name} - ₦{plan.price.toLocaleString()}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 flex items-center gap-2">
+                       <div className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" /> Allocation Plan
+                    </label>
+                    <div className="relative">
+                      <select 
+                        className="w-full px-6 py-5 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0B4F6C]/20 focus:bg-white focus:outline-none transition-all font-black text-[#0B4F6C] text-lg appearance-none shadow-inner"
+                        value={selectedPlan?.variation_id || ''}
+                        onChange={(e) => {
+                            const plans = (dynamicPlans[network.value] || DATA_PLANS[network.value] || []);
+                            const plan = plans.find(p => p.variation_id === e.target.value) || plans[0];
+                            setSelectedPlan(plan);
+                        }}
+                      >
+                        {((dynamicPlans[network.value] || DATA_PLANS[network.value] || [])).map(plan => (
+                          <option key={plan.variation_id} value={plan.variation_id}>
+                            {plan.name} - ₦{plan.price.toLocaleString()}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                         <ChevronRight size={20} className="rotate-90" />
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="p-5 rounded-2xl bg-[#0A1F44]/5 border border-[#0A1F44]/5 flex justify-between items-center">
-                    <span className="text-[10px] font-black text-[#0A1F44]/60 uppercase tracking-widest">Available Balance</span>
-                    <span className="text-lg font-black text-[#0A1F44]">₦{user?.walletBalance?.toLocaleString() ?? '0.00'}</span>
+                  <div className="p-6 rounded-[2rem] bg-[#0B4F6C]/5 border border-[#0B4F6C]/5 flex justify-between items-center group overflow-hidden relative">
+                    <div className="tech-pattern absolute inset-0 opacity-[0.02]" />
+                    <span className="text-[10px] font-black text-[#0B4F6C]/60 uppercase tracking-[0.2em] relative z-10">Liquidity Status</span>
+                    <span className="text-xl font-black text-[#0B4F6C] relative z-10 tracking-tighter">₦{user?.walletBalance?.toLocaleString() ?? '0.00'}</span>
                   </div>
                 </div>
 
                 <button 
                     type="submit" 
-                    className="w-full py-5 rounded-2xl bg-[#F97316] text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-[#F97316]/90 transition-all shadow-xl shadow-orange-900/20 disabled:opacity-30 relative z-10" 
+                    className="w-full py-6 rounded-2xl bg-[#C58A17] text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-[#A67513] transition-all shadow-2xl shadow-[#C58A17]/30 disabled:opacity-30 relative z-10 group" 
                     disabled={!service.enabled || processing}
                 >
-                  {processing ? 'PROCESSING...' : service.enabled ? `PURCHASE ${selectedPlan?.name?.split('(')[0] || 'DATA'}` : 'COMING SOON'}
+                  <span className="flex items-center justify-center gap-3">
+                    {processing ? 'SYNCING DATA NODES...' : service.enabled ? `ALLOCATE ${selectedPlan?.name?.split('(')[0] || 'DATA'}` : 'OFFLINE'}
+                    {!processing && <ArrowRightLeft size={18} className="group-hover:rotate-90 transition-transform duration-500" />}
+                  </span>
                 </button>
               </form>
             </>

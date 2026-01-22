@@ -110,30 +110,31 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-4xl font-black text-[#0A1F44] tracking-tight">My Wallet</h1>
-          <p className="text-gray-400 font-medium mt-1">Manage your funds and earnings</p>
+          <h1 className="text-4xl font-black text-[#0B4F6C] tracking-tight">Financial Center</h1>
+          <div className="h-1.5 w-12 bg-[#C58A17] rounded-full mt-2" />
+          <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-4">Liquidity & Rewards Management</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Wallet */}
-        <div className="lg:col-span-2 bg-gradient-to-br from-[#0A1F44] via-[#0D2B5D] to-[#0A1F44] text-white rounded-[2rem] p-10 shadow-2xl shadow-blue-900/20 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-[#F97316]/10 transition-colors duration-700" />
+        <div className="lg:col-span-2 bg-gradient-to-br from-[#0B4F6C] via-[#0D2B5D] to-[#0B4F6C] text-white rounded-[2rem] p-8 lg:p-10 shadow-2xl shadow-[#0B4F6C]/20 relative overflow-hidden group asaphis-symbol">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-[#C58A17]/10 transition-colors duration-700" />
           
           <div className="relative z-10">
-            <p className="text-blue-200/80 font-medium tracking-wide mb-3 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-[#F97316] animate-ping" />
-              Main Wallet Balance
-            </p>
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-6xl font-bold tracking-tight">
-                {showMain ? <span className="flex items-baseline gap-1"><span className="text-3xl font-medium text-blue-200/50">₦</span>{(balances.mainBalance || 0).toLocaleString()}</span> : '••••••'}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-2 rounded-full bg-[#C58A17] animate-ping" />
+              <p className="text-blue-100/70 font-bold uppercase tracking-[0.2em] text-xs">Primary Liquidity Balance</p>
+            </div>
+            <div className="flex items-center justify-between mb-10">
+              <h2 className="text-5xl lg:text-7xl font-black tracking-tighter">
+                {showMain ? <span className="flex items-baseline gap-1"><span className="text-2xl lg:text-4xl font-medium text-blue-200/50">₦</span>{(balances.mainBalance || 0).toLocaleString()}</span> : '••••••'}
               </h2>
               <button 
-                className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/10 hover:bg-white/20 transition-all active:scale-90" 
+                className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/10 hover:bg-white/20 transition-all active:scale-90 border border-white/10" 
                 onClick={() => setShowMain(s => !s)}
               >
                 {showMain ? <EyeOff size={24} /> : <Eye size={24} />}
@@ -142,53 +143,64 @@ export default function WalletPage() {
             
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="relative flex-grow w-full sm:w-auto">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 font-bold text-lg">₦</span>
+                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-white/30 font-black text-lg">₦</span>
                 <input
                   type="number"
                   min={100}
                   step={50}
                   value={fundAmount}
                   onChange={(e) => setFundAmount(Number(e.target.value))}
-                  className="w-full pl-10 pr-4 py-4 rounded-2xl bg-white/10 text-white placeholder:text-white/30 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#F97316]/50 font-bold text-lg transition-all"
+                  className="w-full pl-12 pr-6 py-5 rounded-2xl bg-white/10 text-white placeholder:text-white/20 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#C58A17]/50 font-black text-xl transition-all shadow-inner"
                   placeholder="0.00"
                 />
               </div>
               <button
-                className="w-full sm:w-auto btn-accent py-4 px-10 text-xs uppercase tracking-[0.2em] font-black shadow-xl shadow-[#F97316]/20"
+                className="w-full sm:w-auto btn-accent py-5 px-12 text-xs uppercase tracking-[0.3em] font-black shadow-2xl shadow-[#C58A17]/30 group"
                 onClick={startFunding}
                 disabled={funding}
               >
-                {funding ? 'Processing...' : 'Add Funds'}
+                <span className="flex items-center justify-center gap-2">
+                  {funding ? 'PROCESSING...' : 'INITIALIZE FUNDING'}
+                  {!funding && <ArrowRightLeft size={16} className="group-hover:rotate-180 transition-transform duration-500" />}
+                </span>
               </button>
             </div>
-            <p className="mt-4 text-[10px] text-blue-200/50 font-black uppercase tracking-[0.2em] flex items-center gap-2">
-              <CreditCard size={12} /> Flutterwave Secured • Bank • Card • USSD
-            </p>
+            <div className="mt-8 pt-6 border-t border-white/5 flex flex-wrap items-center gap-6">
+               <div className="flex items-center gap-2 text-[10px] text-blue-100/40 font-black uppercase tracking-[0.2em]">
+                 <div className="w-1.5 h-1.5 rounded-full bg-[#4CAF50]" /> Secured by Flutterwave
+               </div>
+               <div className="flex items-center gap-2 text-[10px] text-blue-100/40 font-black uppercase tracking-[0.2em]">
+                 <div className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" /> Multiple Channels
+               </div>
+            </div>
           </div>
         </div>
 
         {/* Info Card */}
-        <div className="dashboard-card flex flex-col justify-between overflow-hidden relative border-none bg-white shadow-brand">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[#F97316]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+        <div className="dashboard-card flex flex-col justify-between overflow-hidden relative border-none bg-white shadow-brand asaphis-symbol">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#C58A17]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
           <div>
             <div className="flex items-center gap-4 mb-8">
-              <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-[#F97316] shadow-sm">
-                <ArrowRightLeft size={28} />
+              <div className="w-16 h-16 rounded-2xl bg-[#0B4F6C]/5 flex items-center justify-center text-[#0B4F6C]">
+                <div className="p-3.5 bg-white rounded-xl shadow-sm border border-gray-100">
+                  <ArrowRightLeft size={32} />
+                </div>
               </div>
               <div>
-                <h3 className="font-black text-[#0A1F44] text-xl tracking-tight">Quick Transfer</h3>
-                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Internal Movement</p>
+                <h3 className="font-black text-[#0B4F6C] text-xl tracking-tighter leading-none">Smart Transfer</h3>
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-2">Wallet Optimization</p>
               </div>
             </div>
             <p className="text-gray-500 text-sm font-medium leading-relaxed">
-              Move your earned commissions and rewards from your secondary wallets to your main balance instantly.
+              Consolidate your earnings from across the network into your primary liquidity wallet with zero latency.
             </p>
           </div>
-          <div className="mt-8 p-4 rounded-2xl bg-blue-50/50 border border-blue-100/50">
-            <div className="flex items-center gap-2 text-[#0A1F44]">
-              <Copy size={16} />
-              <span className="text-xs font-black uppercase tracking-widest">Code: {referralCode}</span>
+          <div className="mt-8 p-5 rounded-[2rem] bg-gray-50 border border-gray-100 group hover:border-[#0B4F6C]/20 transition-colors">
+            <div className="flex items-center justify-between mb-2">
+               <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Network ID</span>
+               <Copy size={12} className="text-gray-300 group-hover:text-[#C58A17] transition-colors" />
             </div>
+            <div className="text-sm font-black text-[#0B4F6C] tracking-[0.2em] uppercase">{referralCode}</div>
           </div>
         </div>
       </div>
@@ -196,65 +208,71 @@ export default function WalletPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Bonus Wallet */}
         <div className="dashboard-card group relative overflow-hidden border-none shadow-brand">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-[#F97316]/5 rounded-full -mr-12 -mt-12 blur-2xl transition-all group-hover:scale-150" />
-          <div className="flex items-center justify-between mb-8">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#4CAF50]/5 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-150" />
+          <div className="flex items-center justify-between mb-10">
             <div>
-              <h3 className="font-black text-[#0A1F44] text-xl tracking-tight">Cashback</h3>
-              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Transaction Rewards</p>
+              <h3 className="font-black text-[#0B4F6C] text-2xl tracking-tighter">Savings Center</h3>
+              <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1 flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#4CAF50]" />
+                Transaction Rewards
+              </p>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-orange-50 text-[#F97316] flex items-center justify-center group-hover:rotate-12 transition-all">
-              <ArrowRightLeft size={24} />
+            <div className="w-14 h-14 rounded-2xl bg-gray-50 text-[#4CAF50] flex items-center justify-center group-hover:bg-[#4CAF50]/10 group-hover:rotate-12 transition-all shadow-inner">
+              <ArrowRightLeft size={28} />
             </div>
           </div>
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-10">
             <div className="flex items-baseline gap-1">
-              <span className="text-xl font-bold text-gray-300">₦</span>
-              <p className="text-4xl font-black text-[#0A1F44] tracking-tighter">
+              <span className="text-2xl font-bold text-gray-300">₦</span>
+              <p className="text-5xl font-black text-[#0B4F6C] tracking-tighter">
                 {showCashback ? (balances.cashbackBalance || 0).toLocaleString() : '••••••'}
               </p>
             </div>
-            <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 hover:bg-gray-100 transition-all" onClick={() => setShowCashback(s => !s)}>
-              {showCashback ? <EyeOff size={18} /> : <Eye size={18} />}
+            <button className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-gray-100 text-gray-400 hover:text-[#0B4F6C] transition-all shadow-sm active:scale-90" onClick={() => setShowCashback(s => !s)}>
+              {showCashback ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
           <button
-            className="w-full py-4 rounded-2xl bg-[#0A1F44] text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-[#0A1F44]/90 transition-all disabled:opacity-30 shadow-lg shadow-blue-900/10"
+            className="w-full py-5 rounded-2xl bg-[#0B4F6C] text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-[#0D2B5D] transition-all disabled:opacity-30 shadow-xl shadow-[#0B4F6C]/20"
             onClick={() => transfer('cashback')}
             disabled={processing === 'cashback' || balances.cashbackBalance <= 0}
           >
-            {processing === 'cashback' ? 'Transferring...' : 'Transfer to Wallet'}
+            {processing === 'cashback' ? 'PROCESSING...' : 'MOVE TO PRIMARY'}
           </button>
         </div>
 
         {/* Referral Wallet */}
         <div className="dashboard-card group relative overflow-hidden border-none shadow-brand">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-[#0A1F44]/5 rounded-full -mr-12 -mt-12 blur-2xl transition-all group-hover:scale-150" />
-          <div className="flex items-center justify-between mb-8">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#C58A17]/5 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-150" />
+          <div className="flex items-center justify-between mb-10">
             <div>
-              <h3 className="font-black text-[#0A1F44] text-xl tracking-tight">Referrals</h3>
-              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Network Earnings</p>
+              <h3 className="font-black text-[#0B4F6C] text-2xl tracking-tighter">Earning Center</h3>
+              <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1 flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" />
+                Network Revenue
+              </p>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#0A1F44] flex items-center justify-center group-hover:-rotate-12 transition-all">
-              <ArrowRightLeft size={24} />
+            <div className="w-14 h-14 rounded-2xl bg-gray-50 text-[#C58A17] flex items-center justify-center group-hover:bg-[#C58A17]/10 group-hover:-rotate-12 transition-all shadow-inner">
+              <ArrowRightLeft size={28} />
             </div>
           </div>
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-10">
             <div className="flex items-baseline gap-1">
-              <span className="text-xl font-bold text-gray-300">₦</span>
-              <p className="text-4xl font-black text-[#0A1F44] tracking-tighter">
+              <span className="text-2xl font-bold text-gray-300">₦</span>
+              <p className="text-5xl font-black text-[#0B4F6C] tracking-tighter">
                 {showReferral ? (balances.referralBalance || 0).toLocaleString() : '••••••'}
               </p>
             </div>
-            <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 hover:bg-gray-100 transition-all" onClick={() => setShowReferral(s => !s)}>
-              {showReferral ? <EyeOff size={18} /> : <Eye size={18} />}
+            <button className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-gray-100 text-gray-400 hover:text-[#0B4F6C] transition-all shadow-sm active:scale-90" onClick={() => setShowReferral(s => !s)}>
+              {showReferral ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
           <button
-            className="w-full py-4 rounded-2xl bg-[#F97316] text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-[#F97316]/90 transition-all disabled:opacity-30 shadow-lg shadow-orange-900/10"
+            className="w-full py-5 rounded-2xl bg-[#C58A17] text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-[#A67513] transition-all disabled:opacity-30 shadow-xl shadow-[#C58A17]/20"
             onClick={() => transfer('referral')}
             disabled={processing === 'referral' || balances.referralBalance <= 0}
           >
-            {processing === 'referral' ? 'Transferring...' : 'Transfer to Wallet'}
+            {processing === 'referral' ? 'PROCESSING...' : 'MOVE TO PRIMARY'}
           </button>
         </div>
       </div>

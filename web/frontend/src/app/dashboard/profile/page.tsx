@@ -34,23 +34,34 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
       <div>
-        <h1 className="text-4xl font-black text-[#0A1F44] tracking-tight">Profile Settings</h1>
-        <p className="text-gray-400 font-medium mt-1">Manage your personal information</p>
+        <h1 className="text-4xl font-black text-[#0B4F6C] tracking-tighter">Profile Center</h1>
+        <div className="h-1.5 w-12 bg-[#C58A17] rounded-full mt-2" />
+        <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-4">Identity & Security Management</p>
       </div>
 
-      <div className="dashboard-card border-none shadow-brand space-y-8 p-10 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#F97316]/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+      <div className="dashboard-card border-none shadow-brand space-y-10 p-8 lg:p-12 relative overflow-hidden asaphis-symbol">
+        <div className="tech-pattern absolute inset-0 opacity-[0.03]" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#C58A17]/5 rounded-full -mr-32 -mt-32 blur-3xl" />
         
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
-          <div className="flex items-center gap-6">
-            <div className="w-24 h-24 rounded-3xl bg-gray-50 flex items-center justify-center text-[#0A1F44] border-4 border-white shadow-xl">
-              <User size={48} />
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-8 relative z-10">
+          <div className="flex flex-col sm:flex-row items-center gap-8 text-center sm:text-left">
+            <div className="w-32 h-32 rounded-[2.5rem] bg-gray-50 flex items-center justify-center text-[#0B4F6C] border-8 border-white shadow-2xl group hover:rotate-6 transition-transform duration-500">
+              <User size={64} className="group-hover:scale-110 transition-transform" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-[#0A1F44] tracking-tight">{user?.fullName}</h2>
-              <p className="text-sm text-[#F97316] font-black uppercase tracking-[0.2em]">@{user?.username}</p>
+              <h2 className="text-3xl font-black text-[#0B4F6C] tracking-tighter">{user?.fullName}</h2>
+              <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
+                 <AtSign size={14} className="text-[#C58A17]" />
+                 <p className="text-xs text-[#C58A17] font-black uppercase tracking-[0.3em]">@{user?.username}</p>
+              </div>
+              <div className="mt-4 flex flex-wrap justify-center sm:justify-start gap-3">
+                 <span className="px-4 py-1.5 rounded-full bg-[#4CAF50]/10 text-[#4CAF50] text-[10px] font-black uppercase tracking-widest border border-[#4CAF50]/20">Active Session</span>
+                 <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${user?.isVerified ? 'bg-[#0B4F6C]/10 text-[#0B4F6C] border-[#0B4F6C]/20' : 'bg-[#C58A17]/10 text-[#C58A17] border-[#C58A17]/20'}`}>
+                    {user?.isVerified ? 'Verified Account' : 'Identity Pending'}
+                 </span>
+              </div>
             </div>
           </div>
           <button 
@@ -59,64 +70,72 @@ export default function ProfilePage() {
               else setEditing(true);
             }}
             disabled={loading}
-            className={`px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-lg ${
+            className={`px-10 py-5 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all active:scale-95 shadow-2xl group ${
               editing 
-                ? 'bg-[#F97316] text-white shadow-orange-900/20 hover:bg-[#F97316]/90' 
-                : 'bg-[#0A1F44] text-white shadow-blue-900/20 hover:bg-[#0A1F44]/90'
+                ? 'bg-[#4CAF50] text-white shadow-[#4CAF50]/20 hover:bg-[#4CAF50]/90' 
+                : 'bg-[#0B4F6C] text-white shadow-[#0B4F6C]/20 hover:bg-[#0D2B5D]'
             }`}
           >
-            {loading ? 'Saving...' : editing ? 'Save Profile' : 'Edit Profile'}
+            <span className="flex items-center gap-3">
+              {loading ? 'SYNCHRONIZING...' : editing ? 'SAVE CHANGES' : 'REFINE PROFILE'}
+              {!loading && (editing ? <ShieldCheck size={16} /> : <AtSign size={16} />)}
+            </span>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
-              <User size={14} className="text-[#F97316]" /> Full Name
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 relative z-10 pt-10 border-t border-gray-100">
+          <div className="space-y-4">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-3 ml-2">
+              <User size={14} className="text-[#C58A17]" /> Legal Identity
             </label>
             {editing ? (
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#F97316]/30 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44]"
+                className="w-full px-6 py-5 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0B4F6C]/20 focus:bg-white focus:outline-none transition-all font-black text-[#0B4F6C] shadow-inner text-lg"
               />
             ) : (
-              <p className="font-bold text-[#0A1F44] text-lg px-2">{user?.fullName}</p>
+              <p className="font-black text-[#0B4F6C] text-xl bg-gray-50/50 px-6 py-5 rounded-2xl border border-gray-100/50">{user?.fullName}</p>
             )}
           </div>
 
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
-              <AtSign size={14} className="text-[#F97316]" /> Username
+          <div className="space-y-4">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-3 ml-2">
+              <AtSign size={14} className="text-[#C58A17]" /> Network Identifier
             </label>
-            <p className="font-bold text-[#0A1F44] text-lg bg-gray-50/50 px-5 py-4 rounded-2xl border border-gray-100/50">
-              {user?.username}
-            </p>
+            <div className="relative group">
+               <p className="font-black text-[#0B4F6C] text-xl bg-gray-50/50 px-6 py-5 rounded-2xl border border-gray-100/50 opacity-80">
+                 {user?.username}
+               </p>
+               <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ShieldCheck size={20} className="text-[#4CAF50]" />
+               </div>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
-              <Mail size={14} className="text-[#F97316]" /> Email Address
+          <div className="space-y-4">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-3 ml-2">
+              <Mail size={14} className="text-[#C58A17]" /> Communication Channel
             </label>
-            <p className="font-bold text-[#0A1F44] text-lg bg-gray-50/50 px-5 py-4 rounded-2xl border border-gray-100/50">
+            <p className="font-black text-[#0B4F6C] text-xl bg-gray-50/50 px-6 py-5 rounded-2xl border border-gray-100/50 opacity-80">
               {user?.email}
             </p>
           </div>
 
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
-              <Phone size={14} className="text-[#F97316]" /> Phone Number
+          <div className="space-y-4">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-3 ml-2">
+              <Phone size={14} className="text-[#C58A17]" /> Primary Contact
             </label>
             {editing ? (
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#F97316]/30 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44]"
+                className="w-full px-6 py-5 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0B4F6C]/20 focus:bg-white focus:outline-none transition-all font-black text-[#0B4F6C] shadow-inner text-lg"
               />
             ) : (
-              <p className="font-bold text-[#0A1F44] text-lg px-2">{user?.phone || 'Not set'}</p>
+              <p className="font-black text-[#0B4F6C] text-xl bg-gray-50/50 px-6 py-5 rounded-2xl border border-gray-100/50">{user?.phone || 'Not configured'}</p>
             )}
           </div>
         </div>
