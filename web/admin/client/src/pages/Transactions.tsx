@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, Filter, Download, RotateCcw, Receipt } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { getAllTransactions, getUserTransactions } from "@/lib/backend";
 import { Link } from "wouter";
 import { useEffectOnce } from "@/lib/useEffectOnce";
@@ -209,7 +210,6 @@ export default function TransactionsPage() {
           )}
         </CardContent>
       </Card>
-    </div>
       <TransactionReceiptModal 
         isOpen={isReceiptOpen}
         onClose={() => setIsReceiptOpen(false)}
