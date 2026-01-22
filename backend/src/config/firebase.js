@@ -20,19 +20,25 @@ try {
       return s;
     };
 
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
+    const sanitize = (val) => {
+      if (!val || typeof val !== 'string') return val;
+      return val.trim().replace(/^["']|["']$/g, '');
+    };
+
+    const projectId = sanitize(process.env.FIREBASE_PROJECT_ID);
+    const clientEmail = sanitize(process.env.FIREBASE_CLIENT_EMAIL);
+    const storageBucket = sanitize(process.env.FIREBASE_STORAGE_BUCKET);
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
     if (projectId && clientEmail && privateKey && storageBucket) {
       try {
-        const formattedKey = privateKey.replace(/\\n/g, '\n');
+        privateKey = sanitize(privateKey).replace(/\\n/g, '\n');
+        
         admin.initializeApp({
           credential: admin.credential.cert({
             projectId,
             clientEmail,
-            privateKey: formattedKey,
+            privateKey,
           }),
           storageBucket,
         });
