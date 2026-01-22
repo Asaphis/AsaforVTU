@@ -271,69 +271,69 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 group overflow-hidden relative">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#4CAF50]/5 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-150" />
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-10">
               <div>
-                <h3 className="font-black text-[#0B4F6C] text-2xl tracking-tighter leading-none mb-1">Savings Center</h3>
-                <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#4CAF50]" />
+                <h3 className="font-black text-[#0B4F6C] text-2xl tracking-tighter leading-none mb-2">Savings Center</h3>
+                <p className="text-[10px] text-[#4CAF50] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#4CAF50] animate-pulse" />
                   Rewards Accumulation
                 </p>
               </div>
-              <div className="w-14 h-14 rounded-2xl bg-gray-50 text-[#4CAF50] flex items-center justify-center group-hover:bg-[#4CAF50]/10 transition-all duration-300 shadow-inner">
-                <Play size={28} />
+              <div className="w-16 h-16 rounded-2xl bg-gray-50 text-[#4CAF50] flex items-center justify-center group-hover:bg-[#4CAF50]/10 transition-all duration-500 shadow-inner group-hover:scale-110">
+                <Play size={32} />
               </div>
             </div>
-            <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center justify-between mb-12">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-black text-gray-200">₦</span>
-                <p className="text-5xl font-black text-[#0B4F6C] tracking-tighter">
+                <p className="text-6xl font-black text-[#0B4F6C] tracking-tighter">
                   {showCashback ? (user.cashbackBalance || 0).toLocaleString() : '••••••'}
                 </p>
               </div>
-              <button className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-gray-100 text-gray-400 hover:text-[#0B4F6C] transition-all shadow-sm active:scale-90" onClick={() => { setShowCashback(s => !s); sessionStorage.setItem('showCashbackBalance', String(!showCashback)); }}>
-                {showCashback ? <EyeOff size={22} /> : <Eye size={22} />}
+              <button className="w-14 h-14 flex items-center justify-center rounded-2xl bg-white border border-gray-100 text-gray-400 hover:text-[#0B4F6C] transition-all shadow-sm active:scale-90" onClick={() => { setShowCashback(s => !s); sessionStorage.setItem('showCashbackBalance', String(!showCashback)); }}>
+                {showCashback ? <EyeOff size={24} /> : <Eye size={24} />}
               </button>
             </div>
             <button 
               onClick={() => handleWithdraw('cashback')}
-              className="w-full py-5 rounded-[1.5rem] bg-[#0B4F6C] text-white font-black text-xs uppercase tracking-[0.35em] hover:bg-[#0D2B5D] transition-all shadow-2xl shadow-[#0B4F6C]/20 active:scale-95 disabled:opacity-30 border border-white/10"
+              className="w-full py-6 rounded-[2rem] bg-[#0B4F6C] text-white font-black text-xs uppercase tracking-[0.4em] hover:bg-[#0D2B5D] transition-all shadow-2xl shadow-[#0B4F6C]/20 active:scale-95 disabled:opacity-30 border border-white/10"
               disabled={processingWithdrawal || (user.cashbackBalance || 0) <= 0}
             >
               MOVE TO PRIMARY
             </button>
           </div>
 
-          <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative">
+          <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 group overflow-hidden relative">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#C58A17]/5 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-150" />
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-10">
               <div>
-                <h3 className="font-black text-[#0B4F6C] text-2xl tracking-tighter leading-none mb-1">Earning Center</h3>
-                <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#C58A17]" />
+                <h3 className="font-black text-[#0B4F6C] text-2xl tracking-tighter leading-none mb-2">Earning Center</h3>
+                <p className="text-[10px] text-[#C58A17] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#C58A17] animate-pulse" />
                   Network Revenue
                 </p>
               </div>
-              <div className="w-14 h-14 rounded-2xl bg-gray-50 text-[#C58A17] flex items-center justify-center group-hover:bg-[#C58A17]/10 transition-all duration-300 shadow-inner">
-                <GraduationCap size={28} />
+              <div className="w-16 h-16 rounded-2xl bg-gray-50 text-[#C58A17] flex items-center justify-center group-hover:bg-[#C58A17]/10 transition-all duration-500 shadow-inner group-hover:scale-110">
+                <GraduationCap size={32} />
               </div>
             </div>
-            <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center justify-between mb-12">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-black text-gray-200">₦</span>
-                <p className="text-5xl font-black text-[#0B4F6C] tracking-tighter">
+                <p className="text-6xl font-black text-[#0B4F6C] tracking-tighter">
                   {showReferral ? (user.referralBalance || 0).toLocaleString() : '••••••'}
                 </p>
               </div>
-              <button className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-gray-100 text-gray-400 hover:text-[#0B4F6C] transition-all shadow-sm active:scale-90" onClick={() => { setShowReferral(s => !s); sessionStorage.setItem('showReferralBalance', String(!showReferral)); }}>
-                {showReferral ? <EyeOff size={22} /> : <Eye size={22} />}
+              <button className="w-14 h-14 flex items-center justify-center rounded-2xl bg-white border border-gray-100 text-gray-400 hover:text-[#0B4F6C] transition-all shadow-sm active:scale-90" onClick={() => { setShowReferral(s => !s); sessionStorage.setItem('showReferralBalance', String(!showReferral)); }}>
+                {showReferral ? <EyeOff size={24} /> : <Eye size={24} />}
               </button>
             </div>
             <button 
               onClick={() => handleWithdraw('referral')}
-              className="w-full py-5 rounded-[1.5rem] bg-[#C58A17] text-white font-black text-xs uppercase tracking-[0.35em] hover:bg-[#A67513] transition-all shadow-2xl shadow-[#C58A17]/20 active:scale-95 disabled:opacity-30 border border-white/10"
+              className="w-full py-6 rounded-[2rem] bg-[#C58A17] text-white font-black text-xs uppercase tracking-[0.4em] hover:bg-[#A67513] transition-all shadow-2xl shadow-[#C58A17]/20 active:scale-95 disabled:opacity-30 border border-white/10"
               disabled={processingWithdrawal || (user.referralBalance || 0) <= 0}
             >
               MOVE TO PRIMARY

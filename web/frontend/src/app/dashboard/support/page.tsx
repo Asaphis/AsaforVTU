@@ -301,15 +301,14 @@ export default function SupportPage() {
 
         <div className="flex-grow flex flex-col bg-[#F8FAFC] overflow-hidden relative">
           {showNewTicket ? (
-            <div className="flex-grow flex items-center justify-center p-8 relative overflow-hidden">
-              <div className="tech-pattern absolute inset-0 opacity-[0.02] pointer-events-none" />
-              <div className="w-full max-w-lg bg-white p-10 lg:p-12 rounded-[3rem] shadow-2xl border border-gray-100 relative z-10 asaphis-symbol">
-                <div className="text-center mb-10">
-                  <div className="w-20 h-20 bg-gray-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-[#0B4F6C] shadow-inner">
-                     <Plus size={32} />
+            <div className="flex-grow flex items-center justify-center p-8 relative overflow-hidden bg-white">
+              <div className="w-full max-w-lg bg-white p-12 rounded-[3.5rem] shadow-[0_32px_64px_-12px_rgba(11,79,108,0.1)] border border-gray-50 relative z-10">
+                <div className="text-center mb-12">
+                  <div className="w-24 h-24 bg-[#0B4F6C]/5 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 text-[#0B4F6C] shadow-inner group">
+                     <Plus size={40} className="group-hover:rotate-90 transition-transform duration-500" />
                   </div>
-                  <h2 className="text-3xl font-black text-[#0B4F6C] tracking-tighter uppercase">Initialize Ticket</h2>
-                  <div className="h-1 w-10 bg-[#C58A17] rounded-full mx-auto mt-2" />
+                  <h2 className="text-4xl font-black text-[#0B4F6C] tracking-tighter uppercase leading-none">Initialize Ticket</h2>
+                  <p className="text-[10px] font-black text-[#C58A17] uppercase tracking-[0.3em] mt-3 opacity-70">Security Protocol Activation</p>
                 </div>
                 <div className="space-y-6">
                   <div className="space-y-2.5">
