@@ -244,7 +244,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="text-right flex flex-col items-end">
-                      <span className="text-lg font-black text-white tracking-tighter">₦${tx.amount?.toLocaleString()}</span>
+                      <span className="text-lg font-black text-white tracking-tighter">₦{tx.amount?.toLocaleString()}</span>
                       <span className={cn(
                         "text-[9px] font-black uppercase tracking-[0.25em] mt-2 px-3 py-1 rounded-lg border",
                         tx.status === 'success' ? 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5' : 'border-orange-500/20 text-orange-400 bg-orange-500/5'
