@@ -84,6 +84,19 @@ export async function registerRoutes(
     if (tokenInfo?.isAdmin) return next();
     const candidateEmail = tokenInfo?.email || headerEmail;
     if (candidateEmail && allowed.includes(candidateEmail)) return next();
+    if (candidateEmail) {
+      try {
+        const db = getFirestore();
+        const acc = await db.collection("admin_accounts").doc(candidateEmail).get();
+        if (acc.exists) return next();
+        try {
+          const u = await getAuth().getUserByEmail(candidateEmail);
+          const doc = await db.collection("users").doc(u.uid).get();
+          const role = doc.exists ? ((doc.data() as any).role || (doc.data() as any).roles) : null;
+          if (role === "admin" || (Array.isArray(role) && role.includes("admin"))) return next();
+        } catch {}
+      } catch {}
+    }
     return res.status(403).json({ message: "Forbidden" });
   }
 
