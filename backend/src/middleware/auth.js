@@ -73,7 +73,7 @@ const isAdmin = async (req, res, next) => {
       });
     }
 
-    const allowed = (process.env.ADMIN_EMAILS || 'osglimited7@gmail.com')
+    const allowed = (process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || 'osglimited7@gmail.com')
       .split(',')
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean);

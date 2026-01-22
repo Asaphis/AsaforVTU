@@ -10,15 +10,15 @@ try {
   // Check if firebase is already initialized to avoid errors
   if (!admin.apps.length) {
     // Sanitize env variables that may be pasted with quotes/commas from UIs
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL || process.env.VITE_FIREBASE_CLIENT_EMAIL;
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET;
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY || process.env.VITE_FIREBASE_PRIVATE_KEY;
 
     if (projectId && clientEmail && privateKey && storageBucket) {
       try {
         // Fix for private key newlines in production environments
-        privateKey = privateKey.replace(/\\n/g, '\n');
+        privateKey = privateKey.replace(/^"|"$/g, '').replace(/\\n/g, '\n');
         
         admin.initializeApp({
           credential: admin.credential.cert({

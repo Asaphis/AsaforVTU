@@ -31,25 +31,38 @@ async function request<T>(method: string, path: string, data?: unknown): Promise
   const fallbackAdminEmail = envAdmins[0] || "";
   const currentEmail = (auth.currentUser?.email || fallbackAdminEmail || "").toLowerCase();
 
-  const res = await fetch(url, {
-    method,
-    headers: {
-      ...(data ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(currentEmail ? { "X-Admin-Email": currentEmail } : {}),
-    },
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "omit",
-  });
-  const text = await res.text();
-  if (!res.ok) {
+  const maxAttempts = 5;
+  let attempt = 0;
+  let lastText = "";
+  while (attempt < maxAttempts) {
+    const res = await fetch(url, {
+      method,
+      headers: {
+        ...(data ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(currentEmail ? { "X-Admin-Email": currentEmail } : {}),
+      },
+      body: data ? JSON.stringify(data) : undefined,
+      credentials: "omit",
+    });
+    const text = await res.text();
+    lastText = text;
+    if (res.ok) {
+      try {
+        return JSON.parse(text) as T;
+      } catch {
+        return undefined as unknown as T;
+      }
+    }
+    if ([503, 502, 504].includes(res.status)) {
+      attempt += 1;
+      const delay = Math.min(1000 * 2 ** attempt, 8000);
+      await new Promise((r) => setTimeout(r, delay));
+      continue;
+    }
     throw new Error(text || res.statusText);
   }
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    return undefined as unknown as T;
-  }
+  throw new Error(lastText || "Service unavailable");
 }
 
 export async function getAdminStats(): Promise<any> {
