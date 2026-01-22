@@ -141,27 +141,27 @@ export default function WalletPage() {
               </button>
             </div>
             
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="relative flex-grow w-full sm:w-auto">
-                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-white/30 font-black text-lg">₦</span>
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="relative flex-grow w-full sm:w-auto group/input">
+                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[#C58A17] font-black text-xl group-focus-within/input:scale-110 transition-transform">₦</span>
                 <input
                   type="number"
                   min={100}
                   step={50}
                   value={fundAmount}
                   onChange={(e) => setFundAmount(Number(e.target.value))}
-                  className="w-full pl-12 pr-6 py-5 rounded-2xl bg-white/10 text-white placeholder:text-white/20 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#C58A17]/50 font-black text-xl transition-all shadow-inner"
+                  className="w-full pl-14 pr-6 py-6 rounded-[2rem] bg-white/5 backdrop-blur-md text-white placeholder:text-white/20 border border-white/10 focus:outline-none focus:ring-4 focus:ring-[#C58A17]/30 font-black text-2xl transition-all shadow-2xl"
                   placeholder="0.00"
                 />
               </div>
               <button
-                className="w-full sm:w-auto btn-accent py-5 px-12 text-xs uppercase tracking-[0.3em] font-black shadow-2xl shadow-[#C58A17]/30 group"
+                className="w-full sm:w-auto premium-gradient py-6 px-14 rounded-[2rem] text-xs uppercase tracking-[0.4em] font-black shadow-[0_20px_50px_rgba(11,79,108,0.3)] hover:shadow-[#C58A17]/20 transition-all duration-500 active:scale-95 group/btn border border-white/10"
                 onClick={startFunding}
                 disabled={funding}
               >
-                <span className="flex items-center justify-center gap-2">
+                <span className="flex items-center justify-center gap-3">
                   {funding ? 'PROCESSING...' : 'INITIALIZE FUNDING'}
-                  {!funding && <ArrowRightLeft size={16} className="group-hover:rotate-180 transition-transform duration-500" />}
+                  {!funding && <ArrowRightLeft size={18} className="group-hover/btn:rotate-180 transition-transform duration-700 text-[#C58A17]" />}
                 </span>
               </button>
             </div>

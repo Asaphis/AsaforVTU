@@ -45,90 +45,92 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onLogout={async () => { await signOut(); router.push('/'); }}
         items={{ primary: primaryItems, services: serviceItems, account: accountItems }}
       />
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-100 flex-col overflow-y-auto shadow-sm z-40">
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-72 bg-white/70 backdrop-blur-xl border-r border-gray-100 flex-col overflow-y-auto z-40 transition-all duration-300">
         <div className="flex flex-col h-full">
-          <div className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#0B4F6C] flex items-center justify-center text-white shadow-lg shadow-[#0B4F6C]/20">
-                <LayoutDashboard size={20} />
+          <div className="p-8">
+            <div className="flex items-center gap-4 group cursor-pointer">
+              <div className="w-12 h-12 rounded-2xl bg-[#0B4F6C] flex items-center justify-center text-white shadow-xl shadow-[#0B4F6C]/20 group-hover:scale-110 transition-transform duration-500">
+                <LayoutDashboard size={24} />
               </div>
-              <span className="font-black text-xl tracking-tighter text-[#0B4F6C]">Asafor<span className="text-[#C58A17]">VTU</span></span>
+              <span className="font-black text-2xl tracking-tighter text-[#0B4F6C]">Asafor<span className="text-[#C58A17]">VTU</span></span>
             </div>
           </div>
-          <nav className="px-3 space-y-1 flex-grow">
+          <nav className="px-4 space-y-2 flex-grow">
             {primaryItems.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-3 px-4 py-2.5 text-sm font-bold rounded-xl transition-all ${
-                  pathname === href ? 'bg-[#0B4F6C]/10 text-[#0B4F6C] border-l-4 border-[#C58A17]' : 'text-gray-500 hover:bg-gray-50 hover:text-[#0B4F6C]'
+                className={`flex items-center gap-4 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 ${
+                  pathname === href ? 'bg-[#0B4F6C] text-white shadow-lg shadow-[#0B4F6C]/20 scale-[1.02]' : 'text-gray-500 hover:bg-gray-50 hover:text-[#0B4F6C]'
                 }`}
               >
-                <Icon size={18} className={pathname === href ? 'text-[#C58A17]' : 'text-gray-400'} />
+                <Icon size={20} className={pathname === href ? 'text-white' : 'text-gray-400'} />
                 {label}
               </Link>
             ))}
-            <div className="px-4 pt-6 pb-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Services</div>
-            <div className="space-y-1">
+            <div className="px-5 pt-8 pb-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400/80">Digital Services</div>
+            <div className="space-y-2">
               {serviceItems.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
-                  className={`flex items-center gap-3 px-4 py-2.5 text-sm font-bold rounded-xl transition-all ${
-                    pathname === href ? 'bg-[#0B4F6C]/10 text-[#0B4F6C] border-l-4 border-[#C58A17]' : 'text-gray-500 hover:bg-gray-50 hover:text-[#0B4F6C]'
+                  className={`flex items-center gap-4 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 ${
+                    pathname === href ? 'bg-[#0B4F6C] text-white shadow-lg shadow-[#0B4F6C]/20 scale-[1.02]' : 'text-gray-500 hover:bg-gray-50 hover:text-[#0B4F6C]'
                   }`}
                 >
-                  <Icon size={18} className={pathname === href ? 'text-[#C58A17]' : 'text-gray-400'} />
+                  <Icon size={20} className={pathname === href ? 'text-white' : 'text-gray-400'} />
                   {label}
                 </Link>
               ))}
             </div>
           </nav>
-          <div className="mt-auto p-4 bg-gray-50/50 border-t border-gray-100">
-            <div className="px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Settings & Support</div>
-            <nav className="space-y-1">
+          <div className="mt-auto p-6 bg-gray-50/30 border-t border-gray-100/50">
+            <div className="px-5 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400/80">System</div>
+            <nav className="space-y-2">
               {accountItems.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
-                  className={`nav-item ${
-                    pathname === href ? 'nav-item-active' : ''
+                  className={`flex items-center gap-4 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 ${
+                    pathname === href ? 'bg-[#0B4F6C] text-white shadow-lg shadow-[#0B4F6C]/20' : 'text-gray-500 hover:bg-gray-50 hover:text-[#0B4F6C]'
                   }`}
                 >
-                  <Icon size={20} className={pathname === href ? 'text-[#C58A17]' : 'text-gray-400'} />
+                  <Icon size={18} className={pathname === href ? 'text-white' : 'text-gray-400'} />
                   {label}
                 </Link>
               ))}
               <button
                 onClick={async () => { await signOut(); router.push('/'); }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 font-bold text-sm hover:bg-red-50 transition-all"
+                className="w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl text-red-500 font-bold text-sm hover:bg-red-50 transition-all duration-300 mt-4 group"
               >
-                <LogOut size={20} />
-                Logout
+                <LogOut size={18} className="group-hover:translate-x-1 transition-transform" />
+                Logout Account
               </button>
             </nav>
           </div>
         </div>
       </aside>
-      <main className="md:ml-64 transition-all duration-300 relative z-10">
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100">
-          <div className="container-main py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button className="md:hidden p-2.5 rounded-xl bg-white border border-gray-100 shadow-sm" onClick={() => (document.getElementById('mobile-sidebar-toggle') as HTMLButtonElement)?.click()}>
-                <Menu className="text-[#0B4F6C]" />
+      <main className="md:ml-72 transition-all duration-500 relative z-10 min-h-screen flex flex-col">
+        <header className="sticky top-0 z-30 bg-white/60 backdrop-blur-xl border-b border-gray-100/50">
+          <div className="max-w-7xl mx-auto px-8 py-6 flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <button className="md:hidden p-3 rounded-2xl bg-white border border-gray-100 shadow-sm active:scale-90 transition-transform" onClick={() => (document.getElementById('mobile-sidebar-toggle') as HTMLButtonElement)?.click()}>
+                <Menu className="text-[#0B4F6C]" size={24} />
               </button>
               <div className="hidden sm:block">
-                <h1 className="text-xl font-black text-[#0B4F6C] tracking-tight">Welcome back, {user?.fullName?.split(' ')[0]}!</h1>
-                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">@{user?.username}</p>
+                <h1 className="text-2xl font-black text-[#0B4F6C] tracking-tight flex items-center gap-2">
+                  Welcome back, <span className="text-[#C58A17]">{user?.fullName?.split(' ')[0]}</span>
+                </h1>
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-0.5 opacity-70">Security ID: @{user?.username}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-5">
               <div className="relative">
-                <button className="w-11 h-11 flex items-center justify-center rounded-xl bg-white border border-gray-100 shadow-sm text-gray-500 hover:text-[#C58A17] transition-colors relative" onClick={() => setNotifOpen((v) => !v)}>
-                  <Bell size={20} />
+                <button className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-gray-100 shadow-sm text-gray-500 hover:text-[#0B4F6C] hover:shadow-md transition-all relative group" onClick={() => setNotifOpen((v) => !v)}>
+                  <Bell size={22} className="group-hover:rotate-12 transition-transform" />
                   {notifications.length > 0 && (
-                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#C58A17] rounded-full border-2 border-white" />
+                    <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-[#C58A17] rounded-full border-2 border-white ring-2 ring-orange-100 animate-pulse" />
                   )}
                 </button>
                 {notifOpen && (
