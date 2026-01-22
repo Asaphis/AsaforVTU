@@ -50,7 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="p-8">
             <div className="flex items-center gap-4 group cursor-pointer">
               <div className="w-12 h-12 rounded-2xl bg-[#0B4F6C] flex items-center justify-center text-white shadow-xl shadow-[#0B4F6C]/20 group-hover:scale-110 transition-transform duration-500">
-                <LayoutDashboard size={24} />
+                <img src="/logo.png" alt="AsaforVTU Logo" className="w-8 h-8 object-contain" />
               </div>
               <span className="font-black text-2xl tracking-tighter text-[#0B4F6C]">Asafor<span className="text-[#C58A17]">VTU</span></span>
             </div>

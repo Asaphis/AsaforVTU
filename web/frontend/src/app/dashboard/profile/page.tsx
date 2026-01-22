@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import toast from 'react-hot-toast';
-import { User, Phone, Mail, AtSign } from 'lucide-react';
+import { User, Phone, Mail, AtSign, ShieldCheck } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -41,7 +41,7 @@ export default function ProfilePage() {
         <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-4">Identity & Security Management</p>
       </div>
 
-      <div className="dashboard-card border-none shadow-brand space-y-10 p-8 lg:p-12 relative overflow-hidden asaphis-symbol">
+      <div className="dashboard-card border-none shadow-brand space-y-10 p-8 lg:p-12 relative overflow-hidden">
         <div className="tech-pattern absolute inset-0 opacity-[0.03]" />
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#C58A17]/5 rounded-full -mr-32 -mt-32 blur-3xl" />
         
