@@ -158,7 +158,7 @@ export default function Dashboard() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
         {announcements.length > 0 && (
           <div 
-            className="relative bg-[#0B4F6C] text-white p-4 rounded-2xl shadow-xl shadow-[#0B4F6C]/10 group transition-all duration-500 overflow-hidden border border-white/5 asaphis-symbol"
+            className="relative bg-[#0B4F6C] text-white p-4 rounded-2xl shadow-xl shadow-[#0B4F6C]/10 group transition-all duration-500 overflow-hidden border border-white/5"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
           >

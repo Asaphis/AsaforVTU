@@ -155,7 +155,7 @@ export default function DataPage() {
                 <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-6 max-w-xs mx-auto leading-relaxed">High-Frequency Broadband Provisioning</p>
               </div>
 
-              <form onSubmit={handlePurchase} className="dashboard-card border-none shadow-brand p-8 lg:p-12 space-y-10 relative overflow-hidden asaphis-symbol">
+              <form onSubmit={handlePurchase} className="dashboard-card border-none shadow-brand p-8 lg:p-12 space-y-10 relative overflow-hidden">
                 <div className="tech-pattern absolute inset-0 opacity-[0.03]" />
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#C58A17]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
                 

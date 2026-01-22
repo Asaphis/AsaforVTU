@@ -224,7 +224,7 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] bg-gray-50 overflow-hidden rounded-[2rem] border-none shadow-brand relative asaphis-symbol">
+    <div className="flex flex-col h-[calc(100vh-120px)] bg-gray-50 overflow-hidden rounded-[2rem] border-none shadow-brand relative">
       <div className="tech-pattern absolute inset-0 opacity-[0.03] pointer-events-none" />
       <div className="flex items-center justify-between px-8 py-6 bg-white border-b z-20">
         <div>
