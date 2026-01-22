@@ -3,96 +3,75 @@
 @tailwind utilities;
 
 :root {
-  /* Brand colors matching AsaPhis palette */
-  --background: 210 40% 98%; /* #F8FAFC */
-  --foreground: 222.2 84% 4.9%; /* #0F172A */
-  --primary: 198 81% 24%; /* #0B4F6C Brand Blue */
+  --background: 210 50% 98%;
+  --foreground: 224 71.4% 4.1%;
+  --card: 0 0% 100%;
+  --card-foreground: 224 71.4% 4.1%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 71.4% 4.1%;
+  --primary: 221.2 83.2% 53.3%;
   --primary-foreground: 210 40% 98%;
-  --accent: 40 78% 43%; /* #C58A17 Brand Gold */
-  --accent-foreground: 0 0% 100%;
-  --success: 122 39% 49%; /* #4CAF50 Brand Green */
-  --error: 0 84% 60%;
-  --muted: 220 6% 90%;
-  --muted-foreground: 215 16% 47%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
-  --ring: 198 81% 24%;
-  --radius: 0.75rem;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ring: 221.2 83.2% 53.3%;
+  --radius: 1rem;
 }
 
 .dark {
-  --background: 222.2 84% 4.9%;
+  --background: 224 71.4% 4.1%;
   --foreground: 210 40% 98%;
-  --primary: 198 81% 35%;
-  --primary-foreground: 210 40% 98%;
-  --accent: 40 78% 43%;
-  --accent-foreground: 0 0% 100%;
-  --success: 122 39% 49%;
-  --error: 0 84% 60%;
+  --card: 224 71.4% 4.1%;
+  --card-foreground: 210 40% 98%;
+  --popover: 224 71.4% 4.1%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 217.2 91.2% 59.8%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
   --muted: 217.2 32.6% 17.5%;
   --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
-  --ring: 198 81% 45%;
+  --ring: 224.3 76.3% 48%;
 }
 
 @layer base {
   * {
-    border-color: hsl(var(--border));
+    @apply border-border;
   }
-  
   body {
-    font-family: var(--font-sans);
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    @apply bg-background text-foreground antialiased selection:bg-primary/20;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
 @layer components {
-  .dashboard-card {
-    @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all duration-300 relative overflow-hidden;
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+  
+  .premium-gradient {
+    @apply bg-gradient-to-br from-primary via-primary/90 to-blue-600;
   }
 
-  .dashboard-card::before {
-    content: '';
-    @apply absolute top-0 right-0 w-32 h-32 bg-[#0B4F6C]/5 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none;
+  .nav-link {
+    @apply relative px-3 py-2 text-sm font-medium transition-colors hover:text-primary;
   }
 
-  .nav-item {
-    @apply flex items-center px-4 py-3 text-gray-600 rounded-xl transition-all duration-200 hover:bg-[#0B4F6C]/5 hover:text-[#0B4F6C];
-  }
-
-  .nav-item-active {
-    @apply flex items-center px-4 py-3 bg-[#0B4F6C]/10 text-[#0B4F6C] font-semibold rounded-xl border-l-4 border-[#C58A17];
-  }
-
-  .action-button {
-    @apply inline-flex items-center justify-center px-6 py-2.5 rounded-xl font-medium transition-all duration-200 active:scale-95;
-  }
-
-  .btn-primary {
-    @apply action-button bg-[#0B4F6C] text-white hover:bg-[#0B4F6C]/90 shadow-lg shadow-[#0B4F6C]/20;
-  }
-
-  .btn-accent {
-    @apply action-button bg-[#C58A17] text-white hover:bg-[#C58A17]/90 shadow-lg shadow-[#C58A17]/20;
-  }
-
-  .btn-success {
-    @apply action-button bg-[#4CAF50] text-white hover:bg-[#4CAF50]/90 shadow-lg shadow-[#4CAF50]/20;
-  }
-
-  .service-card {
-    @apply flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-[#C58A17]/30 hover:shadow-xl hover:shadow-[#0B4F6C]/5 transition-all duration-300;
-  }
-
-  .service-icon {
-    @apply w-12 h-12 mb-3 rounded-xl flex items-center justify-center bg-gray-50 text-gray-600 transition-all duration-300 transform;
-  }
-
-  .service-card:hover .service-icon {
-    @apply bg-[#C58A17]/10 text-[#C58A17] scale-110;
+  .btn-modern {
+    @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50;
   }
 }
 
