@@ -52,7 +52,7 @@
     border-color: hsl(var(--border));
   }
   body {
-    background-color: hsl(var(--background));
+    background-color: #F8FAFC;
     color: hsl(var(--foreground));
     @apply antialiased selection:bg-primary/20;
     font-feature-settings: "rlig" 1, "calt" 1;

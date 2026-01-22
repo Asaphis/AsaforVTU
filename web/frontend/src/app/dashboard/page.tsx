@@ -206,128 +206,122 @@ export default function Dashboard() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-gradient-to-br from-[#0B4F6C] via-[#0D2B5D] to-[#0B4F6C] text-white rounded-[2rem] p-8 lg:p-10 shadow-2xl shadow-[#0B4F6C]/20 relative overflow-hidden group asaphis-symbol">
+          <div className="lg:col-span-2 bg-gradient-to-br from-[#0B4F6C] to-[#0D2B5D] text-white rounded-[2rem] p-8 lg:p-10 shadow-xl shadow-[#0B4F6C]/20 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-[#C58A17]/10 transition-colors duration-700" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#4CAF50]/5 rounded-full -ml-24 -mb-24 blur-3xl" />
             
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-2 h-2 rounded-full bg-[#C58A17] animate-ping" />
-                <p className="text-blue-100/70 font-bold uppercase tracking-[0.2em] text-xs">Total Wallet Balance</p>
+                <p className="text-blue-100/70 font-bold uppercase tracking-[0.2em] text-xs">Primary Liquidity Balance</p>
               </div>
               <div className="flex items-center justify-between">
-                <h2 className="text-5xl lg:text-7xl font-black tracking-tighter">
-                  {showMain ? <span className="flex items-baseline gap-1"><span className="text-2xl lg:text-4xl font-medium text-blue-200/50">₦</span>{(user.walletBalance || 0).toLocaleString()}</span> : '••••••'}
+                <h2 className="text-5xl lg:text-6xl font-black tracking-tighter">
+                  {showMain ? <span className="flex items-baseline gap-1"><span className="text-2xl lg:text-3xl font-medium text-blue-200/50">₦</span>{(user.walletBalance || 0).toLocaleString()}</span> : '••••••'}
                 </h2>
                 <button 
-                  className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/10 hover:bg-white/20 transition-all active:scale-90 border border-white/10" 
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 transition-all active:scale-90 border border-white/10" 
                   onClick={() => { setShowMain(s => !s); sessionStorage.setItem('showMainBalance', String(!showMain)); }}
                 >
-                  {showMain ? <EyeOff size={24} /> : <Eye size={24} />}
+                  {showMain ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
               
-              <div className="mt-10 flex flex-wrap gap-4">
-                <Link href="/dashboard/wallet" className="btn-accent py-3.5 px-10 text-xs uppercase tracking-[0.2em] font-black group">
-                  <span className="flex items-center gap-2">Add Money <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" /></span>
+              <div className="mt-8 flex flex-wrap gap-4">
+                <Link href="/dashboard/wallet" className="bg-[#C58A17] hover:bg-[#A67513] text-white py-3 px-8 rounded-xl text-[10px] uppercase tracking-[0.2em] font-black transition-all flex items-center gap-2 group shadow-lg shadow-[#C58A17]/20">
+                  Add Money <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
                 </Link>
-                <Link href="/dashboard/transactions" className="bg-white/10 hover:bg-white/15 px-10 py-3.5 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all border border-white/10 flex items-center justify-center">
+                <Link href="/dashboard/transactions" className="bg-white/10 hover:bg-white/15 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-white/10 flex items-center justify-center">
                   History
                 </Link>
               </div>
             </div>
           </div>
 
-          <div className="dashboard-card flex flex-col justify-between overflow-hidden relative border-none shadow-brand asaphis-symbol">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#C58A17]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+          <div className="bg-white rounded-3xl p-6 flex flex-col justify-between overflow-hidden relative border border-gray-100 shadow-sm">
             <div>
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-14 h-14 rounded-2xl bg-[#0B4F6C]/5 flex items-center justify-center text-[#0B4F6C]">
-                  <div className="p-3 bg-white rounded-xl shadow-sm border border-gray-100">
-                    <CreditCard size={28} />
-                  </div>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-[#0B4F6C] border border-gray-100">
+                  <CreditCard size={24} />
                 </div>
                 <div>
-                  <h3 className="font-black text-[#0B4F6C] text-xl">Account</h3>
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-[0.1em]">{user.username}</p>
+                  <h3 className="font-black text-[#0B4F6C] text-lg">Account</h3>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.1em]">@{user.username}</p>
                 </div>
               </div>
               
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-4 rounded-2xl bg-gray-50/50 border border-gray-100 group hover:border-[#0B4F6C]/20 transition-colors">
-                  <span className="text-sm text-gray-500 font-bold uppercase tracking-wider">Tier Status</span>
-                  <span className="px-4 py-1.5 rounded-full bg-[#4CAF50]/10 text-[#4CAF50] text-[10px] font-black uppercase tracking-[0.1em] border border-[#4CAF50]/20">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3.5 rounded-xl bg-gray-50/50 border border-gray-100 transition-colors">
+                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Tier Status</span>
+                  <span className="px-3 py-1 rounded-full bg-[#4CAF50]/10 text-[#4CAF50] text-[10px] font-black uppercase tracking-[0.1em] border border-[#4CAF50]/20">
                     {user.accountStatus}
                   </span>
                 </div>
-                <div className="flex justify-between items-center p-4 rounded-2xl bg-gray-50/50 border border-gray-100 group hover:border-[#0B4F6C]/20 transition-colors">
-                  <span className="text-sm text-gray-500 font-bold uppercase tracking-wider">Identity</span>
-                  <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border ${user.isVerified ? 'bg-[#0B4F6C]/10 text-[#0B4F6C] border-[#0B4F6C]/20' : 'bg-[#C58A17]/10 text-[#C58A17] border-[#C58A17]/20'}`}>
+                <div className="flex justify-between items-center p-3.5 rounded-xl bg-gray-50/50 border border-gray-100 transition-colors">
+                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Identity</span>
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border ${user.isVerified ? 'bg-[#0B4F6C]/10 text-[#0B4F6C] border-[#0B4F6C]/20' : 'bg-[#C58A17]/10 text-[#C58A17] border-[#C58A17]/20'}`}>
                     {user.isVerified ? 'Verified' : 'Unverified'}
                   </span>
                 </div>
               </div>
             </div>
             
-            <Link href="/dashboard/profile" className="mt-8 text-xs text-[#0B4F6C] font-black uppercase tracking-[0.2em] flex items-center gap-2 hover:gap-3 transition-all group border-t border-gray-100 pt-6">
-              Full Settings <ChevronRight size={14} className="text-[#C58A17] group-hover:translate-x-1 transition-transform" />
+            <Link href="/dashboard/profile" className="mt-6 text-[10px] text-[#0B4F6C] font-black uppercase tracking-[0.2em] flex items-center gap-2 hover:gap-3 transition-all border-t border-gray-50 pt-4">
+              Full Settings <ChevronRight size={12} className="text-[#C58A17]" />
             </Link>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="dashboard-card group relative overflow-hidden border-none shadow-brand">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-[#4CAF50]/5 rounded-full -mr-12 -mt-12 blur-2xl" />
-            <div className="flex items-center justify-between mb-8">
+          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all group overflow-hidden">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-black text-[#0B4F6C] text-xl">Savings Wallet</h3>
+                <h3 className="font-black text-[#0B4F6C] text-lg">Savings Wallet</h3>
                 <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1 flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#4CAF50]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#4CAF50]" />
                   Reward Accumulation
                 </p>
               </div>
-              <div className="w-14 h-14 rounded-2xl bg-gray-50 text-[#4CAF50] flex items-center justify-center group-hover:bg-[#4CAF50]/10 group-hover:text-[#4CAF50] transition-all duration-300 shadow-inner">
-                <Play size={28} />
+              <div className="w-12 h-12 rounded-xl bg-gray-50 text-[#4CAF50] flex items-center justify-center group-hover:bg-[#4CAF50]/10 transition-all duration-300">
+                <Play size={24} />
               </div>
             </div>
-            <div className="flex items-baseline gap-1 mb-8">
-              <span className="text-2xl font-bold text-gray-300">₦</span>
-              <p className="text-5xl font-black text-[#0B4F6C] tracking-tighter">
+            <div className="flex items-baseline gap-1 mb-6">
+              <span className="text-xl font-bold text-gray-300">₦</span>
+              <p className="text-4xl font-black text-[#0B4F6C] tracking-tighter">
                 {showCashback ? (user.cashbackBalance || 0).toLocaleString() : '••••••'}
               </p>
             </div>
             <button 
               onClick={() => handleWithdraw('cashback')}
-              className="w-full py-5 rounded-2xl bg-[#0B4F6C] text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-[#0D2B5D] transition-all shadow-xl shadow-[#0B4F6C]/20 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
+              className="w-full py-4 rounded-xl bg-[#0B4F6C] text-white font-black text-[10px] uppercase tracking-[0.3em] hover:bg-[#0D2B5D] transition-all shadow-lg shadow-[#0B4F6C]/10 active:scale-95 disabled:opacity-30"
               disabled={processingWithdrawal || (user.cashbackBalance || 0) <= 0}
             >
               Transfer to Main
             </button>
           </div>
 
-          <div className="dashboard-card group relative overflow-hidden border-none shadow-brand">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-[#C58A17]/5 rounded-full -mr-12 -mt-12 blur-2xl" />
-            <div className="flex items-center justify-between mb-8">
+          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all group overflow-hidden">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-black text-[#0B4F6C] text-xl">Referral Bonus</h3>
+                <h3 className="font-black text-[#0B4F6C] text-lg">Referral Bonus</h3>
                 <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1 flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" />
                   Network Earnings
                 </p>
               </div>
-              <div className="w-14 h-14 rounded-2xl bg-gray-50 text-[#C58A17] flex items-center justify-center group-hover:bg-[#C58A17]/10 group-hover:text-[#C58A17] transition-all duration-300 shadow-inner">
-                <GraduationCap size={28} />
+              <div className="w-12 h-12 rounded-xl bg-gray-50 text-[#C58A17] flex items-center justify-center group-hover:bg-[#C58A17]/10 transition-all duration-300">
+                <GraduationCap size={24} />
               </div>
             </div>
-            <div className="flex items-baseline gap-1 mb-8">
-              <span className="text-2xl font-bold text-gray-300">₦</span>
-              <p className="text-5xl font-black text-[#0B4F6C] tracking-tighter">
+            <div className="flex items-baseline gap-1 mb-6">
+              <span className="text-xl font-bold text-gray-300">₦</span>
+              <p className="text-4xl font-black text-[#0B4F6C] tracking-tighter">
                 {showReferral ? (user.referralBalance || 0).toLocaleString() : '••••••'}
               </p>
             </div>
             <button 
               onClick={() => handleWithdraw('referral')}
-              className="w-full py-5 rounded-2xl bg-[#C58A17] text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-[#A67513] transition-all shadow-xl shadow-[#C58A17]/20 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
+              className="w-full py-4 rounded-xl bg-[#C58A17] text-white font-black text-[10px] uppercase tracking-[0.3em] hover:bg-[#A67513] transition-all shadow-lg shadow-[#C58A17]/10 active:scale-95 disabled:opacity-30"
               disabled={processingWithdrawal || (user.referralBalance || 0) <= 0}
             >
               Transfer to Main

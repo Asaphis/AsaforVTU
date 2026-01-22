@@ -36,8 +36,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] asaphis-symbol">
-      <div className="tech-pattern absolute inset-0 pointer-events-none" />
+    <div className="min-h-screen bg-[#F8FAFC]">
+      <div className="fixed inset-0 tech-pattern pointer-events-none opacity-[0.03]" />
       {/** Mobile drawer */}
       <MobileSidebar
         openLabel="Menu"
@@ -45,40 +45,40 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onLogout={async () => { await signOut(); router.push('/'); }}
         items={{ primary: primaryItems, services: serviceItems, account: accountItems }}
       />
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-72 bg-white border-r border-gray-100 flex-col overflow-y-auto shadow-sm z-40">
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-100 flex-col overflow-y-auto shadow-sm z-40">
         <div className="flex flex-col h-full">
-          <div className="p-8">
+          <div className="p-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#0B4F6C] flex items-center justify-center text-white shadow-lg shadow-[#0B4F6C]/20">
                 <LayoutDashboard size={20} />
               </div>
-              <span className="font-black text-2xl tracking-tighter text-[#0B4F6C]">Asafor<span className="text-[#C58A17]">VTU</span></span>
+              <span className="font-black text-xl tracking-tighter text-[#0B4F6C]">Asafor<span className="text-[#C58A17]">VTU</span></span>
             </div>
           </div>
-          <nav className="px-4 space-y-1.5 flex-grow">
+          <nav className="px-3 space-y-1 flex-grow">
             {primaryItems.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className={`nav-item ${
-                  pathname === href ? 'nav-item-active' : ''
+                className={`flex items-center gap-3 px-4 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                  pathname === href ? 'bg-[#0B4F6C]/10 text-[#0B4F6C] border-l-4 border-[#C58A17]' : 'text-gray-500 hover:bg-gray-50 hover:text-[#0B4F6C]'
                 }`}
               >
-                <Icon size={20} className={pathname === href ? 'text-[#C58A17]' : 'text-gray-400 group-hover:text-[#0B4F6C]'} />
+                <Icon size={18} className={pathname === href ? 'text-[#C58A17]' : 'text-gray-400'} />
                 {label}
               </Link>
             ))}
             <div className="px-4 pt-6 pb-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Services</div>
-            <div className="grid grid-cols-1 gap-1">
+            <div className="space-y-1">
               {serviceItems.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
-                  className={`nav-item ${
-                    pathname === href ? 'nav-item-active' : ''
+                  className={`flex items-center gap-3 px-4 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                    pathname === href ? 'bg-[#0B4F6C]/10 text-[#0B4F6C] border-l-4 border-[#C58A17]' : 'text-gray-500 hover:bg-gray-50 hover:text-[#0B4F6C]'
                   }`}
                 >
-                  <Icon size={20} className={pathname === href ? 'text-[#C58A17]' : 'text-gray-400 group-hover:text-[#0B4F6C]'} />
+                  <Icon size={18} className={pathname === href ? 'text-[#C58A17]' : 'text-gray-400'} />
                   {label}
                 </Link>
               ))}
@@ -110,8 +110,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </aside>
-      <main className="md:ml-72 transition-all duration-300 relative z-10">
-        <header className="sticky top-0 z-30 glass-morphism border-b border-white/20">
+      <main className="md:ml-64 transition-all duration-300 relative z-10">
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100">
           <div className="container-main py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button className="md:hidden p-2.5 rounded-xl bg-white border border-gray-100 shadow-sm" onClick={() => (document.getElementById('mobile-sidebar-toggle') as HTMLButtonElement)?.click()}>
