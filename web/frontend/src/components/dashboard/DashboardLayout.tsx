@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Wallet, List, User, Settings, ShieldCheck, LifeBuoy, Smartphone, Wifi, Tv, Zap, FileText, LogOut, Bell, Menu, Eye, EyeOff, X } from 'lucide-react';
+import { Home, CreditCard, Activity, User, Settings, ShieldCheck, LifeBuoy, PhoneCall, Globe, MonitorPlay, Lightbulb, GraduationCap, LogOut, Bell, Menu, Eye, EyeOff, X } from 'lucide-react';
 import { useNotifications } from '@/contexts/NotificationContext';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -15,17 +15,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [notifOpen, setNotifOpen] = useState(false);
 
   const primaryItems = [
-    { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-    { href: '/dashboard/wallet', label: 'Wallet', icon: Wallet },
-    { href: '/dashboard/transactions', label: 'Transactions', icon: List },
+    { href: '/dashboard', label: 'Overview', icon: Home },
+    { href: '/dashboard/wallet', label: 'Wallet', icon: CreditCard },
+    { href: '/dashboard/transactions', label: 'Transactions', icon: Activity },
   ];
 
   const serviceItems = [
-    { href: '/dashboard/services/airtime', label: 'Airtime', icon: Smartphone },
-    { href: '/dashboard/services/data', label: 'Data', icon: Wifi },
-    { href: '/dashboard/services/cable', label: 'Cable TV', icon: Tv },
-    { href: '/dashboard/services/electricity', label: 'Electricity', icon: Zap },
-    { href: '/dashboard/services/exam-pins', label: 'Exam PINs', icon: FileText },
+    { href: '/dashboard/services/airtime', label: 'Airtime', icon: PhoneCall },
+    { href: '/dashboard/services/data', label: 'Data', icon: Globe },
+    { href: '/dashboard/services/cable', label: 'Cable TV', icon: MonitorPlay },
+    { href: '/dashboard/services/electricity', label: 'Electricity', icon: Lightbulb },
+    { href: '/dashboard/services/exam-pins', label: 'Exam PINs', icon: GraduationCap },
   ];
   
   const accountItems = [
@@ -45,65 +45,70 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onLogout={async () => { await signOut(); router.push('/'); }}
         items={{ primary: primaryItems, services: serviceItems, account: accountItems }}
       />
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-72 bg-white/70 backdrop-blur-xl border-r border-gray-100 flex-col overflow-y-auto z-40 transition-all duration-300">
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-72 bg-gradient-to-b from-white via-white to-slate-50/50 backdrop-blur-xl border-r border-slate-200/60 flex-col overflow-y-auto z-40 transition-all duration-300">
         <div className="flex flex-col h-full">
           <div className="p-8">
             <div className="flex items-center gap-4 group cursor-pointer">
-              <div className="w-12 h-12 rounded-2xl bg-[#0B4F6C] flex items-center justify-center text-white shadow-xl shadow-[#0B4F6C]/20 group-hover:scale-110 transition-transform duration-500">
-                <img src="/logo.png" alt="AsaforVTU Logo" className="w-8 h-8 object-contain" />
+              <div className="w-14 h-14 rounded-[22px] bg-gradient-to-br from-[#0B4F6C] to-[#145a77] flex items-center justify-center text-white shadow-xl shadow-[#0B4F6C]/20 group-hover:rotate-6 group-hover:scale-105 transition-all duration-500 ring-4 ring-slate-50">
+                <img src="/logo.png" alt="AsaforVTU Logo" className="w-9 h-9 object-contain" />
               </div>
-              <span className="font-black text-2xl tracking-tighter text-[#0B4F6C]">Asafor<span className="text-[#C58A17]">VTU</span></span>
+              <div className="flex flex-col">
+                <span className="font-black text-2xl tracking-tighter text-[#0B4F6C] leading-none">Asafor<span className="text-[#C58A17]">VTU</span></span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Premium Services</span>
+              </div>
             </div>
           </div>
-          <nav className="px-4 space-y-2 flex-grow">
+          <nav className="px-4 space-y-1.5 flex-grow">
             {primaryItems.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-4 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 ${
-                  pathname === href ? 'bg-[#0B4F6C] text-white shadow-lg shadow-[#0B4F6C]/20 scale-[1.02]' : 'text-gray-500 hover:bg-gray-50 hover:text-[#0B4F6C]'
+                className={`flex items-center gap-4 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 group ${
+                  pathname === href ? 'bg-[#0B4F6C] text-white shadow-xl shadow-[#0B4F6C]/25 scale-[1.02]' : 'text-slate-500 hover:bg-slate-100/80 hover:text-[#0B4F6C]'
                 }`}
               >
-                <Icon size={20} className={pathname === href ? 'text-white' : 'text-gray-400'} />
+                <Icon size={20} className={`${pathname === href ? 'text-white' : 'text-slate-400 group-hover:text-[#0B4F6C]'} transition-colors`} />
                 {label}
               </Link>
             ))}
-            <div className="px-5 pt-8 pb-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400/80">Digital Services</div>
-            <div className="space-y-2">
+            <div className="px-5 pt-10 pb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400/80">Digital Services</div>
+            <div className="space-y-1.5">
               {serviceItems.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
-                  className={`flex items-center gap-4 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 ${
-                    pathname === href ? 'bg-[#0B4F6C] text-white shadow-lg shadow-[#0B4F6C]/20 scale-[1.02]' : 'text-gray-500 hover:bg-gray-50 hover:text-[#0B4F6C]'
+                  className={`flex items-center gap-4 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 group ${
+                    pathname === href ? 'bg-[#0B4F6C] text-white shadow-xl shadow-[#0B4F6C]/25 scale-[1.02]' : 'text-slate-500 hover:bg-slate-100/80 hover:text-[#0B4F6C]'
                   }`}
                 >
-                  <Icon size={20} className={pathname === href ? 'text-white' : 'text-gray-400'} />
+                  <Icon size={20} className={`${pathname === href ? 'text-white' : 'text-slate-400 group-hover:text-[#0B4F6C]'} transition-colors`} />
                   {label}
                 </Link>
               ))}
             </div>
           </nav>
-          <div className="mt-auto p-6 bg-gray-50/30 border-t border-gray-100/50">
-            <div className="px-5 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400/80">System</div>
-            <nav className="space-y-2">
+          <div className="mt-auto p-6 bg-slate-50/50 border-t border-slate-100/80">
+            <div className="px-5 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400/80">System</div>
+            <nav className="space-y-1.5">
               {accountItems.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
-                  className={`flex items-center gap-4 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 ${
-                    pathname === href ? 'bg-[#0B4F6C] text-white shadow-lg shadow-[#0B4F6C]/20' : 'text-gray-500 hover:bg-gray-50 hover:text-[#0B4F6C]'
+                  className={`flex items-center gap-4 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 group ${
+                    pathname === href ? 'bg-[#0B4F6C] text-white shadow-xl shadow-[#0B4F6C]/25' : 'text-slate-500 hover:bg-white hover:shadow-sm hover:text-[#0B4F6C]'
                   }`}
                 >
-                  <Icon size={18} className={pathname === href ? 'text-white' : 'text-gray-400'} />
+                  <Icon size={18} className={`${pathname === href ? 'text-white' : 'text-slate-400 group-hover:text-[#0B4F6C]'} transition-colors`} />
                   {label}
                 </Link>
               ))}
               <button
                 onClick={async () => { await signOut(); router.push('/'); }}
-                className="w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl text-red-500 font-bold text-sm hover:bg-red-50 transition-all duration-300 mt-4 group"
+                className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-red-500 font-bold text-sm hover:bg-red-50/80 transition-all duration-300 mt-6 group border border-transparent hover:border-red-100"
               >
-                <LogOut size={18} className="group-hover:translate-x-1 transition-transform" />
+                <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500 group-hover:bg-red-100 group-hover:scale-110 transition-all">
+                  <LogOut size={16} />
+                </div>
                 Logout Account
               </button>
             </nav>
