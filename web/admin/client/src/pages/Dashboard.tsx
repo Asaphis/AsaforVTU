@@ -10,7 +10,8 @@ import {
   ArrowDownRight,
   ShieldCheck,
   Zap,
-  Clock
+  Clock,
+  BarChart3
 } from "lucide-react";
 import {
   Area,
@@ -26,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
-  const { data: stats, isLoading, isError } = useQuery({
+  const { data: stats, isLoading, isError } = useQuery<any>({
     queryKey: ["admin-stats"],
     queryFn: async () => await getAdminStats(),
     refetchInterval: 10000,
@@ -34,7 +35,7 @@ export default function Dashboard() {
 
   const chartData = useMemo(() => {
     const days = (stats && stats.dailyTotals) || [];
-    return days.map(d => ({ name: d.day, total: d.total }));
+    return days.map((d: any) => ({ name: d.day, total: d.total }));
   }, [stats]);
 
   const recent = ((stats && stats.recentTransactions) || []).slice(0, 6);
@@ -175,7 +176,7 @@ export default function Dashboard() {
                       axisLine={false} 
                       tickLine={false} 
                       tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 800 }}
-                      tickFormatter={(value) => `₦${value.toLocaleString()}`}
+                      tickFormatter={(value: number) => `₦${value.toLocaleString()}`}
                     />
                     <Tooltip 
                       contentStyle={{ 
@@ -230,7 +231,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="text-right flex flex-col items-end">
-                      <span className="text-sm font-black text-slate-900 tracking-tighter">₦{tx.amount?.toLocaleString()}</span>
+                      <span className="text-sm font-black text-slate-900 tracking-tighter">₦${tx.amount?.toLocaleString()}</span>
                       <span className={cn(
                         "text-[9px] font-black uppercase tracking-widest mt-1.5 px-2 py-0.5 rounded-md",
                         tx.status === 'success' ? 'bg-emerald-100/50 text-emerald-600' : 'bg-orange-100/50 text-orange-600'
