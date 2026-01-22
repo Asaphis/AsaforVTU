@@ -18,21 +18,25 @@ let auth: Auth;
 let db: Firestore;
 let storage: FirebaseStorage;
 
-// Standard Initialization - Fail Loudly if config is missing
+// Standard Initialization - Fail gracefully if config is missing
 try {
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
+  if (firebaseConfig.apiKey) {
+    if (!getApps().length) {
+      app = initializeApp(firebaseConfig);
+    } else {
+      app = getApp();
+    }
+
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+    console.log('[Firebase] Initialized successfully');
   } else {
-    app = getApp();
+    console.warn('[Firebase] API Key missing. Firebase features will be disabled.');
   }
-
-  auth = getAuth(app);
-  db = getFirestore(app);
-  storage = getStorage(app);
-
 } catch (error) {
-  console.error('[Firebase] Critical Initialization Error:', error);
-  throw error; // Re-throw to prevent app from starting in a broken state
+  console.error('[Firebase] Initialization Error:', error);
+  // Don't throw to prevent crashing the entire app
 }
 
 export { app, auth, db, storage };
