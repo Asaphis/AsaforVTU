@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageSquare, Megaphone, Trash2, Send, History, CheckCheck, Check, User, ShieldCheck, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { getAnnouncements, createAnnouncement, deleteAnnouncement, db } from "@/lib/backend";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -434,8 +435,6 @@ export default function SupportPage() {
             </div>
           </div>
         </TabsContent>
-      </Tabs>
-    </div>
       </Tabs>
     </div>
   );
