@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Smartphone } from 'lucide-react';
+import { Smartphone, ArrowRightLeft } from 'lucide-react';
 import { useService } from '@/hooks/useServices';
 import { useAuth } from '@/contexts/AuthContext';
 import TransactionPinModal from '@/components/dashboard/TransactionPinModal';

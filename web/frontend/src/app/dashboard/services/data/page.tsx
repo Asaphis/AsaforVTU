@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Wifi } from 'lucide-react';
+import { Wifi, Smartphone, ChevronRight, ArrowRightLeft } from 'lucide-react';
 import { useService } from '@/hooks/useServices';
 import { useAuth } from '@/contexts/AuthContext';
 import { purchaseData } from '@/lib/services';
