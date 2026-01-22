@@ -205,135 +205,112 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-8 bg-gradient-to-br from-[#0B4F6C] to-[#0D2B5D] text-white rounded-[2.5rem] p-10 lg:p-12 shadow-2xl shadow-[#0B4F6C]/20 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-[#C58A17]/10 transition-colors duration-700" />
-            
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-6xl">
+          <div className="lg:col-span-7 bg-[#0B4F6C] text-white rounded-[1.5rem] p-8 shadow-lg relative overflow-hidden group">
             <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#C58A17] animate-ping" />
-                <p className="text-blue-100/70 font-black uppercase tracking-[0.25em] text-[10px]">Primary Liquidity Balance</p>
+              <div className="flex items-center gap-2 mb-4">
+                <p className="text-blue-100/60 font-bold uppercase tracking-widest text-[9px]">Primary Balance</p>
               </div>
               <div className="flex items-center justify-between">
-                <h2 className="text-6xl lg:text-7xl font-black tracking-tighter">
-                  {showMain ? <span className="flex items-baseline gap-2"><span className="text-3xl lg:text-4xl font-medium text-blue-200/50">₦</span>{(user.walletBalance || 0).toLocaleString()}</span> : '••••••'}
+                <h2 className="text-4xl lg:text-5xl font-black tracking-tighter">
+                  {showMain ? <span className="flex items-baseline gap-1.5"><span className="text-xl font-medium text-blue-200/50">₦</span>{(user.walletBalance || 0).toLocaleString()}</span> : '••••••'}
                 </h2>
                 <button 
-                  className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/10 hover:bg-white/20 transition-all active:scale-90 border border-white/10 shadow-lg" 
+                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all active:scale-90" 
                   onClick={() => { setShowMain(s => !s); sessionStorage.setItem('showMainBalance', String(!showMain)); }}
                 >
-                  {showMain ? <EyeOff size={24} /> : <Eye size={24} />}
+                  {showMain ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
               
-              <div className="mt-10 flex flex-wrap gap-5">
-                <Link href="/dashboard/wallet" className="bg-[#C58A17] hover:bg-[#A67513] text-white py-4 px-10 rounded-2xl text-xs uppercase tracking-[0.2em] font-black transition-all flex items-center gap-3 group shadow-xl shadow-[#C58A17]/30">
-                  Add Money <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              <div className="mt-8 flex gap-3">
+                <Link href="/dashboard/wallet" className="bg-[#C58A17] hover:bg-[#A67513] text-white py-3 px-6 rounded-xl text-[10px] uppercase tracking-widest font-bold transition-all flex items-center gap-2 shadow-lg shadow-[#C58A17]/20">
+                  Add Money <ChevronRight size={14} />
                 </Link>
-                <Link href="/dashboard/transactions" className="bg-white/10 hover:bg-white/15 px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all border border-white/10 flex items-center justify-center">
+                <Link href="/dashboard/transactions" className="bg-white/10 hover:bg-white/15 px-6 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border border-white/10">
                   History
                 </Link>
               </div>
             </div>
           </div>
 
-          <div className="lg:col-span-4 bg-white rounded-[2.5rem] p-8 flex flex-col justify-between overflow-hidden relative border border-gray-100 shadow-sm">
-            <div>
-              <div className="flex items-center gap-5 mb-8">
-                <div className="w-14 h-14 rounded-2xl bg-[#0B4F6C]/5 flex items-center justify-center text-[#0B4F6C] border border-[#0B4F6C]/10 shadow-inner">
-                  <CreditCard size={28} />
-                </div>
-                <div>
-                  <h3 className="font-black text-[#0B4F6C] text-xl tracking-tight">Security ID</h3>
-                  <p className="text-[11px] text-[#C58A17] font-black uppercase tracking-[0.1em]">@{user.username}</p>
-                </div>
+          <div className="lg:col-span-5 bg-white rounded-[1.5rem] p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-[#0B4F6C]">
+                <CreditCard size={20} />
               </div>
-              
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-4 rounded-2xl bg-gray-50/80 border border-gray-100 transition-all hover:bg-gray-100/50">
-                  <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Tier Level</span>
-                  <span className="px-4 py-1.5 rounded-full bg-[#4CAF50]/10 text-[#4CAF50] text-[10px] font-black uppercase tracking-[0.1em] border border-[#4CAF50]/20">
-                    {user.accountStatus}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-4 rounded-2xl bg-gray-50/80 border border-gray-100 transition-all hover:bg-gray-100/50">
-                  <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Protocol</span>
-                  <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border ${user.isVerified ? 'bg-[#0B4F6C]/10 text-[#0B4F6C] border-[#0B4F6C]/20' : 'bg-[#C58A17]/10 text-[#C58A17] border-[#C58A17]/20'}`}>
-                    {user.isVerified ? 'Verified' : 'Unverified'}
-                  </span>
-                </div>
+              <div>
+                <h3 className="font-bold text-[#0B4F6C] text-sm">Security ID</h3>
+                <p className="text-[10px] text-[#C58A17] font-bold">@{user.username}</p>
               </div>
             </div>
             
-            <Link href="/dashboard/profile" className="mt-8 text-[11px] text-[#0B4F6C] font-black uppercase tracking-[0.25em] flex items-center gap-3 hover:gap-4 transition-all border-t border-gray-50 pt-6">
-              Security Protocol <ChevronRight size={14} className="text-[#C58A17]" />
-            </Link>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
+                <span className="block text-[8px] text-gray-400 font-bold uppercase mb-1">Status</span>
+                <span className="text-[9px] font-black text-[#4CAF50] uppercase">{user.accountStatus}</span>
+              </div>
+              <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
+                <span className="block text-[8px] text-gray-400 font-bold uppercase mb-1">Identity</span>
+                <span className={`text-[9px] font-black uppercase ${user.isVerified ? 'text-[#0B4F6C]' : 'text-[#C58A17]'}`}>
+                  {user.isVerified ? 'Verified' : 'Unverified'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 group overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#4CAF50]/5 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-150" />
-            <div className="flex items-center justify-between mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl">
+          <div className="bg-white rounded-[1.5rem] p-6 border border-gray-100 shadow-sm group">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-black text-[#0B4F6C] text-2xl tracking-tighter leading-none mb-2">Savings Center</h3>
-                <p className="text-[10px] text-[#4CAF50] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#4CAF50] animate-pulse" />
-                  Rewards Accumulation
-                </p>
+                <h3 className="font-bold text-[#0B4F6C] text-lg">Savings</h3>
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Rewards</p>
               </div>
-              <div className="w-16 h-16 rounded-2xl bg-gray-50 text-[#4CAF50] flex items-center justify-center group-hover:bg-[#4CAF50]/10 transition-all duration-500 shadow-inner group-hover:scale-110">
-                <Play size={32} />
+              <div className="w-10 h-10 rounded-xl bg-gray-50 text-[#4CAF50] flex items-center justify-center">
+                <Play size={20} />
               </div>
             </div>
-            <div className="flex items-center justify-between mb-12">
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-gray-200">₦</span>
-                <p className="text-6xl font-black text-[#0B4F6C] tracking-tighter">
-                  {showCashback ? (user.cashbackBalance || 0).toLocaleString() : '••••••'}
-                </p>
-              </div>
-              <button className="w-14 h-14 flex items-center justify-center rounded-2xl bg-white border border-gray-100 text-gray-400 hover:text-[#0B4F6C] transition-all shadow-sm active:scale-90" onClick={() => { setShowCashback(s => !s); sessionStorage.setItem('showCashbackBalance', String(!showCashback)); }}>
-                {showCashback ? <EyeOff size={24} /> : <Eye size={24} />}
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-3xl font-black text-[#0B4F6C]">
+                {showCashback ? <span className="text-lg text-gray-300 mr-1">₦</span> : ''}
+                {showCashback ? (user.cashbackBalance || 0).toLocaleString() : '••••••'}
+              </p>
+              <button className="p-2 text-gray-400 hover:text-[#0B4F6C]" onClick={() => setShowCashback(s => !s)}>
+                {showCashback ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
             <button 
               onClick={() => handleWithdraw('cashback')}
-              className="w-full py-6 rounded-[2rem] bg-[#0B4F6C] text-white font-black text-xs uppercase tracking-[0.4em] hover:bg-[#0D2B5D] transition-all shadow-2xl shadow-[#0B4F6C]/20 active:scale-95 disabled:opacity-30 border border-white/10"
+              className="w-full py-3.5 rounded-xl bg-[#0B4F6C] text-white font-bold text-[10px] uppercase tracking-widest hover:bg-[#0D2B5D] transition-all disabled:opacity-30"
               disabled={processingWithdrawal || (user.cashbackBalance || 0) <= 0}
             >
               MOVE TO PRIMARY
             </button>
           </div>
 
-          <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 group overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#C58A17]/5 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-150" />
-            <div className="flex items-center justify-between mb-10">
+          <div className="bg-white rounded-[1.5rem] p-6 border border-gray-100 shadow-sm group">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-black text-[#0B4F6C] text-2xl tracking-tighter leading-none mb-2">Earning Center</h3>
-                <p className="text-[10px] text-[#C58A17] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#C58A17] animate-pulse" />
-                  Network Revenue
-                </p>
+                <h3 className="font-bold text-[#0B4F6C] text-lg">Earning</h3>
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Revenue</p>
               </div>
-              <div className="w-16 h-16 rounded-2xl bg-gray-50 text-[#C58A17] flex items-center justify-center group-hover:bg-[#C58A17]/10 transition-all duration-500 shadow-inner group-hover:scale-110">
-                <GraduationCap size={32} />
+              <div className="w-10 h-10 rounded-xl bg-gray-50 text-[#C58A17] flex items-center justify-center">
+                <GraduationCap size={20} />
               </div>
             </div>
-            <div className="flex items-center justify-between mb-12">
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-gray-200">₦</span>
-                <p className="text-6xl font-black text-[#0B4F6C] tracking-tighter">
-                  {showReferral ? (user.referralBalance || 0).toLocaleString() : '••••••'}
-                </p>
-              </div>
-              <button className="w-14 h-14 flex items-center justify-center rounded-2xl bg-white border border-gray-100 text-gray-400 hover:text-[#0B4F6C] transition-all shadow-sm active:scale-90" onClick={() => { setShowReferral(s => !s); sessionStorage.setItem('showReferralBalance', String(!showReferral)); }}>
-                {showReferral ? <EyeOff size={24} /> : <Eye size={24} />}
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-3xl font-black text-[#0B4F6C]">
+                {showReferral ? <span className="text-lg text-gray-300 mr-1">₦</span> : ''}
+                {showReferral ? (user.referralBalance || 0).toLocaleString() : '••••••'}
+              </p>
+              <button className="p-2 text-gray-400 hover:text-[#0B4F6C]" onClick={() => setShowReferral(s => !s)}>
+                {showReferral ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
             <button 
               onClick={() => handleWithdraw('referral')}
-              className="w-full py-6 rounded-[2rem] bg-[#C58A17] text-white font-black text-xs uppercase tracking-[0.4em] hover:bg-[#A67513] transition-all shadow-2xl shadow-[#C58A17]/20 active:scale-95 disabled:opacity-30 border border-white/10"
+              className="w-full py-3.5 rounded-xl bg-[#C58A17] text-white font-bold text-[10px] uppercase tracking-widest hover:bg-[#A67513] transition-all disabled:opacity-30"
               disabled={processingWithdrawal || (user.referralBalance || 0) <= 0}
             >
               MOVE TO PRIMARY
