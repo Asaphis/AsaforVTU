@@ -49,12 +49,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex min-h-screen bg-secondary/30">
+    <div className="flex min-h-screen bg-[#F8FAFC]">
       <Sidebar />
-      <div className="flex flex-1 flex-col pl-64 transition-all duration-300">
+      <div className="flex flex-1 flex-col pl-72 transition-all duration-300">
         <Topbar />
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
-          <div className="mx-auto max-w-7xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <main className="flex-1 overflow-y-auto p-8 md:p-12">
+          <div className="mx-auto max-w-7xl animate-in fade-in slide-in-from-bottom-8 duration-700">
             {children}
           </div>
         </main>
