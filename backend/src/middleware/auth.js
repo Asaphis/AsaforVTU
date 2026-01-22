@@ -2,12 +2,12 @@ const { auth, db, firebaseInitialized } = require('../config/firebase');
 
 const verifyToken = async (req, res, next) => {
   try {
-    // Check if Firebase auth is available
-    if (!auth) {
-      console.error('[Auth Middleware] Firebase Auth not available');
+    // Check if Firebase is initialized
+    if (!firebaseInitialized || !auth) {
+      console.error('[Auth Middleware] Firebase not initialized');
       return res.status(503).json({ 
         error: 'Authentication service unavailable',
-        details: 'Firebase Auth is not initialized. Please ensure FIREBASE_* environment variables are correctly set in the environment.',
+        details: 'Firebase not configured. Please check server logs and ensure FIREBASE_* environment variables are set.',
         code: 'FIREBASE_NOT_INITIALIZED'
       });
     }
@@ -65,8 +65,8 @@ const verifyToken = async (req, res, next) => {
 
 const isAdmin = async (req, res, next) => {
   try {
-    if (!db) {
-      console.error('[Admin Check] Firebase Firestore not available');
+    if (!firebaseInitialized || !db) {
+      console.error('[Admin Check] Firebase not initialized');
       return res.status(503).json({ 
         error: 'Authorization service unavailable',
         code: 'FIREBASE_NOT_INITIALIZED'

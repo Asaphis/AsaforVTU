@@ -6,23 +6,13 @@ function getBaseUrl(): string {
   const strip = (s?: string) => (s && typeof s === "string" ? s.trim().replace(/^`|`$/g, "") : "");
   const prodUrl = strip(prodUrlRaw);
   const localUrl = strip(localUrlRaw);
-  
   let origin = "";
   try {
     origin = window.location.origin;
   } catch {}
-  
-  const isLocal = origin.includes("localhost") || origin.includes("127.0.0.1") || origin.includes(".replit.dev");
-  
-  if (isLocal) {
-    // In Replit or local development, if no explicit local URL is provided,
-    // we assume the backend is running on the same host (detected automatically by fetch if path starts with /)
-    // or we can use a relative path if the proxy is set up.
-    // However, for Vite dev server, we usually need the absolute URL if it's on a different port.
-    return localUrl || origin.replace(":5173", ":5000").replace(":3000", ":5000");
-  }
-  
-  return prodUrl || origin;
+  const isLocal = origin.includes("localhost") || origin.includes("127.0.0.1");
+  if (isLocal) return localUrl || "http://localhost:5000";
+  return prodUrl || "https://asaforvtubackend.onrender.com";
 }
 
 async function getToken(): Promise<string> {

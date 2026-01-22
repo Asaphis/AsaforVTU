@@ -20,51 +20,19 @@ try {
       return s;
     };
 
-    const projectId = sanitize(process.env.FIREBASE_PROJECT_ID);
-    const clientEmail = sanitize(process.env.FIREBASE_CLIENT_EMAIL);
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-    const storageBucket = sanitize(process.env.FIREBASE_STORAGE_BUCKET);
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
 
-    // Enhanced diagnostics
-    const diagnostics = {
-      projectId: !!projectId,
-      clientEmail: !!clientEmail,
-      privateKey: !!privateKey,
-      storageBucket: !!storageBucket,
-      projectIdLength: projectId ? projectId.length : 0,
-      clientEmailLength: clientEmail ? clientEmail.length : 0,
-      privateKeyLength: privateKey ? privateKey.length : 0,
-    };
-
-    if (privateKey) {
-      // Remove surrounding quotes if present (common issue with dotenv/env vars)
-      if (privateKey.startsWith('"')) {
-        privateKey = privateKey.slice(1);
-      }
-      if (privateKey.endsWith('"')) {
-        privateKey = privateKey.slice(0, -1);
-      }
-      
-      // Handle newlines - both escaped and literal
-      privateKey = privateKey.replace(/\\n/g, '\n');
-      diagnostics.privateKeyValid = /BEGIN PRIVATE KEY/.test(privateKey) && /END PRIVATE KEY/.test(privateKey);
-    }
-
-    const hasValidKey = Boolean(privateKey && /BEGIN PRIVATE KEY/.test(privateKey) && /END PRIVATE KEY/.test(privateKey));
-    
-    console.log('[Firebase Config] Initialization diagnostics:', {
-      ...diagnostics,
-      hasValidKey,
-      timestamp: new Date().toISOString(),
-    });
-
-    if (projectId && clientEmail && hasValidKey && storageBucket) {
+    if (projectId && clientEmail && privateKey && storageBucket) {
       try {
+        const formattedKey = privateKey.replace(/\\n/g, '\n');
         admin.initializeApp({
           credential: admin.credential.cert({
             projectId,
             clientEmail,
-            privateKey,
+            privateKey: formattedKey,
           }),
           storageBucket,
         });
