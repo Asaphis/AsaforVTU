@@ -110,9 +110,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </aside>
-      <main className="md:ml-72 transition-all duration-500 relative z-10 min-h-screen flex flex-col">
+      <main className="md:ml-80 transition-all duration-500 relative z-10 min-h-screen flex flex-col">
         <header className="sticky top-0 z-30 bg-white/60 backdrop-blur-xl border-b border-gray-100/50">
-          <div className="max-w-7xl mx-auto px-8 py-6 flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-10 py-8 flex items-center justify-between">
             <div className="flex items-center gap-6">
               <button className="md:hidden p-3 rounded-2xl bg-white border border-gray-100 shadow-sm active:scale-90 transition-transform" onClick={() => (document.getElementById('mobile-sidebar-toggle') as HTMLButtonElement)?.click()}>
                 <Menu className="text-[#0B4F6C]" size={24} />
