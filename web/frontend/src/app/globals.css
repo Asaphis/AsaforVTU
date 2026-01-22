@@ -84,7 +84,7 @@
   }
 
   .service-card {
-    @apply flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-[#C58A17]/30 hover:shadow-xl hover:shadow-[#0B4F6C]/5 transition-all duration-300 group;
+    @apply flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-[#C58A17]/30 hover:shadow-xl hover:shadow-[#0B4F6C]/5 transition-all duration-300;
   }
 
   .service-icon {
