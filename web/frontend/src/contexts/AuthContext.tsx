@@ -225,8 +225,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signIn,
     signOut,
-    resetPassword: async (email: string) => await firebaseSendPasswordResetEmail(auth, email),
-    verifyEmail: async () => auth.currentUser && await firebaseSendEmailVerification(auth.currentUser),
+    resetPassword: async (email: string) => { await firebaseSendPasswordResetEmail(auth, email); },
+    verifyEmail: async () => { if (auth.currentUser) await firebaseSendEmailVerification(auth.currentUser); },
     verifyTransactionPin: async (pin: string) => state.user ? (await generateHash(pin)) === state.user.pinHash : false,
     updateProfile: async (data: any) => {
       if (!auth.currentUser) return;
@@ -234,7 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await updateDoc(doc(db, 'users', auth.currentUser.uid), updates);
       setState(prev => ({ ...prev, user: prev.user ? { ...prev.user, ...updates } : null }));
     },
-    refreshUser: async () => auth.currentUser && await loadUserData(auth.currentUser),
+    refreshUser: async () => { if (auth.currentUser) await loadUserData(auth.currentUser); },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
