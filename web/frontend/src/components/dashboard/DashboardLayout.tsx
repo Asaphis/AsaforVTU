@@ -44,111 +44,116 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onLogout={async () => { await signOut(); router.push('/'); }}
         items={{ primary: primaryItems, services: serviceItems, account: accountItems }}
       />
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex-col overflow-y-auto">
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-72 bg-white border-r border-gray-100 flex-col overflow-y-auto shadow-sm">
         <div className="flex flex-col h-full">
-          <div className="p-4">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-[#0A1F44]">AsaforVTU</span>
+          <div className="p-8">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#0A1F44] flex items-center justify-center text-white shadow-lg shadow-blue-900/20">
+                <LayoutDashboard size={20} />
+              </div>
+              <span className="font-black text-2xl tracking-tighter text-[#0A1F44]">Asafor<span className="text-[#F97316]">VTU</span></span>
             </div>
           </div>
-          <nav className="px-2 space-y-1">
+          <nav className="px-4 space-y-1.5 flex-grow">
             {primaryItems.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 ${
-                  pathname === href ? 'bg-gray-100 text-[#0A1F44] font-semibold' : 'text-gray-700'
+                className={`nav-item ${
+                  pathname === href ? 'nav-item-active' : ''
                 }`}
               >
-                <Icon size={18} className="text-[#F97316]" />
+                <Icon size={20} className={pathname === href ? 'text-[#F97316]' : 'text-gray-400 group-hover:text-[#0A1F44]'} />
                 {label}
               </Link>
             ))}
-            <div className="px-3 pt-2 text-xs font-semibold text-gray-500">Services</div>
-            {serviceItems.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className={`flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-gray-50 ${
-                  pathname === href ? 'bg-gray-100 text-[#0A1F44] font-semibold' : 'text-gray-700'
-                }`}
-              >
-                <Icon size={18} className="text-[#F97316]" />
-                {label}
-              </Link>
-            ))}
-          </nav>
-          <div className="mt-auto border-t border-gray-200">
-            <div className="px-3 pt-3 text-[11px] font-semibold text-gray-500">Account & Support</div>
-            <nav className="px-2 space-y-1 pb-3">
-              {accountItems.map(({ href, label, icon: Icon }) => (
+            <div className="px-4 pt-6 pb-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Services</div>
+            <div className="grid grid-cols-1 gap-1">
+              {serviceItems.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 ${
-                    pathname === href ? 'bg-gray-50 text-[#0A1F44]' : 'text-gray-600'
-                  } text-sm`}
+                  className={`nav-item ${
+                    pathname === href ? 'nav-item-active' : ''
+                  }`}
                 >
-                  <Icon size={18} className="text-[#F97316] opacity-80" />
+                  <Icon size={20} className={pathname === href ? 'text-[#F97316]' : 'text-gray-400 group-hover:text-[#0A1F44]'} />
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </nav>
+          <div className="mt-auto p-4 bg-gray-50/50 border-t border-gray-100">
+            <div className="px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Settings</div>
+            <nav className="space-y-1">
+              {accountItems.slice(0, 2).map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`nav-item ${
+                    pathname === href ? 'nav-item-active' : ''
+                  }`}
+                >
+                  <Icon size={20} className={pathname === href ? 'text-[#F97316]' : 'text-gray-400'} />
                   {label}
                 </Link>
               ))}
               <button
                 onClick={async () => { await signOut(); router.push('/'); }}
-                className="flex items-center gap-3 px-3 py-2 mt-1 rounded-md hover:bg-gray-50 text-red-600 text-sm"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 font-bold text-sm hover:bg-red-50 transition-all"
               >
-                <LogOut size={18} />
+                <LogOut size={20} />
                 Logout
               </button>
             </nav>
           </div>
         </div>
       </aside>
-      <main className="md:ml-64">
-        <header className="bg-white border-b border-gray-200">
-          <div className="container-main py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button className="md:hidden p-2 rounded-md border border-gray-200" onClick={() => (document.getElementById('mobile-sidebar-toggle') as HTMLButtonElement)?.click()}>
+      <main className="md:ml-72 transition-all duration-300">
+        <header className="sticky top-0 z-30 glass-morphism border-b border-white/20">
+          <div className="container-main py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button className="md:hidden p-2.5 rounded-xl bg-white border border-gray-100 shadow-sm" onClick={() => (document.getElementById('mobile-sidebar-toggle') as HTMLButtonElement)?.click()}>
                 <Menu className="text-[#0A1F44]" />
               </button>
+              <div className="hidden sm:block">
+                <h1 className="text-xl font-black text-[#0A1F44] tracking-tight">Welcome back, {user?.fullName?.split(' ')[0]}!</h1>
+                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">@{user?.username}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
               <div className="relative">
-                <button className="p-2 rounded-md border border-gray-200" onClick={() => setNotifOpen((v) => !v)}>
-                  <Bell className="text-[#F97316]" />
+                <button className="w-11 h-11 flex items-center justify-center rounded-xl bg-white border border-gray-100 shadow-sm text-gray-500 hover:text-[#F97316] transition-colors relative" onClick={() => setNotifOpen((v) => !v)}>
+                  <Bell size={20} />
+                  {notifications.length > 0 && (
+                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#F97316] rounded-full border-2 border-white" />
+                  )}
                 </button>
-                {notifications.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                    {Math.min(notifications.length, 9)}
-                  </span>
-                )}
                 {notifOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-                    <div className="absolute right-0 top-10 z-50 w-[90vw] sm:w-80 bg-white border border-gray-200 rounded-lg shadow-lg">
-                      <div className="flex items-center justify-between px-3 py-2 border-b">
-                        <div className="text-sm font-semibold text-[#0A1F44]">Notifications</div>
-                        <button
-                          className="text-xs text-gray-500 hover:text-gray-700"
-                          onClick={() => clearNotifications()}
-                        >
-                          Clear all
-                        </button>
+                    <div className="absolute right-0 mt-3 z-50 w-80 bg-white border border-gray-100 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 bg-gray-50/50">
+                        <div className="text-sm font-black text-[#0A1F44] uppercase tracking-widest">Notifications</div>
+                        <button className="text-[10px] font-black text-gray-400 hover:text-[#F97316] uppercase tracking-widest" onClick={() => clearNotifications()}>Clear All</button>
                       </div>
-                      <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto">
+                      <div className="max-h-96 overflow-y-auto p-2">
                         {notifications.length === 0 ? (
-                          <div className="px-4 py-6 text-sm text-gray-500">No notifications</div>
+                          <div className="py-12 text-center">
+                            <Bell size={32} className="mx-auto text-gray-200 mb-2" />
+                            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">All caught up!</p>
+                          </div>
                         ) : (
                           notifications.map((n) => (
-                            <div key={n.id} className="px-4 py-3 border-b last:border-b-0">
+                            <div key={n.id} className="p-4 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 group">
                               <div className="flex items-start justify-between gap-3">
                                 <div>
-                                  <div className="text-sm font-medium">{n.title}</div>
-                                  {n.message && <div className="text-xs text-gray-600 mt-0.5">{n.message}</div>}
+                                  <div className="text-sm font-bold text-[#0A1F44]">{n.title}</div>
+                                  {n.message && <div className="text-xs text-gray-500 mt-1 font-medium">{n.message}</div>}
                                 </div>
-                                <button
-                                  className="text-xs text-gray-500 hover:text-gray-700"
-                                  onClick={() => removeNotification(n.id)}
-                                >
-                                  Dismiss
+                                <button className="p-1 text-gray-300 hover:text-red-500 transition-colors" onClick={() => removeNotification(n.id)}>
+                                  <X size={14} />
                                 </button>
                               </div>
                             </div>
@@ -159,15 +164,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </>
                 )}
               </div>
-              <div>
-                <div className="font-semibold text-[#0A1F44]">{user?.fullName || 'User'}</div>
-                <div className="text-sm text-gray-500">@{user?.username}</div>
-              </div>
+              
+              <div className="h-10 w-[1px] bg-gray-100 mx-2" />
+              
+              <WalletBalanceHeader />
             </div>
-            <WalletBalanceHeader />
-            </div>
+          </div>
         </header>
-        <div className="container-main py-6">
+        <div className="container-main py-8">
           {children}
         </div>
       </main>
@@ -187,14 +191,17 @@ function WalletBalanceHeader() {
   }, [show]);
   const amount = `₦${(user?.walletBalance || 0).toLocaleString()}`;
   return (
-    <div className="text-right">
-      <div className="flex items-center justify-end gap-2">
-        <div className="text-xs text-gray-500">Wallet Balance</div>
-        <button className="p-1 rounded-md border border-gray-200" onClick={() => setShow(s => !s)}>
-          {show ? <Eye size={16} /> : <EyeOff size={16} />}
-        </button>
+    <div className="bg-gray-50/50 px-4 py-2 rounded-2xl border border-gray-100 flex items-center gap-4 group">
+      <div className="text-right">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Balance</p>
+        <p className="text-lg font-black text-[#0A1F44] tracking-tight leading-none">{show ? amount : '••••••'}</p>
       </div>
-      <div className="text-2xl font-bold">{show ? amount : '••••••'}</div>
+      <button 
+        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-100 shadow-sm text-gray-400 hover:text-[#0A1F44] transition-all active:scale-90" 
+        onClick={() => setShow(s => !s)}
+      >
+        {show ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
     </div>
   );
 }
