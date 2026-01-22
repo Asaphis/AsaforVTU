@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 export default function FinancePage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -232,7 +233,6 @@ export default function FinancePage() {
           </CardContent>
         </Card>
       </div>
-    </div>
       <div className="grid gap-6">
         <Card className="border-none shadow-sm">
           <CardHeader>
