@@ -188,8 +188,8 @@ export default function Dashboard() {
                 </div>
                 {announcements.length > 1 && (
                   <div className="flex items-center gap-2 ml-3">
-                    <button onClick={prevAnnouncement} className="p-2 hover:bg-white/10 rounded-xl transition-colors"><ChevronLeft size={18} /></button>
-                    <button onClick={nextAnnouncement} className="p-2 hover:bg-white/10 rounded-xl transition-colors"><ChevronRight size={18} /></button>
+                    <button onClick={prevAnnouncement} className="p-1 hover:bg-white/10 rounded-full transition-colors"><ChevronLeft size={14} /></button>
+                    <button onClick={nextAnnouncement} className="p-1 hover:bg-white/10 rounded-full transition-colors"><ChevronRight size={14} /></button>
                   </div>
                 )}
               </div>
@@ -230,7 +230,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="dashboard-card flex flex-col justify-between overflow-hidden relative">
+          <div className="dashboard-card flex flex-col justify-between overflow-hidden relative border-none shadow-brand">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#F97316]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
             <div>
               <div className="flex items-center gap-4 mb-6">
@@ -266,7 +266,7 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="dashboard-card group relative overflow-hidden">
+          <div className="dashboard-card group relative overflow-hidden border-none shadow-brand">
             <div className="absolute top-0 right-0 w-24 h-24 bg-[#F97316]/5 rounded-full -mr-12 -mt-12 blur-2xl" />
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -292,7 +292,7 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div className="dashboard-card group relative overflow-hidden">
+          <div className="dashboard-card group relative overflow-hidden border-none shadow-brand">
             <div className="absolute top-0 right-0 w-24 h-24 bg-[#0A1F44]/5 rounded-full -mr-12 -mt-12 blur-2xl" />
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -344,7 +344,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="dashboard-card">
+        <div className="dashboard-card border-none shadow-brand">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-[#0A1F44]">
@@ -398,5 +398,4 @@ export default function Dashboard() {
         </div>
     </div>
   );
-}
 }

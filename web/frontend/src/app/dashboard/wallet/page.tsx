@@ -110,107 +110,152 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-3xl font-bold text-[#0A1F44]">My Wallet</h1>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-4xl font-black text-[#0A1F44] tracking-tight">My Wallet</h1>
+          <p className="text-gray-400 font-medium mt-1">Manage your funds and earnings</p>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Wallet */}
-        <div className="bg-[#0A1F44] text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+        <div className="lg:col-span-2 bg-gradient-to-br from-[#0A1F44] via-[#0D2B5D] to-[#0A1F44] text-white rounded-[2rem] p-10 shadow-2xl shadow-blue-900/20 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-[#F97316]/10 transition-colors duration-700" />
+          
           <div className="relative z-10">
-            <p className="text-blue-200 mb-2">Available Balance</p>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-4xl font-bold">{showMain ? format(balances.mainBalance) : '••••••'}</h2>
-              <button className="p-2 rounded-md bg-white/10" onClick={() => setShowMain(s => !s)}>
-                {showMain ? <Eye size={18} /> : <EyeOff size={18} />}
+            <p className="text-blue-200/80 font-medium tracking-wide mb-3 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#F97316] animate-ping" />
+              Main Wallet Balance
+            </p>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-6xl font-bold tracking-tight">
+                {showMain ? <span className="flex items-baseline gap-1"><span className="text-3xl font-medium text-blue-200/50">₦</span>{(balances.mainBalance || 0).toLocaleString()}</span> : '••••••'}
+              </h2>
+              <button 
+                className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/10 hover:bg-white/20 transition-all active:scale-90" 
+                onClick={() => setShowMain(s => !s)}
+              >
+                {showMain ? <EyeOff size={24} /> : <Eye size={24} />}
               </button>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
+            
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="relative flex-grow w-full sm:w-auto">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 font-bold text-lg">₦</span>
                 <input
                   type="number"
                   min={100}
                   step={50}
                   value={fundAmount}
                   onChange={(e) => setFundAmount(Number(e.target.value))}
-                  className="px-3 py-2 rounded-md bg-white/10 text-white placeholder:text-white/50 border border-white/20 w-40"
-                  placeholder="Amount"
+                  className="w-full pl-10 pr-4 py-4 rounded-2xl bg-white/10 text-white placeholder:text-white/30 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#F97316]/50 font-bold text-lg transition-all"
+                  placeholder="0.00"
                 />
-                <button
-                  className="bg-[#F97316] hover:bg-[#F97316]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"
-                  onClick={startFunding}
-                  disabled={funding}
-                  title="Pay via Flutterwave (Card/Bank/USSD)"
-                >
-                  <CreditCard size={16} /> {funding ? 'Starting...' : 'Pay via Flutterwave'}
-                </button>
               </div>
-              <p className="text-xs text-blue-200">Payment options: Card • Bank Transfer • USSD</p>
+              <button
+                className="w-full sm:w-auto btn-accent py-4 px-10 text-xs uppercase tracking-[0.2em] font-black shadow-xl shadow-[#F97316]/20"
+                onClick={startFunding}
+                disabled={funding}
+              >
+                {funding ? 'Processing...' : 'Add Funds'}
+              </button>
             </div>
+            <p className="mt-4 text-[10px] text-blue-200/50 font-black uppercase tracking-[0.2em] flex items-center gap-2">
+              <CreditCard size={12} /> Flutterwave Secured • Bank • Card • USSD
+            </p>
           </div>
-          <Wallet className="absolute right-4 bottom-4 text-white/10" size={120} />
         </div>
 
-        {/* Bonus Wallet */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-700">Cashback Balance</h3>
-            <div className="p-2 bg-green-50 rounded-full">
-              <ArrowRightLeft className="text-green-600" size={20} />
+        {/* Info Card */}
+        <div className="dashboard-card flex flex-col justify-between overflow-hidden relative border-none bg-white shadow-brand">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#F97316]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+          <div>
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-[#F97316] shadow-sm">
+                <ArrowRightLeft size={28} />
+              </div>
+              <div>
+                <h3 className="font-black text-[#0A1F44] text-xl tracking-tight">Quick Transfer</h3>
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Internal Movement</p>
+              </div>
+            </div>
+            <p className="text-gray-500 text-sm font-medium leading-relaxed">
+              Move your earned commissions and rewards from your secondary wallets to your main balance instantly.
+            </p>
+          </div>
+          <div className="mt-8 p-4 rounded-2xl bg-blue-50/50 border border-blue-100/50">
+            <div className="flex items-center gap-2 text-[#0A1F44]">
+              <Copy size={16} />
+              <span className="text-xs font-black uppercase tracking-widest">Code: {referralCode}</span>
             </div>
           </div>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-3xl font-bold text-[#0A1F44]">{showCashback ? format(balances.cashbackBalance) : '••••••'}</h2>
-            <button className="p-2 rounded-md border" onClick={() => setShowCashback(s => !s)}>
-              {showCashback ? <Eye size={18} /> : <EyeOff size={18} />}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Bonus Wallet */}
+        <div className="dashboard-card group relative overflow-hidden border-none shadow-brand">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-[#F97316]/5 rounded-full -mr-12 -mt-12 blur-2xl transition-all group-hover:scale-150" />
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h3 className="font-black text-[#0A1F44] text-xl tracking-tight">Cashback</h3>
+              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Transaction Rewards</p>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-orange-50 text-[#F97316] flex items-center justify-center group-hover:rotate-12 transition-all">
+              <ArrowRightLeft size={24} />
+            </div>
+          </div>
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl font-bold text-gray-300">₦</span>
+              <p className="text-4xl font-black text-[#0A1F44] tracking-tighter">
+                {showCashback ? (balances.cashbackBalance || 0).toLocaleString() : '••••••'}
+              </p>
+            </div>
+            <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 hover:bg-gray-100 transition-all" onClick={() => setShowCashback(s => !s)}>
+              {showCashback ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          <p className="text-sm text-gray-500">Earned from transactions</p>
-          <div className="mt-4">
-            <button
-              className="bg-[#F97316] hover:bg-[#ea6d0f] text-white px-4 py-2 rounded-md text-sm"
-              onClick={() => transfer('cashback')}
-              disabled={processing === 'cashback' || balances.cashbackBalance <= 0}
-            >
-              Transfer to Wallet
-            </button>
-          </div>
+          <button
+            className="w-full py-4 rounded-2xl bg-[#0A1F44] text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-[#0A1F44]/90 transition-all disabled:opacity-30 shadow-lg shadow-blue-900/10"
+            onClick={() => transfer('cashback')}
+            disabled={processing === 'cashback' || balances.cashbackBalance <= 0}
+          >
+            {processing === 'cashback' ? 'Transferring...' : 'Transfer to Wallet'}
+          </button>
         </div>
 
         {/* Referral Wallet */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-700">Referral Earnings</h3>
-            <div className="p-2 bg-purple-50 rounded-full">
-              <ArrowRightLeft className="text-purple-600" size={20} />
+        <div className="dashboard-card group relative overflow-hidden border-none shadow-brand">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-[#0A1F44]/5 rounded-full -mr-12 -mt-12 blur-2xl transition-all group-hover:scale-150" />
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h3 className="font-black text-[#0A1F44] text-xl tracking-tight">Referrals</h3>
+              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Network Earnings</p>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#0A1F44] flex items-center justify-center group-hover:-rotate-12 transition-all">
+              <ArrowRightLeft size={24} />
             </div>
           </div>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-3xl font-bold text-[#0A1F44]">{showReferral ? format(balances.referralBalance) : '••••••'}</h2>
-            <button className="p-2 rounded-md border" onClick={() => setShowReferral(s => !s)}>
-              {showReferral ? <Eye size={18} /> : <EyeOff size={18} />}
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl font-bold text-gray-300">₦</span>
+              <p className="text-4xl font-black text-[#0A1F44] tracking-tighter">
+                {showReferral ? (balances.referralBalance || 0).toLocaleString() : '••••••'}
+              </p>
+            </div>
+            <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 hover:bg-gray-100 transition-all" onClick={() => setShowReferral(s => !s)}>
+              {showReferral ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          <p className="text-sm text-gray-500">Earned from referrals</p>
-          <div className="mt-3 flex items-center gap-2">
-            <span className="text-sm text-gray-600">Referral Code:</span>
-            <span className="font-mono text-sm">{referralCode}</span>
-            <button
-              className="p-1 rounded-md border text-gray-700"
-              onClick={() => navigator.clipboard.writeText(referralCode)}
-              title="Copy"
-            >
-              <Copy size={14} />
-            </button>
-          </div>
-          <div className="mt-4">
-            <button
-              className="bg-[#F97316] hover:bg-[#ea6d0f] text-white px-4 py-2 rounded-md text-sm"
-              onClick={() => transfer('referral')}
-              disabled={processing === 'referral' || balances.referralBalance <= 0}
-            >
-              Transfer to Wallet
-            </button>
-          </div>
+          <button
+            className="w-full py-4 rounded-2xl bg-[#F97316] text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-[#F97316]/90 transition-all disabled:opacity-30 shadow-lg shadow-orange-900/10"
+            onClick={() => transfer('referral')}
+            disabled={processing === 'referral' || balances.referralBalance <= 0}
+          >
+            {processing === 'referral' ? 'Transferring...' : 'Transfer to Wallet'}
+          </button>
         </div>
       </div>
     </div>
