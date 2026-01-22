@@ -17,8 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Lock, Mail } from "lucide-react";
-// Use the brand logo
-const logoUrl = "/logo.png";
+// Use the copied admin logo in public assets
+const logoUrl = "/assets/IMG-20251201-WA0053.jpg";
 
 const formSchema = z.object({
   email: z.string().email({
