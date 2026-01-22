@@ -72,132 +72,120 @@ export default function TransactionsPage() {
   }, [transactions, filterType, filterStatus]);
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700 pb-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+    <div className="space-y-8 animate-in fade-in duration-500 text-slate-900">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-4xl font-black text-white tracking-tighter mb-2 italic">Operation Logs</h2>
-          <p className="text-slate-400 font-medium">
-            {context?.uid || context?.email ? "Selective trace for targeted node identification." : "Universal transaction matrix of all system events."}
+          <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Transactions</h2>
+          <p className="text-slate-500 font-medium">
+            {context?.uid || context?.email ? `Filtering logs for ${context.email || context.uid}` : "View and manage all system transactions."}
           </p>
         </div>
-        <div className="flex gap-4">
-          <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10 font-black rounded-2xl h-12 px-6 shadow-xl transition-all hover:scale-105 active:scale-95">
-            <Download className="mr-2 h-5 w-5 text-primary" />
-            Extract Archive
+        <div className="flex gap-3">
+          <Button variant="outline" className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl h-11 px-5 shadow-sm">
+            <Download className="mr-2 h-4 w-4 text-slate-400" />
+            Export CSV
           </Button>
         </div>
       </div>
 
-      <Card className="border-0 shadow-2xl bg-white/5 backdrop-blur-xl rounded-[2.5rem] ring-1 ring-white/10 overflow-hidden">
-        <CardHeader className="p-10 pb-6 bg-white/[0.02]">
-          <div className="flex flex-col lg:flex-row gap-6 justify-between items-center">
-            <div className="relative w-full lg:w-96 group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-primary transition-colors" />
-              <Input placeholder="Trace ID or Subject..." className="pl-14 h-14 bg-white/5 border-white/10 rounded-2xl text-white placeholder:text-slate-600 focus-visible:ring-primary/40 focus-visible:bg-white/10 transition-all duration-500" />
+      <Card className="border border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+        <CardHeader className="p-6 bg-slate-50/50 border-b border-slate-100">
+          <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
+            <div className="relative w-full lg:w-96">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input placeholder="Search Transaction ID..." className="pl-11 h-11 bg-white border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus-visible:ring-primary/20 transition-all" />
             </div>
-            <div className="flex items-center gap-4 w-full lg:w-auto">
+            <div className="flex items-center gap-3 w-full lg:w-auto">
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-[160px] h-14 bg-white/5 border-white/10 rounded-2xl text-white font-bold focus:ring-primary/40">
-                  <SelectValue placeholder="Node Type" />
+                <SelectTrigger className="w-[150px] h-11 bg-white border-slate-200 rounded-xl text-slate-700 font-medium">
+                  <SelectValue placeholder="All Services" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/10 rounded-2xl">
-                  <SelectItem value="all" className="font-bold">All Services</SelectItem>
+                <SelectContent>
+                  <SelectItem value="all">All Services</SelectItem>
                   <SelectItem value="airtime">Airtime</SelectItem>
-                  <SelectItem value="data">Data Stream</SelectItem>
-                  <SelectItem value="cable">Satellite TV</SelectItem>
-                  <SelectItem value="electricity">Power Grid</SelectItem>
+                  <SelectItem value="data">Data</SelectItem>
+                  <SelectItem value="cable">Cable TV</SelectItem>
+                  <SelectItem value="electricity">Electricity</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[160px] h-14 bg-white/5 border-white/10 rounded-2xl text-white font-bold focus:ring-primary/40">
-                  <SelectValue placeholder="Flow Status" />
+                <SelectTrigger className="w-[150px] h-11 bg-white border-slate-200 rounded-xl text-slate-700 font-medium">
+                  <SelectValue placeholder="All Status" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/10 rounded-2xl">
-                  <SelectItem value="all" className="font-bold">Universal</SelectItem>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="success">Success</SelectItem>
-                  <SelectItem value="pending">Queued</SelectItem>
-                  <SelectItem value="failed">Terminated</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Button variant="outline" size="icon" className="h-14 w-14 rounded-2xl border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10">
-                <Filter className="h-5 w-5" />
-              </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <div className="p-24 text-center">
-              <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Retrieving Secure Archives...</p>
+            <div className="p-12 text-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Loading Transactions...</p>
             </div>
           ) : (
           <Table>
-            <TableHeader className="bg-white/[0.01]">
-              <TableRow className="border-white/5 hover:bg-transparent">
-                <TableHead className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Trace ID</TableHead>
-                <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Initiator</TableHead>
-                <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Node</TableHead>
-                <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Magnitude</TableHead>
-                <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Timestamp</TableHead>
-                <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Status</TableHead>
-                <TableHead className="px-10 text-right text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Operations</TableHead>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow className="border-slate-100 hover:bg-transparent">
+                <TableHead className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Transaction ID</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">User</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Service</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Amount</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Date & Time</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Status</TableHead>
+                <TableHead className="px-6 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredTransactions.map((t) => (
-                <TableRow key={t.id} className="border-white/5 hover:bg-white/[0.03] transition-colors group">
-                  <TableCell className="px-10 py-6 font-mono text-[10px] text-slate-500 tracking-tighter italic">
-                    {t.id.slice(0, 16)}...
+                <TableRow key={t.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors">
+                  <TableCell className="px-6 py-4 font-mono text-xs text-slate-500">
+                    #{t.id.slice(0, 8)}
                   </TableCell>
-                  <TableCell className="text-sm font-black text-white group-hover:text-primary transition-colors tracking-tight">
-                    {t.userId || t.user || 'Platform'}
+                  <TableCell className="text-sm font-bold text-slate-900">
+                    {t.userId || t.user || 'System'}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        {t.type}
-                      </span>
-                    </div>
+                    <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 text-[10px] font-bold uppercase">
+                      {t.type}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="text-lg font-black text-white tracking-tighter">
+                  <TableCell className="text-sm font-bold text-slate-900">
                     ₦{Number(t.amount || 0).toLocaleString()}
                   </TableCell>
-                  <TableCell className="text-slate-400 text-xs font-medium opacity-60">
+                  <TableCell className="text-slate-500 text-xs font-medium">
                     {t.createdAt 
-                      ? new Date(t.createdAt._seconds ? t.createdAt._seconds * 1000 : t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })
+                      ? new Date(t.createdAt._seconds ? t.createdAt._seconds * 1000 : t.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                       : '—'}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={t.status === 'success' ? 'default' : t.status === 'pending' ? 'secondary' : 'destructive'} 
-                           className={cn(
-                             "px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border-0",
-                             t.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20' : 
-                             t.status === 'pending' ? 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20' : 
-                             'bg-red-500/10 text-red-400 ring-1 ring-red-500/20'
-                           )}>
+                    <Badge className={cn(
+                      "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border",
+                      t.status === 'success' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                      t.status === 'pending' ? 'bg-orange-50 text-orange-600 border-orange-100' : 
+                      'bg-red-50 text-red-600 border-red-100'
+                    )}>
                       {t.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="px-10 text-right">
+                  <TableCell className="px-6 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {t.status === 'failed' && (
-                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl bg-white/5 text-primary hover:bg-primary hover:text-white transition-all">
-                          <RotateCcw className="h-4 w-4" />
-                        </Button>
-                      )}
                       <Button 
                         variant="ghost" 
                         size="icon"
-                        className="h-10 w-10 rounded-xl bg-white/5 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all"
+                        className="h-9 w-9 rounded-lg text-slate-400 hover:text-primary hover:bg-slate-100"
                         onClick={() => { setSelectedTx(t); setIsReceiptOpen(true); }}
                       >
                         <Receipt className="h-4 w-4" />
                       </Button>
                       <Link href={`/transactions/${encodeURIComponent(t.id)}`}>
-                        <Button variant="outline" className="h-10 border-white/10 bg-white/5 text-white hover:bg-white/10 font-black text-[10px] px-4 rounded-xl uppercase tracking-widest">
+                        <Button variant="outline" className="h-9 border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg px-3">
                           Details
                         </Button>
                       </Link>

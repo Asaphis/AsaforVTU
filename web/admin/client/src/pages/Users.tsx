@@ -76,173 +76,120 @@ export default function UsersPage() {
   }, [users, searchTerm]);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+    <div className="space-y-6 animate-in fade-in duration-500 text-slate-900">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-4xl font-black text-white tracking-tighter mb-2">User Directory</h2>
-          <p className="text-slate-400 font-medium">Managing the platform's core community and access levels.</p>
+          <h2 className="text-3xl font-bold text-slate-900 tracking-tight">User Directory</h2>
+          <p className="text-slate-500 font-medium">Manage platform accounts and access levels.</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           <Dialog>
             <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90 text-white font-black rounded-2xl px-6 h-12 shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 border-0">
-                <UserPlus className="mr-2 h-5 w-5" />
-                Enroll New User
+              <Button className="bg-primary hover:bg-primary/90 text-white font-bold rounded-xl px-4 h-11 shadow-sm transition-all border-0">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Enroll User
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] bg-slate-900 border-white/10 text-white rounded-[2rem] shadow-3xl">
+            <DialogContent className="sm:max-w-[450px] bg-white border-slate-200 text-slate-900 rounded-2xl shadow-xl">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-black tracking-tight italic">Enroll Platform User</DialogTitle>
+                <DialogTitle className="text-xl font-bold tracking-tight">Enroll New User</DialogTitle>
               </DialogHeader>
               <AddUserForm onDone={async () => { await reloadUsers(); }} />
-            </DialogContent>
-          </Dialog>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10 font-black rounded-2xl px-6 h-12 shadow-xl transition-all hover:scale-105 active:scale-95">
-                <ShieldCheck className="mr-2 h-5 w-5 text-primary" />
-                Auth Admin
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] bg-slate-900 border-white/10 text-white rounded-[2rem] shadow-3xl">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-black tracking-tight italic">Authorize New Admin</DialogTitle>
-              </DialogHeader>
-              <AddAdminForm />
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      <Card className="border-0 shadow-2xl bg-white/5 backdrop-blur-xl rounded-[2.5rem] ring-1 ring-white/10 overflow-hidden">
-        <CardHeader className="p-10 pb-6 bg-white/[0.02]">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <Card className="border border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+        <CardHeader className="p-6 bg-slate-50/50 border-b border-slate-100">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-2xl font-black text-white tracking-tight">Active Accounts</CardTitle>
-              <CardDescription className="text-slate-500 font-medium mt-1 uppercase tracking-widest text-[10px]">
-                Comprehensive list of registered ecosystem members
-              </CardDescription>
+              <CardTitle className="text-lg font-bold text-slate-900">Active Accounts</CardTitle>
             </div>
-            <div className="flex items-center gap-4 w-full md:w-auto">
-              <div className="relative flex-1 md:w-80 group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-primary transition-colors" />
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="relative flex-1 md:w-64 group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
                 <Input
-                  placeholder="Identify user..."
-                  className="pl-12 h-12 bg-white/5 border-white/10 rounded-2xl text-white placeholder:text-slate-600 focus-visible:ring-primary/40 focus-visible:bg-white/10 transition-all duration-500"
+                  placeholder="Search users..."
+                  className="pl-10 h-10 bg-white border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus-visible:ring-primary/20 transition-all"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all">
-                <Filter className="h-5 w-5" />
-              </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <div className="p-20 text-center">
-              <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Syncing with database...</p>
+            <div className="p-12 text-center">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Users...</p>
             </div>
           ) : (
           <Table>
-            <TableHeader className="bg-white/[0.01]">
-              <TableRow className="border-white/5 hover:bg-transparent">
-                <TableHead className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Identity</TableHead>
-                <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Communication</TableHead>
-                <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Onboarding</TableHead>
-                <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Liquidity</TableHead>
-                <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Status</TableHead>
-                <TableHead className="px-10 text-right text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Operations</TableHead>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow className="border-slate-100 hover:bg-transparent">
+                <TableHead className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Identity</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Communication</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Liquidity</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Status</TableHead>
+                <TableHead className="px-6 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.map((user) => (
-                <TableRow key={user.id} className="border-white/5 hover:bg-white/[0.03] transition-colors group">
-                  <TableCell className="px-10 py-6">
-                    <div className="flex flex-col">
-                      <span className="text-base font-black text-white group-hover:text-primary transition-colors tracking-tight">
-                        {user.displayName || user.fullName || user.email || user.uid}
-                      </span>
-                    </div>
+                <TableRow key={user.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors">
+                  <TableCell className="px-6 py-4">
+                    <span className="text-sm font-bold text-slate-900">
+                      {user.displayName || user.fullName || user.email || user.uid}
+                    </span>
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-400 opacity-60 group-hover:opacity-100 transition-opacity">
+                  <TableCell className="text-xs text-slate-500 font-medium">
                     {user.email || '—'}
                   </TableCell>
-                  <TableCell className="text-slate-400 text-sm font-medium">
-                    {user.joinedAt ? new Date(user.joinedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-                  </TableCell>
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-lg font-black text-white tracking-tighter">₦{Number(user.walletBalance || 0).toLocaleString()}</span>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-1">Main Wallet</span>
-                    </div>
+                    <span className="text-sm font-bold text-slate-900">₦{Number(user.walletBalance || 0).toLocaleString()}</span>
                   </TableCell>
                   <TableCell>
                     <Badge variant={user.status === 'inactive' ? 'secondary' : 'default'} 
                            className={cn(
-                             "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border-0",
-                             user.status !== 'inactive' ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20' : 'bg-slate-500/10 text-slate-400 ring-1 ring-slate-500/20'
+                             "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider",
+                             user.status !== 'inactive' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-50 text-slate-500 border border-slate-100'
                            )}>
-                      {user.status === 'inactive' ? 'Suspended' : 'Operational'}
+                      {user.status === 'inactive' ? 'Suspended' : 'Active'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="px-10 text-right">
+                  <TableCell className="px-6 text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-12 w-12 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all">
-                          <MoreHorizontal className="h-6 w-6" />
+                        <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 rounded-lg">
+                          <MoreHorizontal className="h-4 w-4 text-slate-400" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-64 rounded-3xl bg-slate-900 border-white/10 shadow-3xl text-slate-300">
-                        <DropdownMenuLabel className="px-5 py-4 text-white font-black text-sm uppercase tracking-widest">User Control</DropdownMenuLabel>
-                        <DropdownMenuSeparator className="bg-white/5" />
-                        <DropdownMenuItem className="px-5 py-3.5 rounded-2xl focus:bg-white/10 focus:text-white cursor-pointer" onClick={() => {
+                      <DropdownMenuContent align="end" className="w-56 rounded-xl bg-white border-slate-200 shadow-lg text-slate-600">
+                        <DropdownMenuLabel className="text-xs font-bold text-slate-400 uppercase tracking-widest px-4 py-3">Management</DropdownMenuLabel>
+                        <DropdownMenuSeparator className="bg-slate-100" />
+                        <DropdownMenuItem className="px-4 py-2.5 hover:bg-slate-50 cursor-pointer" onClick={() => {
                             const targetUid = String(user.uid || user.id || "");
                             if (!targetUid) return;
                             setLocation(`/users/${encodeURIComponent(targetUid)}`);
-                          }}>View Profile Intelligence</DropdownMenuItem>
-                        <DropdownMenuItem className="px-5 py-3.5 rounded-2xl focus:bg-white/10 focus:text-white cursor-pointer" onClick={() => {
-                            const qs = new URLSearchParams({ uid: String(user.uid || user.id || ""), email: String(user.email || "") }).toString();
-                            setLocation(`/transactions?${qs}`);
-                          }}>Audit Transactions</DropdownMenuItem>
-                        <DropdownMenuItem className="px-5 py-3.5 rounded-2xl focus:bg-white/10 focus:text-white cursor-pointer" onClick={() => {
+                          }}>View Profile</DropdownMenuItem>
+                        <DropdownMenuItem className="px-4 py-2.5 hover:bg-slate-50 cursor-pointer" onClick={() => {
                             const userId = String(user.email || user.uid || user.id || "");
                             const qs = new URLSearchParams({ userId }).toString();
                             setLocation(`/wallet?${qs}`);
-                          }}>Inject Liquidity</DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-white/5" />
-                        <DropdownMenuItem className="px-5 py-3.5 rounded-2xl focus:bg-primary/20 focus:text-primary cursor-pointer font-bold" onClick={async () => {
-                            try {
-                              const res = await promoteAdmin({ uid: user.uid || user.id, email: user.email });
-                              toast({ title: 'Authorization Successful', description: `User ${res.email || user.email} is now an Admin.` });
-                              await reloadUsers();
-                            } catch (e: any) {
-                              toast({ title: 'Auth Failed', description: e.message, variant: 'destructive' });
-                            }
-                          }}>Elevate to Admin</DropdownMenuItem>
-                        <DropdownMenuItem className="px-5 py-3.5 rounded-2xl focus:bg-white/10 focus:text-white cursor-pointer" onClick={async () => {
-                            const pwd = prompt('Set new cryptographic password');
-                            if (!pwd) return;
-                            try {
-                              const res = await updateUserPassword({ uid: user.uid || user.id, email: user.email, password: pwd });
-                              toast({ title: 'Credential Reset', description: `Credentials updated for ${res.email || user.email}` });
-                            } catch (e: any) {
-                              toast({ title: 'Update Failed', description: e.message, variant: 'destructive' });
-                            }
-                          }}>Reset Credentials</DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-white/5" />
-                        <DropdownMenuItem className="px-5 py-3.5 rounded-2xl text-red-400 focus:bg-red-500/10 focus:text-red-400 font-bold cursor-pointer" onClick={async () => {
+                          }}>Manage Wallet</DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-slate-100" />
+                        <DropdownMenuItem className="px-4 py-2.5 text-red-600 hover:bg-red-50 cursor-pointer font-bold" onClick={async () => {
                             try {
                               const res = await suspendUser({ uid: user.uid || user.id, email: user.email, suspend: !(user.status === 'inactive') });
                               toast({ title: res.disabled ? 'Account Suspended' : 'Account Restored' });
                               await reloadUsers();
                             } catch (e: any) {
-                              toast({ title: 'Operation Failed', description: e.message, variant: 'destructive' });
+                              toast({ title: 'Action Failed', description: e.message, variant: 'destructive' });
                             }
                           }}>
-                          {user.status === 'inactive' ? 'Unblock User' : 'Suspend Operations'}
+                          {user.status === 'inactive' ? 'Unblock User' : 'Suspend Account'}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

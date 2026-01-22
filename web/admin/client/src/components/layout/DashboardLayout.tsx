@@ -49,19 +49,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex min-h-screen bg-[#0F172A] selection:bg-primary/30">
-      {/* Background Mesh Gradients */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-40">
-        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full animate-pulse" />
-        <div className="absolute top-[40%] -right-[10%] w-[30%] h-[30%] bg-indigo-500/10 blur-[100px] rounded-full" />
-        <div className="absolute -bottom-[10%] left-[20%] w-[35%] h-[35%] bg-purple-500/10 blur-[110px] rounded-full" />
-      </div>
-
+    <div className="flex min-h-screen bg-slate-50 selection:bg-primary/30 text-slate-900">
       <Sidebar />
       <div className="flex flex-1 flex-col pl-72 transition-all duration-300 relative z-10">
         <Topbar />
-        <main className="flex-1 overflow-y-auto p-8 md:p-12">
-          <div className="mx-auto max-w-7xl animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <main className="flex-1 overflow-y-auto p-6 md:p-10">
+          <div className="mx-auto max-w-7xl">
             {children}
           </div>
         </main>

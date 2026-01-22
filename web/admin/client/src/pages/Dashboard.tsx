@@ -93,120 +93,107 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-12 pb-12 animate-in fade-in duration-1000">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-8 pb-12 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-5xl font-black text-white tracking-tighter mb-2">
-            System <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-400">Insights</span>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+            Dashboard Overview
           </h1>
-          <p className="text-slate-400 text-lg font-medium">Real-time platform overview and health metrics.</p>
+          <p className="text-slate-500 font-medium">Monitoring platform health and performance.</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3 bg-white/5 backdrop-blur-xl px-5 py-3 rounded-2xl border border-white/10 shadow-2xl">
-            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
-            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-300">Operational</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200">
+            <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-600">System Online</span>
           </div>
-          <button className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-2xl font-black text-sm transition-all shadow-xl shadow-primary/20 hover:scale-105 active:scale-95">
-            Refresh Data
-          </button>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {cards.map((card, i) => (
-          <Card key={i} className="border-0 shadow-2xl bg-white/5 backdrop-blur-xl hover:bg-white/[0.08] transition-all duration-500 rounded-[2.5rem] group overflow-hidden relative ring-1 ring-white/10">
-            <div className={cn("absolute top-0 left-0 w-1 h-full opacity-50", card.color.replace('text', 'bg'))} />
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-8">
-              <CardTitle className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400">
+          <Card key={i} className="border border-slate-200 shadow-sm bg-white hover:shadow-md transition-all duration-200 rounded-2xl overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 {card.title}
               </CardTitle>
-              <div className={cn("p-3.5 rounded-2xl transition-all duration-500 group-hover:scale-110 shadow-2xl", card.bg.replace('/50', '/20'), "bg-white/5")}>
-                <card.icon className={cn("h-6 w-6", card.color)} />
+              <div className={cn("p-2 rounded-lg bg-slate-50")}>
+                <card.icon className={cn("h-5 w-5", card.color)} />
               </div>
             </CardHeader>
-            <CardContent className="px-8 pb-8">
-              <div className="text-4xl font-black text-white tracking-tighter">
-                {isLoading ? <Skeleton className="h-10 w-28 bg-white/5" /> : card.value}
+            <CardContent className="px-6 pb-6">
+              <div className="text-2xl font-bold text-slate-900">
+                {isLoading ? <Skeleton className="h-8 w-24 bg-slate-100" /> : card.value}
               </div>
-              <div className="flex items-center mt-4">
+              <div className="flex items-center mt-2">
                 <span className={cn(
-                  "flex items-center text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl border border-white/5",
-                  card.trendUp ? "text-emerald-400 bg-emerald-500/10" : "text-red-400 bg-red-500/10"
+                  "flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full",
+                  card.trendUp ? "text-emerald-600 bg-emerald-50" : "text-red-600 bg-red-50"
                 )}>
-                  {card.trendUp ? <ArrowUpRight size={12} className="mr-1.5" /> : <ArrowDownRight size={12} className="mr-1.5" />}
+                  {card.trendUp ? <ArrowUpRight size={10} className="mr-1" /> : <ArrowDownRight size={10} className="mr-1" />}
                   {card.trend}
                 </span>
-                <span className="text-[10px] text-slate-500 ml-4 font-black uppercase tracking-widest opacity-60">vs last week</span>
+                <span className="text-[10px] text-slate-400 ml-2">from last week</span>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-7">
-        <Card className="lg:col-span-4 border-0 shadow-2xl bg-white/5 backdrop-blur-xl rounded-[2.5rem] overflow-hidden ring-1 ring-white/10">
-          <CardHeader className="flex flex-row items-center justify-between p-10 pb-4">
-            <div>
-              <CardTitle className="text-2xl font-black text-white tracking-tight">Revenue Stream</CardTitle>
-              <p className="text-sm text-slate-400 font-medium mt-1">Platform earnings performance</p>
-            </div>
-            <div className="p-4 rounded-2xl bg-white/5 text-primary ring-1 ring-white/10">
-              <BarChart3 size={24} />
-            </div>
+      <div className="grid gap-6 lg:grid-cols-7">
+        <Card className="lg:col-span-4 border border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="p-6 pb-2">
+            <CardTitle className="text-xl font-bold text-slate-900">Revenue Analysis</CardTitle>
+            <p className="text-sm text-slate-500 font-medium">Platform earnings over time</p>
           </CardHeader>
-          <CardContent className="p-10 pt-4">
-            <div className="h-[400px] w-full">
+          <CardContent className="p-6">
+            <div className="h-[350px] w-full">
               {isLoading ? (
-                <Skeleton className="h-full w-full rounded-3xl bg-white/5" />
+                <Skeleton className="h-full w-full rounded-xl bg-slate-50" />
               ) : chartData.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-4">
-                  <Activity size={56} className="opacity-10" />
-                  <p className="text-sm font-black uppercase tracking-widest opacity-30">Generating data matrix...</p>
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
+                  <Activity size={40} className="opacity-20" />
+                  <p className="text-xs font-bold uppercase tracking-widest opacity-40">No data available</p>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData}>
                     <defs>
                       <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis 
                       dataKey="name" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fill: '#64748B', fontSize: 11, fontWeight: 800 }}
-                      dy={15}
+                      tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }}
+                      dy={10}
                     />
                     <YAxis 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fill: '#64748B', fontSize: 11, fontWeight: 800 }}
+                      tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }}
                       tickFormatter={(value: number) => `₦${(value/1000).toFixed(0)}k`}
                     />
                     <Tooltip 
                       contentStyle={{ 
-                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                        backdropFilter: 'blur(16px)',
-                        borderRadius: '24px', 
-                        border: '1px solid rgba(255,255,255,0.1)', 
-                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', 
-                        fontWeight: 'black',
-                        padding: '20px',
-                        color: 'white'
+                        backgroundColor: '#fff',
+                        borderRadius: '12px', 
+                        border: '1px solid #e2e8f0', 
+                        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', 
+                        padding: '12px',
+                        fontSize: '12px'
                       }}
-                      itemStyle={{ color: 'white' }}
                     />
                     <Area 
                       type="monotone" 
                       dataKey="total" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={6}
+                      stroke="#3b82f6" 
+                      strokeWidth={3}
                       fillOpacity={1} 
                       fill="url(#colorTotal)" 
-                      animationDuration={2000}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -215,39 +202,39 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-3 border-0 shadow-2xl bg-white/5 backdrop-blur-xl rounded-[2.5rem] overflow-hidden ring-1 ring-white/10">
-          <CardHeader className="p-10 pb-4">
-            <CardTitle className="text-2xl font-black text-white tracking-tight">Recent Activity</CardTitle>
-            <p className="text-sm text-slate-400 font-medium mt-1">Real-time transaction feed</p>
+        <Card className="lg:col-span-3 border border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="p-6 pb-2">
+            <CardTitle className="text-xl font-bold text-slate-900">Recent Transactions</CardTitle>
+            <p className="text-sm text-slate-500 font-medium">Latest platform activity</p>
           </CardHeader>
-          <CardContent className="p-10 pt-4">
-            <div className="space-y-8">
+          <CardContent className="p-6">
+            <div className="space-y-6">
               {isLoading ? (
-                Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-2xl bg-white/5" />)
+                Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl bg-slate-50" />)
               ) : recent.length > 0 ? (
                 recent.map((tx: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between group cursor-pointer border-b border-white/5 pb-6 last:border-0 last:pb-0">
-                    <div className="flex items-center gap-5">
+                  <div key={i} className="flex items-center justify-between border-b border-slate-100 pb-4 last:border-0 last:pb-0">
+                    <div className="flex items-center gap-4">
                       <div className={cn(
-                        "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-xl group-hover:scale-110 group-hover:rotate-3",
-                        tx.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20' : 'bg-orange-500/10 text-orange-400 ring-1 ring-orange-500/20'
+                        "w-10 h-10 rounded-xl flex items-center justify-center bg-slate-50",
+                        tx.status === 'success' ? 'text-emerald-500' : 'text-orange-500'
                       )}>
-                        <Activity size={24} />
+                        <Activity size={18} />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-base font-black text-white group-hover:text-primary transition-colors truncate max-w-[140px] tracking-tight">
-                          {tx.user || tx.user_email || "Platform User"}
+                        <span className="text-sm font-bold text-slate-900 truncate max-w-[120px]">
+                          {tx.user || tx.user_email || "User"}
                         </span>
-                        <span className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mt-1.5 flex items-center gap-2">
-                          {tx.type} <span className="h-1 w-1 rounded-full bg-slate-700" /> {new Date(tx.createdAt?._seconds ? tx.createdAt._seconds * 1000 : tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">
+                          {tx.type} • {new Date(tx.createdAt?._seconds ? tx.createdAt._seconds * 1000 : tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
                     </div>
                     <div className="text-right flex flex-col items-end">
-                      <span className="text-lg font-black text-white tracking-tighter">₦{tx.amount?.toLocaleString()}</span>
+                      <span className="text-sm font-bold text-slate-900">₦{tx.amount?.toLocaleString()}</span>
                       <span className={cn(
-                        "text-[9px] font-black uppercase tracking-[0.25em] mt-2 px-3 py-1 rounded-lg border",
-                        tx.status === 'success' ? 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5' : 'border-orange-500/20 text-orange-400 bg-orange-500/5'
+                        "text-[9px] font-bold uppercase tracking-wider mt-1 px-2 py-0.5 rounded-md",
+                        tx.status === 'success' ? 'text-emerald-600 bg-emerald-50' : 'text-orange-600 bg-orange-50'
                       )}>
                         {tx.status}
                       </span>
@@ -255,14 +242,14 @@ export default function Dashboard() {
                   </div>
                 ))
               ) : (
-                <div className="py-24 text-center">
-                  <Activity size={64} className="mx-auto text-white/5 mb-6" />
-                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Neural link empty</p>
+                <div className="py-12 text-center">
+                  <Activity size={32} className="mx-auto text-slate-200 mb-4" />
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">No recent activity</p>
                 </div>
               )}
             </div>
-            <button className="w-full mt-12 py-5 bg-white/5 rounded-2xl text-[11px] font-black text-slate-400 uppercase tracking-[0.25em] hover:bg-primary hover:text-white transition-all duration-500 shadow-xl hover:shadow-primary/30 ring-1 ring-white/10 border-0">
-              Analyze Full Archive
+            <button className="w-full mt-8 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-all">
+              View All Transactions
             </button>
           </CardContent>
         </Card>
