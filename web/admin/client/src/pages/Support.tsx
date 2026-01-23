@@ -180,42 +180,40 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-[#0F172A] overflow-hidden animate-in fade-in duration-700">
-      {/* Header Bar */}
-      <div className="flex items-center justify-between px-10 py-6 bg-white/5 backdrop-blur-xl border-b border-white/10 z-20 shadow-2xl">
+    <div className="space-y-8 pb-8">
+      <div className="flex items-center justify-between p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-black text-white flex items-center gap-3 italic tracking-tighter">
-             <ShieldCheck className="w-8 h-8 text-primary shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
-             Command Center Support
+          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3 tracking-tight">
+             <ShieldCheck className="w-7 h-7 text-primary" />
+             Support Center
           </h1>
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1 opacity-70">Real-time Node Communication & Broadcasts</p>
+          <p className="text-slate-500 font-medium mt-1">Real-time communication and announcements.</p>
         </div>
         <div className="flex items-center gap-4">
-          <Badge className="bg-primary/10 text-primary border border-primary/20 px-4 py-1.5 font-black text-[10px] rounded-xl uppercase tracking-widest">
+          <Badge className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-3 py-1.5 font-bold text-[10px] rounded-xl uppercase tracking-wider">
             {tickets.filter(t => t.status === 'open').length} Active Traces
           </Badge>
-          <Badge className="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-4 py-1.5 font-black text-[10px] rounded-xl uppercase tracking-widest">
+          <Badge className="bg-orange-50 text-orange-600 border border-orange-100 px-3 py-1.5 font-bold text-[10px] rounded-xl uppercase tracking-wider">
             {announcements.length} Signal Broadcasts
           </Badge>
         </div>
       </div>
 
-      <Tabs defaultValue="tickets" className="flex-grow flex flex-col overflow-hidden">
-        <div className="px-10 bg-white/[0.02] border-b border-white/5 z-10">
-          <TabsList className="bg-transparent h-14 gap-10">
-            <TabsTrigger value="tickets" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent px-0 font-black text-[11px] uppercase tracking-[0.25em] text-slate-500 data-[state=active]:text-white transition-all">Support Traces</TabsTrigger>
-            <TabsTrigger value="announcements" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent px-0 font-black text-[11px] uppercase tracking-[0.25em] text-slate-500 data-[state=active]:text-white transition-all">Broadcast Hub</TabsTrigger>
+      <Tabs defaultValue="tickets" className="space-y-4">
+        <div className="px-0">
+          <TabsList className="bg-white border border-slate-200 p-1.5 rounded-xl">
+            <TabsTrigger value="tickets" className="rounded-lg px-4 h-9 text-xs font-bold uppercase tracking-wider data-[state=active]:bg-slate-100 transition-all">Support Traces</TabsTrigger>
+            <TabsTrigger value="announcements" className="rounded-lg px-4 h-9 text-xs font-bold uppercase tracking-wider data-[state=active]:bg-slate-100 transition-all">Broadcast Hub</TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="tickets" className="flex-grow flex overflow-hidden m-0">
+        <TabsContent value="tickets" className="m-0">
           <div className="flex w-full overflow-hidden relative">
-            {/* Left Sidebar - Ticket List */}
-            <div className={`w-full md:w-[400px] flex flex-col bg-[#0F172A] border-r border-white/5 z-10 transition-all duration-300 ${selectedTicket ? 'hidden md:flex' : 'flex'}`}>
-              <div className="p-6 border-b border-white/5 bg-white/[0.01]">
+            <div className={`w-full md:w-[400px] flex flex-col bg-white border-r border-slate-100 z-10 transition-all duration-300 ${selectedTicket ? 'hidden md:flex' : 'flex'}`}>
+              <div className="p-6 border-b border-slate-100 bg-white">
                 <div className="relative group">
-                  <History className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-primary transition-colors" />
-                  <div className="pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-inner">
+                  <History className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+                  <div className="pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     Communication Archives
                   </div>
                 </div>

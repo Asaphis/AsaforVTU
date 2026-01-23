@@ -72,7 +72,7 @@ export default function TransactionsPage() {
   }, [transactions, filterType, filterStatus]);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 text-slate-900">
+    <div className="space-y-8 text-slate-900">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Transactions</h2>
@@ -97,7 +97,7 @@ export default function TransactionsPage() {
             </div>
             <div className="flex items-center gap-3 w-full lg:w-auto">
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-[150px] h-11 bg-white border-slate-200 rounded-xl text-slate-700 font-medium">
+                <SelectTrigger className="w-[160px] h-11 bg-white border-slate-200 rounded-xl text-slate-700 font-medium">
                   <SelectValue placeholder="All Services" />
                 </SelectTrigger>
                 <SelectContent>
@@ -110,7 +110,7 @@ export default function TransactionsPage() {
               </Select>
 
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[150px] h-11 bg-white border-slate-200 rounded-xl text-slate-700 font-medium">
+                <SelectTrigger className="w-[160px] h-11 bg-white border-slate-200 rounded-xl text-slate-700 font-medium">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
