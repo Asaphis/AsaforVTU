@@ -6,7 +6,7 @@ const verifyToken = async (req, res, next) => {
     if (!firebaseInitialized || !auth) {
       console.error('[Auth Middleware] Firebase not initialized');
       // Fallback: allow admin requests using X-Admin-Email allowlist
-      const allowed = (process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || 'osglimited7@gmail.com')
+      const allowed = (process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || 'osglimited7@gmail.com, asaphis.org@gmail.com')
         .split(',')
         .map((s) => s.trim().toLowerCase())
         .filter(Boolean);
@@ -92,7 +92,7 @@ const isAdmin = async (req, res, next) => {
       });
     }
 
-    const allowed = (process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || 'osglimited7@gmail.com')
+    const allowed = (process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || 'osglimited7@gmail.com, asaphis.org@gmail.com')
       .split(',')
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean);

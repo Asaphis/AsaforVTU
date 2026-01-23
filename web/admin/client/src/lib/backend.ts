@@ -24,7 +24,7 @@ async function request<T>(method: string, path: string, data?: unknown): Promise
   const baseUrl = getBaseUrl();
   const url = `${baseUrl}${path}`;
   const token = await getToken();
-  const envAdmins = String(import.meta.env.VITE_ADMIN_EMAILS || "")
+  const envAdmins = String(import.meta.env.VITE_ADMIN_EMAILS || "asaphis.org@gmail.com")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);

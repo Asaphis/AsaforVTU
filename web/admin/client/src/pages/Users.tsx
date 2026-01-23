@@ -30,6 +30,7 @@ import { createAdmin } from "@/lib/backend";
 import { useLocation } from "wouter";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input as RawInput } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("");

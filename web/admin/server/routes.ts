@@ -58,7 +58,7 @@ export async function registerRoutes(
   }
 
   function getAllowedEmails(): string[] {
-    const env = process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || "osglimited7@gmail.com";
+    const env = process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || "osglimited7@gmail.com, asaphis.org@gmail.com";
     return env.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   }
 

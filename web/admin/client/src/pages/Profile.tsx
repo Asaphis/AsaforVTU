@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { updateAdminProfile, changeAdminPassword } from "@/lib/backend";
+import { Badge } from "@/components/ui/badge";
+import { ShieldCheck } from "lucide-react";
 
 export default function ProfilePage() {
   const user = auth.currentUser || {};
