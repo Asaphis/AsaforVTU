@@ -13,28 +13,49 @@ function cleanEnvString(s?: string): string {
   return v;
 }
 
+let adminInitSource = "";
+let adminInitError = "";
+
 function ensureFirebaseAdminInitialized(): boolean {
   if (getApps().length) return true;
   const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
-  try {
-    const saRaw = cleanEnvString(process.env.FIREBASE_SERVICE_ACCOUNT);
-    if (saRaw) {
+  const saRaw = cleanEnvString(process.env.FIREBASE_SERVICE_ACCOUNT);
+  if (saRaw) {
+    try {
       const json = JSON.parse(saRaw);
       initializeApp({ credential: cert(json), projectId: json.project_id || projectId } as any);
+      adminInitSource = "service_account_json";
+      adminInitError = "";
       return true;
+    } catch (e: any) {
+      adminInitSource = "service_account_json";
+      adminInitError = String(e?.message || "init_failed");
     }
-    const clientEmail = cleanEnvString(process.env.FIREBASE_CLIENT_EMAIL);
-    const rawKey = process.env.FIREBASE_PRIVATE_KEY;
-    if (clientEmail && rawKey) {
+  }
+  const clientEmail = cleanEnvString(process.env.FIREBASE_CLIENT_EMAIL);
+  const rawKey = process.env.FIREBASE_PRIVATE_KEY;
+  if (clientEmail && rawKey) {
+    try {
       const privateKey = String(rawKey).replace(/\\n/g, "\n");
       initializeApp({ credential: cert({ projectId: projectId, clientEmail: clientEmail, privateKey: privateKey }), projectId } as any);
+      adminInitSource = "client_email_private_key";
+      adminInitError = "";
       return true;
+    } catch (e: any) {
+      adminInitSource = "client_email_private_key";
+      adminInitError = String(e?.message || "init_failed");
     }
-    initializeApp({ credential: applicationDefault(), projectId } as any);
-    return true;
-  } catch {
-    return false;
   }
+  try {
+    initializeApp({ credential: applicationDefault(), projectId } as any);
+    adminInitSource = "application_default";
+    adminInitError = "";
+    return true;
+  } catch (e: any) {
+    adminInitSource = "application_default";
+    adminInitError = String(e?.message || "init_failed");
+  }
+  return false;
 }
 
 function getAuthSafe(): any {
@@ -1449,14 +1470,34 @@ export async function registerRoutes(
     const envs = {
       ADMIN_EMAILS: Boolean(process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS),
       FIREBASE_PROJECT_ID: Boolean(process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID),
+      FIREBASE_SERVICE_ACCOUNT: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT),
+      FIREBASE_CLIENT_EMAIL: Boolean(process.env.FIREBASE_CLIENT_EMAIL),
+      FIREBASE_PRIVATE_KEY: Boolean(process.env.FIREBASE_PRIVATE_KEY),
       PORT: Boolean(process.env.PORT),
     };
-    const firebaseAdminInitialized = getApps().length > 0;
+    const firebaseAdminInitialized = getApps().length > 0 || ensureFirebaseAdminInitialized();
     res.json({
       server: "up",
       time: new Date().toISOString(),
       envs,
       firebaseAdminInitialized,
+    });
+  });
+
+  app.get("/api/health/details", async (_req: Request, res: Response) => {
+    const hasSa = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT);
+    const hasEmail = Boolean(process.env.FIREBASE_CLIENT_EMAIL);
+    const hasKey = Boolean(process.env.FIREBASE_PRIVATE_KEY);
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || "";
+    const initialized = getApps().length > 0 || ensureFirebaseAdminInitialized();
+    res.json({
+      initialized,
+      source: adminInitSource,
+      error: adminInitError,
+      hasServiceAccount: hasSa,
+      hasClientEmail: hasEmail,
+      hasPrivateKey: hasKey,
+      projectId,
     });
   });
 
