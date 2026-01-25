@@ -280,25 +280,44 @@ export async function registerRoutes(
         status: u.disabled ? "inactive" : "active",
       }));
     } catch (authError: any) {
-      console.error("[Admin API] Auth listUsers failed:", authError.message);
+      console.error("[Admin API] Auth listUsers failed, falling back to multiple collections:", authError.message);
       try {
-        const snap = await db.collection("users").orderBy("createdAt", "desc").limit(limit).get();
-        console.log(`[Admin API] Found ${snap.docs.length} users from Firestore fallback`);
-        baseUsers = snap.docs.map((d) => {
-          const x: any = d.data() || {};
-          return {
-            id: d.id,
-            uid: x.uid || d.id,
-            displayName: x.displayName || x.name || x.fullName || "",
-            email: x.email || "",
-            phone: x.phone || x.phoneNumber || "",
-            joinedAt: x.createdAt || x.timestamp || "",
-            status: (x.disabled || x.status === "inactive" || x.status === "suspended") ? "inactive" : "active",
-          };
+        const colls = ["users", "wallets", "user_wallets", "profiles"];
+        for (const c of colls) {
+          try {
+            const snap = await db.collection(c).limit(limit).get();
+            if (!snap.empty) {
+              console.log(`[Admin API] Found ${snap.docs.length} users from ${c} fallback`);
+              const fallbackUsers = snap.docs.map((d) => {
+                const x: any = d.data() || {};
+                return {
+                  id: d.id,
+                  uid: x.uid || x.userId || d.id,
+                  displayName: x.displayName || x.name || x.fullName || x.email || d.id,
+                  email: x.email || "",
+                  phone: x.phone || x.phoneNumber || "",
+                  joinedAt: x.createdAt || x.timestamp || "",
+                  status: (x.disabled || x.status === "inactive" || x.status === "suspended") ? "inactive" : "active",
+                };
+              });
+              baseUsers = [...baseUsers, ...fallbackUsers];
+            }
+          } catch (err: any) {
+             console.error(`[Admin API] Fallback collection ${c} failed:`, err.message);
+          }
+        }
+        
+        // Remove duplicates if any
+        const seen = new Set();
+        baseUsers = baseUsers.filter(u => {
+          const key = (u.uid || u.id || "").toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
         });
+
       } catch (dbError: any) {
-        console.error("[Admin API] Firestore users fallback failed:", dbError.message);
-        baseUsers = [];
+        console.error("[Admin API] Comprehensive fallback failed:", dbError.message);
       }
     }
     
@@ -310,18 +329,24 @@ export async function registerRoutes(
 
     const profiles: Record<string, { phone: string; displayName: string }> = {};
     try {
-      const snap = await db.collection("users").limit(1000).get();
-      for (const d of snap.docs) {
-        const x: any = d.data() || {};
-        const uidKey = String(x.uid || d.id || "").toLowerCase();
-        const emailKey = String(x.email || "").toLowerCase();
-        const phone = String(x.phone || x.phoneNumber || "");
-        const displayName = String(x.displayName || x.name || x.fullName || "");
-        if (uidKey) {
-          profiles[uidKey] = { phone, displayName };
-        }
-        if (emailKey && !profiles[emailKey]) {
-          profiles[emailKey] = { phone, displayName };
+      const colls = ["users", "profiles", "user_profiles"];
+      for (const c of colls) {
+        try {
+          const snap = await db.collection(c).limit(1000).get();
+          if (!snap.empty) {
+            console.log(`[Admin API] Found ${snap.docs.length} profile records in ${c}`);
+            for (const d of snap.docs) {
+              const x: any = d.data() || {};
+              const uidKey = String(x.uid || x.userId || d.id || "").toLowerCase();
+              const emailKey = String(x.email || x.user_email || "").toLowerCase();
+              const phone = String(x.phone || x.phoneNumber || "");
+              const displayName = String(x.displayName || x.name || x.fullName || "");
+              if (uidKey) profiles[uidKey] = { phone, displayName };
+              if (emailKey && !profiles[emailKey]) profiles[emailKey] = { phone, displayName };
+            }
+          }
+        } catch (err: any) {
+           console.error(`[Admin API] Profile fallback ${c} failed:`, err.message);
         }
       }
     } catch (err: any) {
@@ -955,7 +980,13 @@ export async function registerRoutes(
           const snap = await db.collection("users").get();
           usersCount = snap.size;
         } catch {
-          usersCount = 0;
+          // If Firestore "users" also fails, maybe try "wallets" as a proxy
+          try {
+            const walletSnap = await db.collection("wallets").get();
+            usersCount = walletSnap.size;
+          } catch {
+            usersCount = 0;
+          }
         }
       }
       result.totalUsers = usersCount;

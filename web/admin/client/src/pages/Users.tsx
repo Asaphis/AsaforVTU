@@ -42,13 +42,15 @@ export default function UsersPage() {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
+      console.log("UsersPage: Starting to load users...");
       setLoading(true);
       try {
         const data = await listUsers(100);
+        console.log("UsersPage: Data received:", data);
         if (!mounted) return;
         setUsers(Array.isArray(data) ? data : []);
       } catch (e) {
-        console.error("Failed to load users:", e);
+        console.error("UsersPage: Failed to load users:", e);
         if (mounted) setUsers([]);
       } finally {
         if (mounted) setLoading(false);

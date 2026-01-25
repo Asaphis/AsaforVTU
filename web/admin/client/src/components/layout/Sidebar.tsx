@@ -59,9 +59,9 @@ export function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => voi
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
             return (
               <Link key={item.href} href={item.href}>
-                <a
+                <span
                   className={cn(
-                    "group flex items-center rounded-lg px-4 py-2.5 text-sm font-semibold transition-all",
+                    "group flex items-center rounded-lg px-4 py-2.5 text-sm font-semibold transition-all cursor-pointer",
                     isActive
                       ? "bg-slate-100 text-slate-900"
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -75,7 +75,7 @@ export function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => voi
                     )}
                   />
                   <span>{item.label}</span>
-                </a>
+                </span>
               </Link>
             );
           })}
