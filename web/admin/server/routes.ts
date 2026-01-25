@@ -134,25 +134,7 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
-  if (!getApps().length) {
-    try {
-      const sa = process.env.FIREBASE_SERVICE_ACCOUNT;
-      if (sa) {
-        const json = JSON.parse(sa);
-        initializeApp({ credential: cert(json), projectId: json.project_id || projectId } as any);
-      } else {
-        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-        const rawKey = process.env.FIREBASE_PRIVATE_KEY;
-        if (clientEmail && rawKey) {
-          const privateKey = String(rawKey).replace(/\\n/g, "\n");
-          initializeApp({ credential: cert({ projectId: projectId, clientEmail: clientEmail, privateKey: privateKey }), projectId } as any);
-        } else {
-          initializeApp({ credential: applicationDefault(), projectId } as any);
-        }
-      }
-    } catch {}
-  }
+  ensureFirebaseAdminInitialized();
 
   function getAllowedEmails(): string[] {
     const env = process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || "asaphis.org@gmail.com";
