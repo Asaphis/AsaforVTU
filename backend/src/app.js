@@ -17,6 +17,8 @@ const defaultOrigins = [
   'https://www.Asafor.com',
   'https://asaforvtu.onrender.com',
   'https://asaforadmin.onrender.com',
+  'https://asaforvtuadminpanel.onrender.com',
+  'https://asaforvtubackend.onrender.com',
   'http://localhost:3000',
   'http://localhost:5000',
   'http://localhost:5001'
