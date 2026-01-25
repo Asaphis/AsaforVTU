@@ -150,7 +150,7 @@ export default function UsersPage() {
                 <TableRow key={user.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors">
                   <TableCell className="px-6 py-4">
                     <span className="text-sm font-bold text-slate-900">
-                      {user.displayName || user.fullName || user.email || user.uid}
+                      {user.displayName || user.fullName || user.email || user.uid || user.id}
                     </span>
                   </TableCell>
                   <TableCell className="text-xs text-slate-500 font-medium">
