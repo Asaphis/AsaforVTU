@@ -260,7 +260,8 @@ export async function registerRoutes(
       status: string;
     }> = [];
     try {
-      const list = await getAuthSafe().listUsers(limit);
+      const auth = getAuthSafe();
+      const list = await auth.listUsers(limit);
       baseUsers = list.users.map((u) => ({
         id: u.uid,
         uid: u.uid,
@@ -270,7 +271,8 @@ export async function registerRoutes(
         joinedAt: u.metadata?.creationTime || "",
         status: u.disabled ? "inactive" : "active",
       }));
-    } catch {
+    } catch (authError: any) {
+      console.error("[Admin API] Auth listUsers failed:", authError);
       try {
         const snap = await db.collection("users").orderBy("createdAt", "desc").limit(limit).get();
         baseUsers = snap.docs.map((d) => {
@@ -285,7 +287,8 @@ export async function registerRoutes(
             status: x.disabled ? "inactive" : "active",
           };
         });
-      } catch {
+      } catch (dbError: any) {
+        console.error("[Admin API] Firestore users fallback failed:", dbError);
         baseUsers = [];
       }
     }

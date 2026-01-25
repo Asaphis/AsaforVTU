@@ -15,15 +15,15 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Frontend"
+args = "Admin Panel"
 
 [[workflows.workflow]]
-name = "Frontend"
+name = "Admin Panel"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd web/frontend && npm run dev"
+args = "cd web/admin && npm run dev"
 waitForPort = 5000
 
 [workflows.workflow.metadata]

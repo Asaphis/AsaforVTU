@@ -5,6 +5,7 @@ dotenv.config();
 
 let db, auth, messaging;
 let firebaseInitialized = false;
+let adminInitError = "";
 
 try {
   // Check if firebase is already initialized to avoid errors
