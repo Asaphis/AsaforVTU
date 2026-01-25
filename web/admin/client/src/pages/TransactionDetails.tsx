@@ -32,50 +32,52 @@ export default function TransactionDetailsPage() {
   }, [id]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-12 text-slate-900">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-foreground">Transaction Details</h2>
-          <p className="text-muted-foreground">Full information for transaction {id}</p>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Transaction Details</h2>
+          <p className="text-slate-500 font-medium">Full information for transaction {id}</p>
         </div>
         <Link href="/transactions">
-          <Button variant="outline"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
+          <Button variant="outline" className="border-slate-200 bg-white text-slate-700 hover:bg-slate-50 rounded-xl h-10 px-4">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
         </Link>
       </div>
 
-      <Card className="border-none shadow-sm">
-        <CardHeader>
-          <CardTitle>Summary</CardTitle>
-          <CardDescription>Core fields and status.</CardDescription>
+      <Card className="border border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+        <CardHeader className="p-6 pb-2 border-b border-slate-100">
+          <CardTitle className="text-xl font-bold text-slate-900">Summary</CardTitle>
+          <CardDescription className="text-slate-500 font-medium">Core fields and status.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="p-6 space-y-4">
           {loading ? (
-            <div className="p-2 text-sm text-muted-foreground">Loading...</div>
+            <div className="p-2 text-sm text-slate-400">Loading...</div>
           ) : tx ? (
             <>
-              <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground text-sm">ID</span><div className="font-mono text-xs">{tx.id}</div></div>
-                <div><span className="text-muted-foreground text-sm">User</span><div>{tx.user}</div></div>
-                <div><span className="text-muted-foreground text-sm">Type</span><div>{tx.type}</div></div>
-                <div><span className="text-muted-foreground text-sm">Amount</span><div>₦{Number(tx.amount || 0).toLocaleString()}</div></div>
-                <div><span className="text-muted-foreground text-sm">Status</span><div>{tx.status}</div></div>
-                <div><span className="text-muted-foreground text-sm">Created</span><div>{new Date(tx.createdAt ? (tx.createdAt._seconds ? tx.createdAt._seconds * 1000 : tx.createdAt) : Date.now()).toLocaleString()}</div></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><span className="text-slate-500 text-xs font-bold uppercase tracking-wider">ID</span><div className="font-mono text-xs text-slate-700">{tx.id}</div></div>
+                <div><span className="text-slate-500 text-xs font-bold uppercase tracking-wider">User</span><div className="text-slate-900">{tx.user}</div></div>
+                <div><span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Type</span><div className="text-slate-900">{tx.type}</div></div>
+                <div><span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Amount</span><div className="text-slate-900">₦{Number(tx.amount || 0).toLocaleString()}</div></div>
+                <div><span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Status</span><div className="text-slate-900">{tx.status}</div></div>
+                <div><span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Created</span><div className="text-slate-900">{new Date(tx.createdAt ? (tx.createdAt._seconds ? tx.createdAt._seconds * 1000 : tx.createdAt) : Date.now()).toLocaleString()}</div></div>
               </div>
               <div className="mt-4">
-                <h3 className="text-lg font-semibold">Provider Status</h3>
+                <h3 className="text-lg font-bold text-slate-900">Provider Status</h3>
                 <div className="grid grid-cols-2 gap-3 mt-2">
-                  <div><span className="text-muted-foreground text-sm">Status</span><div>{tx.providerStatus || '-'}</div></div>
-                  <div><span className="text-muted-foreground text-sm">Error Code</span><div>{tx.providerErrorCode || '-'}</div></div>
-                  <div className="col-span-2"><span className="text-muted-foreground text-sm">Error Message</span><div className="font-mono text-xs break-all">{tx.providerErrorMessage || '-'}</div></div>
+                  <div><span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Status</span><div className="text-slate-900">{tx.providerStatus || '-'}</div></div>
+                  <div><span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Error Code</span><div className="text-slate-900">{tx.providerErrorCode || '-'}</div></div>
+                  <div className="col-span-2"><span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Error Message</span><div className="font-mono text-xs break-all text-slate-700">{tx.providerErrorMessage || '-'}</div></div>
                 </div>
               </div>
               <div className="mt-4">
-                <h3 className="text-lg font-semibold">Provider Raw</h3>
-                <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">{JSON.stringify(tx.providerRaw || {}, null, 2)}</pre>
+                <h3 className="text-lg font-bold text-slate-900">Provider Raw</h3>
+                <pre className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs overflow-x-auto text-slate-700">{JSON.stringify(tx.providerRaw || {}, null, 2)}</pre>
               </div>
             </>
           ) : (
-            <div className="p-2 text-sm text-muted-foreground">Not found</div>
+            <div className="p-2 text-sm text-slate-400">Not found</div>
           )}
         </CardContent>
       </Card>

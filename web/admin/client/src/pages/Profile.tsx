@@ -53,97 +53,97 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700 pb-12">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-12 text-slate-900">
       <div>
-        <h2 className="text-4xl font-black text-white tracking-tighter mb-2 italic">Command Profile</h2>
-        <p className="text-slate-400 font-medium">Calibrate administrator protocols and security credentials.</p>
+        <h2 className="text-3xl font-bold text-slate-900 tracking-tight">My Profile</h2>
+        <p className="text-slate-500 font-medium text-sm">Calibrate administrator identity and security credentials.</p>
       </div>
 
-      <div className="grid gap-10 md:grid-cols-3">
-        <Card className="border-0 shadow-2xl bg-white/5 backdrop-blur-xl rounded-[2.5rem] ring-1 ring-white/10 overflow-hidden md:col-span-1">
-          <CardHeader className="text-center p-10 pb-6 bg-white/[0.02]">
+      <div className="grid gap-8 md:grid-cols-3">
+        <Card className="border border-slate-200 bg-white rounded-2xl shadow-sm overflow-hidden md:col-span-1">
+          <CardHeader className="text-center p-6 pb-2 border-b border-slate-100">
             <div className="mx-auto mb-6 relative group">
-              <Avatar className="h-32 w-32 border-4 border-white/5 shadow-3xl ring-2 ring-primary/20 group-hover:scale-105 transition-all duration-500">
+              <Avatar className="h-28 w-28 border-4 border-white shadow-md ring-2 ring-primary/20">
                 <AvatarImage src={(user as any).photoURL || ""} className="object-cover" />
-                <AvatarFallback className="text-4xl bg-gradient-to-br from-primary to-indigo-600 text-white font-black italic">
+                <AvatarFallback className="text-3xl bg-primary text-white font-bold">
                   {String((user as any).displayName || (user as any).email || "A").charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute -bottom-2 right-0 bg-primary h-8 w-8 rounded-xl flex items-center justify-center border-4 border-[#0F172A] shadow-xl">
+              <div className="absolute -bottom-2 right-0 bg-primary h-8 w-8 rounded-xl flex items-center justify-center border-4 border-white shadow">
                 <ShieldCheck className="h-4 w-4 text-white" />
               </div>
             </div>
-            <CardTitle className="text-2xl font-black text-white tracking-tight italic">{(user as any).displayName || 'Alpha Node'}</CardTitle>
-            <CardDescription className="text-primary font-black uppercase tracking-widest text-[10px] mt-2 italic opacity-80">{(user as any).email || 'SECURE_CHANNEL'}</CardDescription>
+            <CardTitle className="text-xl font-bold text-slate-900">{(user as any).displayName || 'Admin User'}</CardTitle>
+            <CardDescription className="text-primary font-bold uppercase tracking-wider text-[10px] mt-2">{(user as any).email || ''}</CardDescription>
           </CardHeader>
-          <CardContent className="p-10 pt-2 space-y-4">
-            <div className="flex justify-between items-center py-4 border-b border-white/5">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Authority</span>
-              <span className="text-sm font-bold text-white italic capitalize">{(user as any).role || 'Super Admin'}</span>
+          <CardContent className="p-6 space-y-4">
+            <div className="flex justify-between items-center py-3 border-b border-slate-100">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Authority</span>
+              <span className="text-sm font-bold text-slate-900 capitalize">{(user as any).role || 'Super Admin'}</span>
             </div>
-            <div className="flex justify-between items-center py-4 border-b border-white/5">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Node Status</span>
-              <Badge className="bg-emerald-500/10 text-emerald-400 border-0 ring-1 ring-emerald-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest px-3 py-1">Active</Badge>
+            <div className="flex justify-between items-center py-3 border-b border-slate-100">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Node Status</span>
+              <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-[9px] font-bold uppercase tracking-wider px-3 py-1">Active</Badge>
             </div>
-            <div className="flex justify-between items-center py-4">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Last Sync</span>
-              <span className="text-sm font-bold text-slate-400 italic">Just now</span>
+            <div className="flex justify-between items-center py-3">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Last Sync</span>
+              <span className="text-sm font-bold text-slate-600">Just now</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-2xl bg-white/5 backdrop-blur-xl rounded-[2.5rem] ring-1 ring-white/10 overflow-hidden md:col-span-2">
-          <CardHeader className="p-10 pb-6 bg-white/[0.02]">
-            <CardTitle className="text-2xl font-black text-white tracking-tight italic">Protocol Metadata</CardTitle>
-            <CardDescription className="text-slate-500 uppercase tracking-widest text-[10px] font-black mt-2">Modify identification parameters</CardDescription>
+        <Card className="border border-slate-200 bg-white rounded-2xl shadow-sm overflow-hidden md:col-span-2">
+          <CardHeader className="p-6 pb-3">
+            <CardTitle className="text-xl font-bold text-slate-900">Profile Details</CardTitle>
+            <CardDescription className="text-slate-500 font-medium text-sm">Modify identification parameters</CardDescription>
           </CardHeader>
-          <CardContent className="p-10 space-y-8">
-            <div className="grid gap-8 md:grid-cols-2">
+          <CardContent className="p-6 space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-3">
-                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Public Identifier</Label>
-                <Input className="h-14 rounded-2xl bg-white/5 border-2 border-white/5 focus:border-primary/40 focus:bg-white/10 transition-all font-bold text-white px-6 outline-none" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Admin User" />
+                <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider ml-2">Public Identifier</Label>
+                <Input className="h-12 rounded-xl bg-white border border-slate-200 focus:ring-2 focus:ring-primary/30 transition-all font-medium text-slate-900 px-4 outline-none" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Admin User" />
               </div>
               <div className="space-y-3">
-                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Comm Channel</Label>
-                <Input className="h-14 rounded-2xl bg-white/5 border-2 border-white/5 focus:border-primary/40 focus:bg-white/10 transition-all font-bold text-white px-6 outline-none" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="08012345678" />
+                <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider ml-2">Comm Channel</Label>
+                <Input className="h-12 rounded-xl bg-white border border-slate-200 focus:ring-2 focus:ring-primary/30 transition-all font-medium text-slate-900 px-4 outline-none" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="08012345678" />
               </div>
             </div>
             <div className="space-y-3">
-              <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Authenticated Email</Label>
-              <Input value={(user as any).email || ""} disabled className="h-14 bg-white/[0.02] border-white/5 rounded-2xl text-slate-500 font-mono text-xs px-6 italic" />
+              <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider ml-2">Authenticated Email</Label>
+              <Input value={(user as any).email || ""} disabled className="h-12 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 font-mono text-xs px-4" />
             </div>
           </CardContent>
-          <CardFooter className="bg-white/[0.02] border-t border-white/5 p-10">
-            <Button className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-black rounded-2xl shadow-2xl shadow-primary/30 uppercase tracking-widest text-[11px] border-0 italic transition-all hover:scale-[1.02] active:scale-[0.98]" onClick={handleUpdateProfile} disabled={isUpdatingProfile}>
-              {isUpdatingProfile ? "Synchronizing..." : "Commit Protocol Updates"}
+          <CardFooter className="border-t border-slate-100 p-6">
+            <Button className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl uppercase tracking-widest text-[11px]" onClick={handleUpdateProfile} disabled={isUpdatingProfile}>
+              {isUpdatingProfile ? "Saving..." : "Save Changes"}
             </Button>
           </CardFooter>
         </Card>
 
-        <Card className="border-0 shadow-2xl bg-white/5 backdrop-blur-xl rounded-[2.5rem] ring-1 ring-white/10 overflow-hidden md:col-span-3">
-          <CardHeader className="p-10 pb-6 bg-white/[0.02]">
-            <CardTitle className="text-2xl font-black text-white tracking-tight italic">Security Cipher</CardTitle>
-            <CardDescription className="text-slate-500 uppercase tracking-widest text-[10px] font-black mt-2">Rotate cryptographic access credentials</CardDescription>
+        <Card className="border border-slate-200 bg-white rounded-2xl shadow-sm overflow-hidden md:col-span-3">
+          <CardHeader className="p-6 pb-3">
+            <CardTitle className="text-xl font-bold text-slate-900">Security</CardTitle>
+            <CardDescription className="text-slate-500 font-medium text-sm">Rotate access credentials</CardDescription>
           </CardHeader>
-          <CardContent className="p-10 space-y-8">
-             <div className="grid gap-8 md:grid-cols-3">
+          <CardContent className="p-6 space-y-6">
+             <div className="grid gap-6 md:grid-cols-3">
               <div className="space-y-3">
-                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Current Cipher</Label>
-                <Input type="password" value={currentPassword} className="h-14 rounded-2xl bg-white/5 border-2 border-white/5 focus:border-primary/40 focus:bg-white/10 transition-all font-bold text-white px-6 outline-none" onChange={(e) => setCurrentPassword(e.target.value)} />
+                <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider ml-2">Current Password</Label>
+                <Input type="password" value={currentPassword} className="h-12 rounded-xl bg-white border border-slate-200 focus:ring-2 focus:ring-primary/30 transition-all font-medium text-slate-900 px-4 outline-none" onChange={(e) => setCurrentPassword(e.target.value)} />
               </div>
               <div className="space-y-3">
-                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">New Cipher</Label>
-                <Input type="password" value={newPassword} className="h-14 rounded-2xl bg-white/5 border-2 border-white/5 focus:border-primary/40 focus:bg-white/10 transition-all font-bold text-white px-6 outline-none" onChange={(e) => setNewPassword(e.target.value)} />
+                <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider ml-2">New Password</Label>
+                <Input type="password" value={newPassword} className="h-12 rounded-xl bg-white border border-slate-200 focus:ring-2 focus:ring-primary/30 transition-all font-medium text-slate-900 px-4 outline-none" onChange={(e) => setNewPassword(e.target.value)} />
               </div>
               <div className="space-y-3">
-                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Confirm Cipher</Label>
-                <Input type="password" value={confirmPassword} className="h-14 rounded-2xl bg-white/5 border-2 border-white/5 focus:border-primary/40 focus:bg-white/10 transition-all font-bold text-white px-6 outline-none" onChange={(e) => setConfirmPassword(e.target.value)} />
+                <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider ml-2">Confirm Password</Label>
+                <Input type="password" value={confirmPassword} className="h-12 rounded-xl bg-white border border-slate-200 focus:ring-2 focus:ring-primary/30 transition-all font-medium text-slate-900 px-4 outline-none" onChange={(e) => setConfirmPassword(e.target.value)} />
               </div>
             </div>
           </CardContent>
-          <CardFooter className="bg-white/[0.02] border-t border-white/5 p-10">
-             <Button onClick={handleChangePassword} disabled={isUpdatingPassword} variant="outline" className="w-full h-14 border-white/10 bg-white/5 text-white hover:bg-white/10 font-black rounded-2xl shadow-xl transition-all uppercase tracking-widest text-[11px] italic">
-               {isUpdatingPassword ? "Encrypting..." : "Initialize Cipher Rotation"}
+          <CardFooter className="border-t border-slate-100 p-6">
+             <Button onClick={handleChangePassword} disabled={isUpdatingPassword} variant="outline" className="w-full h-12 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-bold rounded-xl transition-all uppercase tracking-widest text-[11px]">
+               {isUpdatingPassword ? "Updating..." : "Update Password"}
              </Button>
           </CardFooter>
         </Card>
