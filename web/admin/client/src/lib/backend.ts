@@ -4,8 +4,9 @@ function getBaseUrl(): string {
   const prodUrlRaw = import.meta.env.VITE_VTU_BACKEND_URL as string | undefined;
   const localUrlRaw = import.meta.env.VITE_VTU_BACKEND_URL_LOCAL as string | undefined;
   const strip = (s?: string) => (s && typeof s === "string" ? s.trim().replace(/^`|`$/g, "") : "");
-  const prodUrl = strip(prodUrlRaw);
-  const localUrl = strip(localUrlRaw);
+  const trimSlash = (s: string) => s.replace(/\/+$/, "");
+  const prodUrl = trimSlash(strip(prodUrlRaw || ""));
+  const localUrl = trimSlash(strip(localUrlRaw || ""));
   let origin = "";
   try {
     origin = window.location.origin;
@@ -24,45 +25,32 @@ async function request<T>(method: string, path: string, data?: unknown): Promise
   const baseUrl = getBaseUrl();
   const url = `${baseUrl}${path}`;
   const token = await getToken();
-  const envAdmins = String(import.meta.env.VITE_ADMIN_EMAILS || "asaphis.org@gmail.com")
+  const envAdmins = String(import.meta.env.VITE_ADMIN_EMAILS || "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
   const fallbackAdminEmail = envAdmins[0] || "";
   const currentEmail = (auth.currentUser?.email || fallbackAdminEmail || "").toLowerCase();
 
-  const maxAttempts = 5;
-  let attempt = 0;
-  let lastText = "";
-  while (attempt < maxAttempts) {
-    const res = await fetch(url, {
-      method,
-      headers: {
-        ...(data ? { "Content-Type": "application/json" } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(currentEmail ? { "X-Admin-Email": currentEmail } : {}),
-      },
-      body: data ? JSON.stringify(data) : undefined,
-      credentials: "omit",
-    });
-    const text = await res.text();
-    lastText = text;
-    if (res.ok) {
-      try {
-        return JSON.parse(text) as T;
-      } catch {
-        return undefined as unknown as T;
-      }
-    }
-    if ([503, 502, 504].includes(res.status)) {
-      attempt += 1;
-      const delay = Math.min(1000 * 2 ** attempt, 8000);
-      await new Promise((r) => setTimeout(r, delay));
-      continue;
-    }
+  const res = await fetch(url, {
+    method,
+    headers: {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(currentEmail ? { "X-Admin-Email": currentEmail } : {}),
+    },
+    body: data ? JSON.stringify(data) : undefined,
+    credentials: "omit",
+  });
+  const text = await res.text();
+  if (!res.ok) {
     throw new Error(text || res.statusText);
   }
-  throw new Error(lastText || "Service unavailable");
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return undefined as unknown as T;
+  }
 }
 
 export async function getAdminStats(): Promise<any> {

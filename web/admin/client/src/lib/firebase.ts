@@ -27,7 +27,7 @@ export const onAuthStateChanged = (callback: (user: any) => void) => {
 };
 
 export const signInAdmin = async (email: string, password: string) => {
-  const allowed = (import.meta.env.VITE_ADMIN_EMAILS || 'osglimited7@gmail.com')
+  const allowed = (import.meta.env.VITE_ADMIN_EMAILS || 'asaphis.org@gmail.com')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);

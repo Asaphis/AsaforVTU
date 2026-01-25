@@ -73,25 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('[Auth] Firestore user data loaded successfully');
         
         let finalUserData = { ...userData };
-
-        if (firebaseUser.emailVerified && (!userData.isVerified || !userData.emailVerified)) {
-          try {
-            await updateDoc(userRef, {
-              isVerified: true,
-              emailVerified: true,
-              updatedAt: new Date().toISOString(),
-            });
-            finalUserData = {
-              ...finalUserData,
-              isVerified: true,
-              emailVerified: true,
-              updatedAt: new Date().toISOString(),
-            };
-            console.log('[Auth] Auto-updated Firestore verification flags based on Firebase status');
-          } catch (e: any) {
-            console.warn('[Auth] Failed to sync verification flags to Firestore:', e?.message || e);
-          }
-        }
         
         try {
           console.log('[Auth] Fetching fresh wallet balance from backend...');

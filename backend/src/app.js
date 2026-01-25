@@ -29,8 +29,7 @@ const corsOptions = {
     if (!isAllowed && origin) {
       try {
         const host = new URL(origin).hostname.toLowerCase();
-        // Allow any subdomain of Asafor.com
-        if (host === 'Asafor.com' || host.endsWith('.Asafor.com')) {
+        if (host === 'asafor.com' || host.endsWith('.asafor.com')) {
           isAllowed = true;
         }
       } catch {}

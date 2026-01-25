@@ -62,6 +62,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!initialized || loading) return;
+    if (user && !user.isVerified) {
+      router.push('/verify');
+    }
     const sm = sessionStorage.getItem('showMainBalance') === 'true';
     const sc = sessionStorage.getItem('showCashbackBalance') === 'true';
     const sr = sessionStorage.getItem('showReferralBalance') === 'true';

@@ -33,15 +33,19 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   late final AnimationController _controller;
   late final Animation<double> _scale;
   late final Animation<double> _fade;
+  late final Animation<double> _glow;
+  late final Animation<double> _ring;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
-    _scale = Tween<double>(begin: 0.85, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000));
+    _scale = Tween<double>(begin: 0.82, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
     _fade = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+    _glow = Tween<double>(begin: 0.0, end: 12.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _ring = Tween<double>(begin: 0.9, end: 1.15).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
-    Future.delayed(const Duration(milliseconds: 1400), () {
+    Future.delayed(const Duration(milliseconds: 2200), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const WebViewApp()));
       }
@@ -58,24 +62,167 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            return Opacity(
-              opacity: _fade.value,
-              child: Transform.scale(
-                scale: _scale.value,
-                child: Image.asset('assets/logo.png', width: 120, height: 120),
+      body: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFF7FBFF), Color(0xFFE9F2FF)],
               ),
-            );
-          },
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Opacity(
+                    opacity: _fade.value,
+                    child: Transform.scale(
+                      scale: _scale.value,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF0A1F44).withValues(alpha: 0.12),
+                              blurRadius: 24 * (_glow.value / 12.0),
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Transform.scale(
+                              scale: _ring.value,
+                              child: Container(
+                                width: 160,
+                                height: 160,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFF0A1F44).withValues(alpha: 0.08 * _fade.value),
+                                    width: 6,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            ClipOval(
+                              child: Image.asset(
+                                'assets/logo.png',
+                                width: 140,
+                                height: 140,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stack) {
+                                  return Container(
+                                    width: 140,
+                                    height: 140,
+                                    color: Colors.white,
+                                    child: Center(
+                                      child: Text(
+                                        'A',
+                                        style: TextStyle(
+                                          fontSize: 64,
+                                          fontWeight: FontWeight.w900,
+                                          color: const Color(0xFF0A1F44).withValues(alpha: 0.9),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Opacity(
+                    opacity: _fade.value,
+                    child: Transform.translate(
+                      offset: Offset(0, (1 - _fade.value) * 12),
+                      child: const Text(
+                        'AsaforVTU',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0A1F44),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Opacity(
+                    opacity: _fade.value,
+                    child: Column(
+                      children: const [
+                        Text(
+                          'Instant Digital Services',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF6B7C93),
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                      ],
+                    ),
+                  ),
+                  Opacity(
+                    opacity: _fade.value,
+                    child: SizedBox(
+                      height: 10,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _Dot(opacity: _dotOpacity(0)),
+                          const SizedBox(width: 6),
+                          _Dot(opacity: _dotOpacity(1)),
+                          const SizedBox(width: 6),
+                          _Dot(opacity: _dotOpacity(2)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  double _dotOpacity(int index) {
+    final t = (_controller.value * 3) - index;
+    final v = (t.clamp(0.0, 1.0));
+    return Curves.easeInOut.transform(v);
+  }
+}
+
+class _Dot extends StatelessWidget {
+  final double opacity;
+  const _Dot({required this.opacity});
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: opacity,
+      child: Container(
+        width: 8,
+        height: 8,
+        decoration: const BoxDecoration(
+          color: Color(0xFF0A1F44),
+          shape: BoxShape.circle,
         ),
       ),
     );
   }
 }
-
 class WebViewApp extends StatefulWidget {
   const WebViewApp({super.key});
 

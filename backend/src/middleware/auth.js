@@ -5,16 +5,6 @@ const verifyToken = async (req, res, next) => {
     // Check if Firebase is initialized
     if (!firebaseInitialized || !auth) {
       console.error('[Auth Middleware] Firebase not initialized');
-      // Fallback: allow admin requests using X-Admin-Email allowlist
-      const allowed = (process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || 'osglimited7@gmail.com, asaphis.org@gmail.com')
-        .split(',')
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean);
-      const headerEmail = String(req.headers['x-admin-email'] || '').toLowerCase();
-      if (headerEmail && allowed.includes(headerEmail)) {
-        req.user = { uid: 'fallback-admin', email: headerEmail, admin: true, email_verified: true };
-        return next();
-      }
       return res.status(503).json({ 
         error: 'Authentication service unavailable',
         details: 'Firebase not configured. Please check server logs and ensure FIREBASE_* environment variables are set.',
@@ -77,22 +67,13 @@ const isAdmin = async (req, res, next) => {
   try {
     if (!firebaseInitialized || !db) {
       console.error('[Admin Check] Firebase not initialized');
-      // Fallback: allow when X-Admin-Email is in allowlist
-      const allowed = (process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || 'osglimited7@gmail.com')
-        .split(',')
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean);
-      const headerEmail = String(req.headers['x-admin-email'] || '').toLowerCase();
-      if (headerEmail && allowed.includes(headerEmail)) {
-        return next();
-      }
       return res.status(503).json({ 
         error: 'Authorization service unavailable',
         code: 'FIREBASE_NOT_INITIALIZED'
       });
     }
 
-    const allowed = (process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || 'osglimited7@gmail.com, asaphis.org@gmail.com')
+    const allowed = (process.env.ADMIN_EMAILS || 'asaphis.org@gmail.com')
       .split(',')
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean);

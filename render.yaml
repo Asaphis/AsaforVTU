@@ -6,6 +6,21 @@ services:
     buildCommand: npm install && npm run build
     startCommand: npm run start
     autoDeploy: true
+    envVars:
+      - key: VITE_FIREBASE_API_KEY
+        value: ""
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        value: ""
+      - key: VITE_FIREBASE_PROJECT_ID
+        value: ""
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        value: ""
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        value: ""
+      - key: VITE_FIREBASE_APP_ID
+        value: ""
+      - key: VITE_VTU_BACKEND_URL
+        value: "https://asaforvtubackend.onrender.com"
   - type: web
     name: Asafor-admin
     env: node
@@ -13,4 +28,24 @@ services:
     buildCommand: npm install && npm run build
     startCommand: npm run start
     autoDeploy: true
-
+    envVars:
+      - key: ADMIN_ORIGIN
+        value: "https://asaforadmin.onrender.com"
+      - key: ADMIN_FRONTEND_ORIGIN
+        value: "https://asaforadmin.onrender.com"
+      - key: VITE_ADMIN_ORIGIN
+        value: "https://asaforadmin.onrender.com"
+      - key: VITE_VTU_BACKEND_URL
+        value: "https://asaforvtubackend.onrender.com"
+      - key: ADMIN_EMAILS
+        value: "asaphis.org@gmail.com"
+      - key: VITE_ADMIN_EMAILS
+        value: "asaphis.org@gmail.com"
+      - key: FIREBASE_PROJECT_ID
+        value: ""
+      - key: FIREBASE_CLIENT_EMAIL
+        value: ""
+      - key: FIREBASE_PRIVATE_KEY
+        value: ""
+      - key: FIREBASE_STORAGE_BUCKET
+        value: ""

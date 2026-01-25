@@ -1,0 +1,70 @@
+warning: in the working copy of 'mobile/webview_app/android/app/src/main/res/drawable-v21/launch_background.xml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/webview_app/android/app/src/main/res/drawable/launch_background.xml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/webview_app/android/app/src/main/res/values-night-v31/styles.xml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/webview_app/android/app/src/main/res/values-night/styles.xml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/webview_app/android/app/src/main/res/values-v31/styles.xml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/webview_app/android/app/src/main/res/values/styles.xml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/webview_app/ios/Runner.xcodeproj/project.pbxproj', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/webview_app/ios/Runner/Assets.xcassets/LaunchBackground.imageset/Contents.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/webview_app/ios/Runner/Assets.xcassets/LaunchImage.imageset/Contents.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/webview_app/ios/Runner/Base.lproj/LaunchScreen.storyboard', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/webview_app/ios/Runner/Info.plist', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/webview_app/web/index.html', LF will be replaced by CRLF the next time Git touches it
+D	mobile/webview_app/android/.kotlin/sessions/kotlin-compiler-12647681464937876782.salive
+M	mobile/webview_app/android/app/src/main/AndroidManifest.xml
+M	mobile/webview_app/android/app/src/main/res/drawable-hdpi/android12splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-hdpi/splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-mdpi/android12splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-mdpi/splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-night-hdpi/android12splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-night-mdpi/android12splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-night-xhdpi/android12splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-night-xxhdpi/android12splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-night-xxxhdpi/android12splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-xhdpi/android12splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-xhdpi/splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-xxhdpi/android12splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-xxhdpi/splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-xxxhdpi/android12splash.png
+M	mobile/webview_app/android/app/src/main/res/drawable-xxxhdpi/splash.png
+M	mobile/webview_app/android/app/src/main/res/mipmap-hdpi/launcher_icon.png
+M	mobile/webview_app/android/app/src/main/res/mipmap-mdpi/launcher_icon.png
+M	mobile/webview_app/android/app/src/main/res/mipmap-xhdpi/launcher_icon.png
+M	mobile/webview_app/android/app/src/main/res/mipmap-xxhdpi/launcher_icon.png
+M	mobile/webview_app/android/app/src/main/res/mipmap-xxxhdpi/launcher_icon.png
+M	mobile/webview_app/assets/logo.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@1x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@2x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@3x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@1x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@2x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@3x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@1x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@2x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@3x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-50x50@1x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-50x50@2x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-57x57@1x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-57x57@2x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@2x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@3x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-72x72@1x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-72x72@2x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@1x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@2x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-83.5x83.5@2x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@2x.png
+M	mobile/webview_app/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png
+M	mobile/webview_app/ios/Runner/Base.lproj/LaunchScreen.storyboard
+M	mobile/webview_app/lib/main.dart
+M	mobile/webview_app/web/index.html
+M	mobile/webview_app/web/splash/img/dark-1x.png
+M	mobile/webview_app/web/splash/img/dark-2x.png
+M	mobile/webview_app/web/splash/img/dark-3x.png
+M	mobile/webview_app/web/splash/img/dark-4x.png
+M	mobile/webview_app/web/splash/img/light-1x.png
+M	mobile/webview_app/web/splash/img/light-2x.png
+M	mobile/webview_app/web/splash/img/light-3x.png
+M	mobile/webview_app/web/splash/img/light-4x.png
