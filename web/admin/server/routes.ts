@@ -262,6 +262,7 @@ export async function registerRoutes(
     try {
       const auth = getAuthSafe();
       const list = await auth.listUsers(limit);
+      console.log(`[Admin API] Found ${list.users.length} users from Auth`);
       baseUsers = list.users.map((u) => ({
         id: u.uid,
         uid: u.uid,
@@ -272,26 +273,34 @@ export async function registerRoutes(
         status: u.disabled ? "inactive" : "active",
       }));
     } catch (authError: any) {
-      console.error("[Admin API] Auth listUsers failed:", authError);
+      console.error("[Admin API] Auth listUsers failed:", authError.message);
       try {
         const snap = await db.collection("users").orderBy("createdAt", "desc").limit(limit).get();
+        console.log(`[Admin API] Found ${snap.docs.length} users from Firestore fallback`);
         baseUsers = snap.docs.map((d) => {
           const x: any = d.data() || {};
           return {
             id: d.id,
-            uid: d.id,
-            displayName: x.displayName || x.name || "",
+            uid: x.uid || d.id,
+            displayName: x.displayName || x.name || x.fullName || "",
             email: x.email || "",
             phone: x.phone || x.phoneNumber || "",
-            joinedAt: x.createdAt || "",
-            status: x.disabled ? "inactive" : "active",
+            joinedAt: x.createdAt || x.timestamp || "",
+            status: (x.disabled || x.status === "inactive" || x.status === "suspended") ? "inactive" : "active",
           };
         });
       } catch (dbError: any) {
-        console.error("[Admin API] Firestore users fallback failed:", dbError);
+        console.error("[Admin API] Firestore users fallback failed:", dbError.message);
         baseUsers = [];
       }
     }
+    
+    // If no users found at all, return empty array early
+    if (baseUsers.length === 0) {
+      console.log("[Admin API] No users found in Auth or Firestore");
+      return res.json([]);
+    }
+
     const profiles: Record<string, { phone: string; displayName: string }> = {};
     try {
       const snap = await db.collection("users").limit(1000).get();
@@ -300,7 +309,7 @@ export async function registerRoutes(
         const uidKey = String(x.uid || d.id || "").toLowerCase();
         const emailKey = String(x.email || "").toLowerCase();
         const phone = String(x.phone || x.phoneNumber || "");
-        const displayName = String(x.displayName || x.name || "");
+        const displayName = String(x.displayName || x.name || x.fullName || "");
         if (uidKey) {
           profiles[uidKey] = { phone, displayName };
         }
@@ -308,16 +317,19 @@ export async function registerRoutes(
           profiles[emailKey] = { phone, displayName };
         }
       }
-    } catch {}
+    } catch (err: any) {
+      console.error("[Admin API] Profiles fetch failed:", err.message);
+    }
     const balances: Record<string, { main_balance: number; cashback_balance: number; referral_balance: number }> = {};
     try {
       const names = ["user_wallets", "wallets"];
       for (const n of names) {
         const snap = await db.collection(n).limit(1000).get();
+        console.log(`[Admin API] Checked ${n}, found ${snap.docs.length} wallet records`);
         for (const d of snap.docs) {
           const x: any = d.data() || {};
-          const uidKey = String(x.userId || d.id || "").toLowerCase();
-          const emailKey = String(x.user_email || x.userEmail || "").toLowerCase();
+          const uidKey = String(x.userId || x.uid || d.id || "").toLowerCase();
+          const emailKey = String(x.user_email || x.userEmail || x.email || "").toLowerCase();
           const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
           const cb = Number(x.cashbackBalance || x.cashback_balance || 0);
           const rb = Number(x.referralBalance || x.referral_balance || 0);
@@ -325,12 +337,14 @@ export async function registerRoutes(
           if (uidKey) {
             balances[uidKey] = value;
           }
-          if (emailKey) {
+          if (emailKey && !balances[emailKey]) {
             balances[emailKey] = value;
           }
         }
       }
-    } catch {}
+    } catch (err: any) {
+      console.error("[Admin API] Balances fetch failed:", err.message);
+    }
     const users = baseUsers.map((u) => {
       const uidKey = String(u.uid || u.id || "").toLowerCase();
       const emailKey = String(u.email || "").toLowerCase();
@@ -923,25 +937,27 @@ export async function registerRoutes(
     try {
       const users = await auth.listUsers(1000);
       usersCount = users.users.length;
-    } catch {
+    } catch (e: any) {
+      console.error("[Admin Stats] Auth listUsers failed:", e.message);
       usersCount = 0;
     }
     try {
       const db = getFirestoreSafe();
-      const txNames = ["transactions", "admin_transactions", "wallet_transactions"];
+      const txNames = ["transactions", "admin_transactions", "wallet_transactions", "wallet_deposits"];
       const walletNames = ["wallets", "user_wallets"];
       let txs: any[] = [];
       for (const n of txNames) {
         const snap = await db.collection(n).orderBy("createdAt", "desc").limit(500).get();
         if (!snap.empty) {
+          console.log(`[Admin Stats] Using ${n} for transactions, found ${snap.docs.length} records`);
           txs = snap.docs.map((d) => {
             const x: any = d.data() || {};
             return {
               id: d.id,
-              user: x.user || x.user_email || x.userEmail || x.email || x.userId || "",
-              amount: Number(x.amount || 0),
+              user: x.user || x.user_email || x.userEmail || x.email || x.userId || x.uid || "",
+              amount: Number(x.amount || x.userPrice || 0),
               status: x.status || "success",
-              type: x.type || "transaction",
+              type: x.type || x.serviceType || "transaction",
               createdAt: x.createdAt || x.timestamp || Date.now(),
             };
           });
