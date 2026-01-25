@@ -932,66 +932,77 @@ export async function registerRoutes(
       dailyTotals: [] as Array<{ day: string; total: number }>,
       recentTransactions: [] as any[],
     };
-    const auth = getAuthSafe();
-    let usersCount = 0;
-    try {
-      const users = await auth.listUsers(1000);
-      usersCount = users.users.length;
-    } catch (e: any) {
-      console.error("[Admin Stats] Auth listUsers failed:", e.message);
-      usersCount = 0;
-    }
     try {
       const db = getFirestoreSafe();
+      const auth = getAuthSafe();
+      
+      // Attempt to get user count from Auth first, fallback to Firestore
+      let usersCount = 0;
+      try {
+        const list = await auth.listUsers(1000);
+        usersCount = list.users.length;
+      } catch (e: any) {
+        console.error("[Admin Stats] Auth listUsers failed:", e.message);
+        try {
+          const snap = await db.collection("users").get();
+          usersCount = snap.size;
+        } catch {
+          usersCount = 0;
+        }
+      }
+      result.totalUsers = usersCount;
+
       const txNames = ["transactions", "admin_transactions", "wallet_transactions", "wallet_deposits"];
       const walletNames = ["wallets", "user_wallets"];
       let txs: any[] = [];
       for (const n of txNames) {
-        const snap = await db.collection(n).orderBy("createdAt", "desc").limit(500).get();
-        if (!snap.empty) {
-          console.log(`[Admin Stats] Using ${n} for transactions, found ${snap.docs.length} records`);
-          txs = snap.docs.map((d) => {
-            const x: any = d.data() || {};
-            return {
-              id: d.id,
-              user: x.user || x.user_email || x.userEmail || x.email || x.userId || x.uid || "",
-              amount: Number(x.amount || x.userPrice || 0),
-              status: x.status || "success",
-              type: x.type || x.serviceType || "transaction",
-              createdAt: x.createdAt || x.timestamp || Date.now(),
-            };
-          });
-          break;
+        try {
+          const snap = await db.collection(n).orderBy("createdAt", "desc").limit(500).get();
+          if (!snap.empty) {
+            console.log(`[Admin Stats] Using ${n} for transactions, found ${snap.docs.length} records`);
+            txs = snap.docs.map((d) => {
+              const x: any = d.data() || {};
+              return {
+                id: d.id,
+                user: x.user || x.user_email || x.userEmail || x.email || x.userId || x.uid || "",
+                amount: Number(x.amount || x.userPrice || 0),
+                status: x.status || "success",
+                type: x.type || x.serviceType || "transaction",
+                createdAt: x.createdAt || x.timestamp || Date.now(),
+              };
+            });
+            break;
+          }
+        } catch (err: any) {
+          console.error(`[Admin Stats] Error fetching from ${n}:`, err.message);
         }
       }
       result.totalTransactions = txs.length;
-      if (!usersCount) {
-        const distinct = new Set<string>();
-        for (const t of txs) {
-          const e = String(t.user || "").toLowerCase();
-          if (e) distinct.add(e);
-        }
-        usersCount = distinct.size;
-      }
-      result.totalUsers = usersCount;
+
       const now = new Date();
       result.todaySales = txs.filter(t => {
         const d = new Date(getCreatedMs(t.createdAt));
         return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       }).reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
       let walletSum = 0;
       for (const n of walletNames) {
-        const snap = await db.collection(n).limit(1000).get();
-        if (!snap.empty) {
-          walletSum = snap.docs.reduce((sum, d) => {
-            const x: any = d.data() || {};
-            const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
-            return sum + mb;
-          }, 0);
-          break;
+        try {
+          const snap = await db.collection(n).get();
+          if (!snap.empty) {
+            walletSum = snap.docs.reduce((sum, d) => {
+              const x: any = d.data() || {};
+              const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
+              return sum + mb;
+            }, 0);
+            break;
+          }
+        } catch (err: any) {
+          console.error(`[Admin Stats] Error fetching from ${n}:`, err.message);
         }
       }
       result.walletBalance = walletSum;
+
       const days: Array<{ day: string; total: number }> = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
@@ -1006,7 +1017,8 @@ export async function registerRoutes(
       result.dailyTotals = days;
       result.recentTransactions = txs.slice(0, 5);
       return res.json(result);
-    } catch {
+    } catch (e: any) {
+      console.error("[Admin Stats] General failure:", e.message);
       return res.json(result);
     }
   });
