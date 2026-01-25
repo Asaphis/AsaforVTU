@@ -339,15 +339,15 @@ export async function registerRoutes(
       const phone = u.phone || (profile ? profile.phone : "");
       const displayName = u.displayName || (profile ? profile.displayName : "");
       return {
-        id: u.id,
-        displayName,
-        email: u.email,
-        phone,
-        joinedAt: u.joinedAt,
+        id: u.id || uidKey || emailKey,
+        displayName: displayName || emailKey || uidKey || "Unknown User",
+        email: u.email || emailKey || "",
+        phone: phone || "",
+        joinedAt: u.joinedAt || "",
         walletBalance: bal ? Number(bal.main_balance || 0) : 0,
         cashbackBalance: bal ? Number(bal.cashback_balance || 0) : 0,
         referralBalance: bal ? Number(bal.referral_balance || 0) : 0,
-        status: u.status,
+        status: u.status || "active",
       };
     });
     res.json(users);

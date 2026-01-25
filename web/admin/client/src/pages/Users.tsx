@@ -45,9 +45,10 @@ export default function UsersPage() {
       try {
         const data = await listUsers(100);
         if (!mounted) return;
-        setUsers(data);
+        setUsers(Array.isArray(data) ? data : []);
       } catch (e) {
-        // ignore
+        console.error("Failed to load users:", e);
+        if (mounted) setUsers([]);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -68,10 +69,11 @@ export default function UsersPage() {
   };
 
   const filteredUsers = useMemo(() => {
+    if (!Array.isArray(users)) return [];
     return users.filter(user =>
-      String(user.displayName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(user.phone || '').includes(searchTerm)
+      String(user?.displayName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(user?.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(user?.phone || '').includes(searchTerm)
     );
   }, [users, searchTerm]);
 
@@ -137,7 +139,13 @@ export default function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
+              {filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="p-12 text-center text-slate-400">
+                    No users found or error loading data.
+                  </TableCell>
+                </TableRow>
+              ) : filteredUsers.map((user) => (
                 <TableRow key={user.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors">
                   <TableCell className="px-6 py-4">
                     <span className="text-sm font-bold text-slate-900">
