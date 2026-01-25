@@ -22,6 +22,7 @@ import {
 import { MoreHorizontal, Search, UserPlus, Filter, ShieldCheck } from "lucide-react";
 import { listUsers, promoteAdmin, suspendUser, deleteUser, updateUserPassword, debitWallet } from "@/lib/backend";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { InputGroup } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
