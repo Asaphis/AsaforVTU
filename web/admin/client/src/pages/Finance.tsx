@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 export default function FinancePage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -44,119 +45,106 @@ export default function FinancePage() {
   const txs = (data?.transactions || []).slice(0, 100);
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-700">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-        <div className="flex items-center gap-5">
-          <div className="p-4 rounded-[1.5rem] bg-gradient-to-br from-primary/20 to-indigo-500/10 ring-1 ring-white/10 shadow-2xl">
-            <TrendingUp className="h-8 w-8 text-primary shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
+    <div className="space-y-8 pb-12 animate-in fade-in duration-500">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-slate-100 border border-slate-200">
+            <TrendingUp className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h2 className="text-4xl font-black text-white tracking-tighter mb-1">Fiscal Intelligence</h2>
-            <p className="text-slate-400 font-medium">Real-time revenue, cost, and profitability analysis.</p>
+            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Financial Intel</h2>
+            <p className="text-slate-500 font-medium">Real-time revenue, cost, and profit analysis.</p>
           </div>
         </div>
-        
-        <div className="flex flex-wrap items-center gap-4 bg-white/5 backdrop-blur-xl p-3 rounded-[2rem] border border-white/10 shadow-3xl">
-          <div className="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-xl border border-white/5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Scope</label>
+        <div className="flex flex-wrap items-center gap-3 bg-white border border-slate-200 p-3 rounded-xl shadow-sm">
+          <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Scope</label>
             <select
               value={selectedScope}
               onChange={(e) => setSelectedScope(e.target.value)}
-              className="bg-transparent text-sm font-bold text-white outline-none cursor-pointer min-w-[140px]"
+              className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer min-w-[160px]"
             >
-              <option value="" className="bg-slate-900 text-white">Universal Matrix</option>
+              <option value="">System</option>
               {users.map((u) => (
-                <option key={u.uid || u.id} value={`${u.uid || u.id}|${u.email || ""}`} className="bg-slate-900 text-white">
+                <option key={u.uid || u.id} value={`${u.uid || u.id}|${u.email || ""}`}>
                   {u.displayName || u.email || u.uid}
                 </option>
               ))}
             </select>
           </div>
-          <div className="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-xl border border-white/5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Timeline</label>
+          <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Timeline</label>
             <div className="flex items-center gap-2">
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-transparent text-sm font-bold text-white outline-none cursor-pointer [color-scheme:dark]" />
-              <span className="text-slate-600 text-[10px] font-black uppercase">to</span>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-transparent text-sm font-bold text-white outline-none cursor-pointer [color-scheme:dark]" />
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-white border border-slate-200 rounded-lg h-9 px-2 text-sm text-slate-700" />
+              <span className="text-slate-400 text-[10px] font-bold uppercase">to</span>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-white border border-slate-200 rounded-lg h-9 px-2 text-sm text-slate-700" />
             </div>
           </div>
         </div>
       </div>
 
       {isLoading && (
-        <div className="p-12 text-center bg-white/5 backdrop-blur-xl rounded-[2.5rem] ring-1 ring-white/10">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Processing Analytics Node...</p>
+        <div className="p-8 text-center bg-white rounded-2xl border border-slate-200">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-3" />
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Loading analytics...</p>
         </div>
       )}
 
-      <div className="grid gap-8 md:grid-cols-3">
-        <Card className="border-0 shadow-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent backdrop-blur-xl rounded-[2.5rem] ring-1 ring-white/10 group hover:bg-white/[0.08] transition-all duration-500 overflow-hidden relative">
-          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-            <TrendingUp size={120} className="rotate-12 text-primary" />
-          </div>
-          <CardHeader className="p-10 pb-4 relative z-10">
-            <CardTitle className="text-primary text-[11px] font-black uppercase tracking-[0.25em] flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-              Obligation Capacity
-            </CardTitle>
-            <CardDescription className="text-slate-400 font-medium text-xs mt-2">
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card className="border border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="p-6 pb-2">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-primary">Obligation Capacity</CardTitle>
+            <CardDescription className="text-slate-500 font-medium text-xs mt-1">
               Estimated liquidity required in provider channels.
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-10 pt-2 relative z-10">
-            <div className="text-5xl font-black text-white tracking-tighter mb-4">
+          <CardContent className="px-6 pb-6">
+            <div className="text-3xl font-bold text-slate-900 mb-2">
               ₦{requiredProviderBalance.toLocaleString()}
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-[9px] font-black uppercase tracking-[0.15em] px-2.5 py-1 rounded-lg bg-white/5 text-slate-500 border border-white/5">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-slate-50 text-slate-600 border border-slate-200">
                 Dynamic Delta: High
               </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-2xl bg-white/5 backdrop-blur-xl rounded-[2.5rem] ring-1 ring-white/10 group hover:bg-white/[0.08] transition-all duration-500 overflow-hidden relative">
-          <CardHeader className="p-10 pb-4">
-            <CardTitle className="text-indigo-400 text-[11px] font-black uppercase tracking-[0.25em] flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.6)]" />
-              Ecosystem Balance
-            </CardTitle>
-            <CardDescription className="text-slate-400 font-medium text-xs mt-2">
-              Aggregate liquidity available across all platform nodes.
+        <Card className="border border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="p-6 pb-2">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-700">Ecosystem Balance</CardTitle>
+            <CardDescription className="text-slate-500 font-medium text-xs mt-1">
+              Aggregate liquidity available across platform nodes.
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-10 pt-2">
-            <div className="text-5xl font-black text-white tracking-tighter">
+          <CardContent className="px-6 pb-6">
+            <div className="text-3xl font-bold text-slate-900">
               ₦{(selectedScope ? walletBalance : Number(data?.totalWalletBalance || 0)).toLocaleString()}
             </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 mt-4 italic opacity-60">
-              {selectedScope ? 'Specific Node Liquidity' : 'Global Platform Liquidity'}
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-2">
+              {selectedScope ? "Specific node liquidity" : "Global platform liquidity"}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-2xl bg-white/5 backdrop-blur-xl rounded-[2.5rem] ring-1 ring-white/10 group hover:bg-white/[0.08] transition-all duration-500 overflow-hidden relative border-l-4 border-l-emerald-500/30">
-          <CardHeader className="p-10 pb-4">
-            <CardTitle className="text-emerald-400 text-[11px] font-black uppercase tracking-[0.25em] flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
-              Net Yield Matrix
-            </CardTitle>
-            <CardDescription className="text-slate-400 font-medium text-xs mt-2">
-              Platform profitability after channel processing fees.
+        <Card className="border border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="p-6 pb-2">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-700">Net Yield</CardTitle>
+            <CardDescription className="text-slate-500 font-medium text-xs mt-1">
+              Profitability after provider and SMS costs.
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-10 pt-2">
-            <div className="space-y-4">
-              <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Gross Flow</span>
-                <span className="text-xl font-black text-white tracking-tight">
+          <CardContent className="px-6 pb-6">
+            <div className="space-y-3">
+              <div className="flex justify-between items-end border-b border-slate-100 pb-3">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Gross Flow</span>
+                <span className="text-lg font-bold text-slate-900">
                   ₦{Number(totals.netProfitTotal + totals.providerCostTotal + totals.smsCostTotal).toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between items-center pt-2">
-                <span className="text-sm font-bold text-emerald-400 italic">Net Profit Yield</span>
-                <span className="text-4xl font-black text-white tracking-tighter drop-shadow-[0_0_15px_rgba(var(--primary),0.3)]">
+              <div className="flex justify-between items-center pt-1">
+                <span className="text-sm font-bold text-emerald-600">Net Profit</span>
+                <span className="text-2xl font-bold text-slate-900">
                   ₦{Number(totals.netProfitTotal || 0).toLocaleString()}
                 </span>
               </div>
@@ -165,62 +153,59 @@ export default function FinancePage() {
         </Card>
       </div>
 
-      <div className="grid gap-12 lg:grid-cols-1">
-        <Card className="border-0 shadow-2xl bg-white/5 backdrop-blur-xl rounded-[2.5rem] ring-1 ring-white/10 overflow-hidden">
-          <CardHeader className="p-10 bg-white/[0.02]">
-            <CardTitle className="text-2xl font-black text-white tracking-tight italic">Ecosystem Breakdown</CardTitle>
-            <CardDescription className="text-slate-500 uppercase tracking-widest text-[10px] font-black mt-2">
+      <div className="grid gap-6">
+        <Card className="border border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="p-6">
+            <CardTitle className="text-lg font-bold text-slate-900">Ecosystem Breakdown</CardTitle>
+            <CardDescription className="text-slate-500 font-medium">
               Detailed transaction and performance logs
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
-              <TableHeader className="bg-white/[0.01]">
-                <TableRow className="border-white/5 hover:bg-transparent">
-                  <TableHead className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">ID / Hash</TableHead>
-                  <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Initiator</TableHead>
-                  <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Service Node</TableHead>
-                  <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">User Value</TableHead>
-                  <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Channel Fee</TableHead>
-                  <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Net Gain</TableHead>
-                  <TableHead className="px-10 text-right text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Matrix Status</TableHead>
+              <TableHeader className="bg-slate-50/50">
+                <TableRow className="border-slate-100 hover:bg-transparent">
+                  <TableHead className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">ID / Hash</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Initiator</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Service</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">User Price</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Provider Cost</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Net</TableHead>
+                  <TableHead className="px-6 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {txs.length === 0 ? (
                   <TableRow className="border-0">
-                    <TableCell colSpan={7} className="text-center py-24">
-                      <TrendingUp size={48} className="mx-auto text-white/5 mb-4" />
-                      <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Neural logs empty</p>
-                    </TableCell>
+                    <TableCell colSpan={7} className="text-center py-16 text-slate-500 text-sm">No records</TableCell>
                   </TableRow>
                 ) : txs.map((t) => {
                   const isService = t.isService || ['airtime', 'data', 'electricity', 'exam', 'cable', 'bill'].includes(String(t.serviceType || t.type || '').toLowerCase());
                   const net = isService ? (Number(t.userPrice || 0) - Number(t.providerCost || 0) - Number(t.smsCost || 0)) : 0;
                   return (
-                    <TableRow key={t.id} className="border-white/5 hover:bg-white/[0.03] transition-colors group">
-                      <TableCell className="px-10 py-6 font-mono text-[10px] text-slate-500 tracking-tighter italic">
+                    <TableRow key={t.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors">
+                      <TableCell className="px-6 py-4 font-mono text-xs text-slate-500 tracking-tight">
                         {t.id.slice(0, 12)}...
                       </TableCell>
-                      <TableCell className="text-sm font-black text-white group-hover:text-primary transition-colors">
+                      <TableCell className="text-sm font-bold text-slate-900">
                         {t.user || 'Platform'}
                       </TableCell>
-                      <TableCell className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      <TableCell className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                         {t.serviceType || t.type}
                       </TableCell>
-                      <TableCell className="text-white font-black tracking-tight">
+                      <TableCell className="text-slate-900 font-bold">
                         ₦{Number(t.userPrice || 0).toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-red-400/60 font-medium text-xs italic">
+                      <TableCell className="text-red-600 font-medium text-xs">
                         -₦{Number(t.providerCost || 0).toLocaleString()}
                       </TableCell>
-                      <TableCell className={cn("font-black tracking-tight text-lg italic", net > 0 ? "text-emerald-400" : "text-slate-600")}>
+                      <TableCell className={cn("font-bold tracking-tight text-sm", net > 0 ? "text-emerald-600" : "text-slate-600")}>
                         ₦{net.toLocaleString()}
                       </TableCell>
-                      <TableCell className="px-10 text-right">
+                      <TableCell className="px-6 text-right">
                         <Badge className={cn(
-                          "px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border-0",
-                          String(t.status).toLowerCase() === 'success' ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20' : 'bg-orange-500/10 text-orange-400 ring-1 ring-orange-500/20'
+                          "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border",
+                          String(t.status).toLowerCase() === 'success' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-orange-50 text-orange-600 border-orange-100'
                         )}>
                           {t.status}
                         </Badge>
@@ -304,7 +289,7 @@ export default function FinancePage() {
         </Card>
       </div>
 
-      <Card className="border-none shadow-sm">
+      <Card className="border border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
         <CardHeader>
           <CardTitle>Transaction Breakdown</CardTitle>
           <CardDescription>Recent transactions in selected scope</CardDescription>
@@ -355,7 +340,7 @@ export default function FinancePage() {
       </Card>
 
       {selectedScope && (
-        <Card className="border-none shadow-sm">
+        <Card className="border border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
           <CardHeader>
             <CardTitle>Capacity by Service</CardTitle>
             <CardDescription>Estimated transactions based on user balance</CardDescription>
