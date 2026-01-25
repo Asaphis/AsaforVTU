@@ -354,6 +354,7 @@ export async function registerRoutes(
       const displayName = u.displayName || (profile ? profile.displayName : "");
       return {
         id: u.id || uidKey || emailKey,
+        uid: u.uid || u.id || uidKey || emailKey, // Ensure uid is present
         displayName: displayName || emailKey || uidKey || "Unknown User",
         email: u.email || emailKey || "",
         phone: phone || "",
