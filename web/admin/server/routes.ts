@@ -174,6 +174,28 @@ export async function registerRoutes(
     dailyReferralBudget: 0,
   };
 
+  app.get("/api/health/details", async (_req: Request, res: Response) => {
+    const initialized = getApps().length > 0;
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+    const clientEmail = cleanEnvString(process.env.FIREBASE_CLIENT_EMAIL);
+    const hasPrivateKey = !!process.env.FIREBASE_PRIVATE_KEY;
+    const hasServiceAccount = !!cleanEnvString(process.env.FIREBASE_SERVICE_ACCOUNT);
+    
+    res.json({
+      initialized,
+      source: adminInitSource,
+      error: adminInitError,
+      hasServiceAccount,
+      hasClientEmail: !!clientEmail,
+      hasPrivateKey,
+      projectId: projectId || "not_set",
+      env: {
+        NODE_ENV: process.env.NODE_ENV,
+        PORT: process.env.PORT
+      }
+    });
+  });
+
   app.get("/api/admin/settings", adminAuth, async (_req: Request, res: Response) => {
     try {
       const db = getFirestoreSafe();

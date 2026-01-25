@@ -33,12 +33,19 @@ try {
         messaging = admin.messaging();
         firebaseInitialized = true;
         
-        console.log('[Firebase] ✅ Successfully initialized');
+        console.log(`[Firebase] ✅ Successfully initialized project: ${projectId}`);
       } catch (initError) {
         console.error('[Firebase] ❌ Initialization error:', initError);
+        adminInitError = initError.message;
       }
     } else {
-      console.error('[Firebase] ❌ Missing required credentials');
+      const missing = [];
+      if (!projectId) missing.push('FIREBASE_PROJECT_ID');
+      if (!clientEmail) missing.push('FIREBASE_CLIENT_EMAIL');
+      if (!privateKey) missing.push('FIREBASE_PRIVATE_KEY');
+      if (!storageBucket) missing.push('FIREBASE_STORAGE_BUCKET');
+      console.error(`[Firebase] ❌ Missing required credentials: ${missing.join(', ')}`);
+      adminInitError = `Missing credentials: ${missing.join(', ')}`;
     }
   } else {
     console.log('[Firebase] Using existing Firebase app instance');
