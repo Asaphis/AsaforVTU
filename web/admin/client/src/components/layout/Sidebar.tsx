@@ -18,7 +18,7 @@ import { signOut } from "@/lib/firebase";
 // Use the brand logo
 const logoUrl = "/logo.png";
 
-export function Sidebar() {
+export function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => void }) {
   const [location] = useLocation();
 
   const menuItems = [
@@ -35,7 +35,14 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 z-40 w-64 border-r border-slate-200 bg-white flex flex-col">
+    <aside
+      className={cn(
+        "fixed left-0 top-0 bottom-0 z-40 w-64 border-r border-slate-200 bg-white flex flex-col transition-transform duration-200",
+        "md:translate-x-0",
+        open ? "translate-x-0" : "translate-x-[-100%] md:translate-x-0"
+      )}
+      aria-hidden={!open && typeof window !== "undefined" && window.innerWidth < 768}
+    >
       <div className="flex h-16 items-center px-6 border-b border-slate-200">
         <div className="flex items-center gap-3">
           <img src={logoUrl} alt="AsaforVTU Logo" className="h-8 w-8 object-contain" />
@@ -59,6 +66,7 @@ export function Sidebar() {
                       ? "bg-slate-100 text-slate-900"
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                   )}
+                  onClick={() => onClose && onClose()}
                 >
                   <item.icon
                     className={cn(
