@@ -452,6 +452,14 @@ export async function registerRoutes(
             resolvedUid = userId.toLowerCase();
           }
         }
+        if (!resolvedUid && resolvedEmail) {
+          try {
+            const q = await db.collection("users").where("email", "==", resolvedEmail).limit(1).get();
+            if (!q.empty) {
+              resolvedUid = String(q.docs[0].id || "").toLowerCase();
+            }
+          } catch {}
+        }
         const targetIds = Array.from(new Set([resolvedUid, resolvedEmail].filter(Boolean)));
         const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
         await db.collection("admin_transactions").doc(id).set({
@@ -528,6 +536,14 @@ export async function registerRoutes(
           } else {
             resolvedUid = userId.toLowerCase();
           }
+        }
+        if (!resolvedUid && resolvedEmail) {
+          try {
+            const q = await db.collection("users").where("email", "==", resolvedEmail).limit(1).get();
+            if (!q.empty) {
+              resolvedUid = String(q.docs[0].id || "").toLowerCase();
+            }
+          } catch {}
         }
         const targetIds = Array.from(new Set([resolvedUid, resolvedEmail].filter(Boolean)));
         const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -901,7 +917,7 @@ export async function registerRoutes(
   app.get("/api/admin/support/tickets", adminAuth, async (_req: Request, res: Response) => {
     try {
       const db = getFirestoreSafe();
-      const snap = await db.collection("support_tickets").orderBy("createdAt", "desc").limit(200).get();
+      const snap = await db.collection("tickets").orderBy("lastMessageAt", "desc").limit(200).get();
       const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       return res.json(rows);
     } catch { return res.json([]); }
@@ -912,10 +928,17 @@ export async function registerRoutes(
     const { message } = req.body;
     try {
       const db = getFirestoreSafe();
-      await db.collection("support_tickets").doc(id).update({
+      const tRef = db.collection("tickets").doc(id);
+      await tRef.collection("messages").add({
+        text: message,
+        sender: "admin",
+        createdAt: Date.now(),
+        read: false
+      });
+      await tRef.update({
         status: "replied",
-        adminReply: message,
-        repliedAt: Date.now()
+        lastMessage: message,
+        lastMessageAt: Date.now()
       });
       return res.json({ success: true });
     } catch (e: any) { return res.status(400).json({ message: e.message }); }

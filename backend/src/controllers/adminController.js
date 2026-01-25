@@ -79,6 +79,16 @@ const creditWallet = async (req, res) => {
       }
     } catch {}
     let chosenId = uidCandidate || emailCandidate || raw;
+    if (!uidCandidate && emailCandidate) {
+      try {
+        const q = await db.collection('users').where('email', '==', emailCandidate).limit(1).get();
+        if (!q.empty) {
+          const doc = q.docs[0];
+          uidCandidate = doc.id;
+          chosenId = uidCandidate || chosenId;
+        }
+      } catch {}
+    }
     try {
       const a = uidCandidate ? await db.collection('wallets').doc(uidCandidate).get() : null;
       const b = emailCandidate ? await db.collection('wallets').doc(emailCandidate).get() : null;
@@ -251,6 +261,16 @@ const debitWallet = async (req, res) => {
       }
     } catch {}
     let chosenId = uidCandidate || emailCandidate || raw;
+    if (!uidCandidate && emailCandidate) {
+      try {
+        const q = await db.collection('users').where('email', '==', emailCandidate).limit(1).get();
+        if (!q.empty) {
+          const doc = q.docs[0];
+          uidCandidate = doc.id;
+          chosenId = uidCandidate || chosenId;
+        }
+      } catch {}
+    }
     try {
       const a = uidCandidate ? await db.collection('wallets').doc(uidCandidate).get() : null;
       const b = emailCandidate ? await db.collection('wallets').doc(emailCandidate).get() : null;
@@ -386,7 +406,7 @@ const changeAdminPassword = async (req, res) => {
 
 const getTickets = async (req, res) => {
   try {
-    const snap = await db.collection('support_tickets').orderBy('createdAt', 'desc').get();
+    const snap = await db.collection('tickets').orderBy('lastMessageAt', 'desc').get();
     const tickets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     res.json(tickets);
   } catch (error) {
@@ -398,23 +418,19 @@ const replyTicket = async (req, res) => {
   try {
     const { id } = req.params;
     const { message } = req.body;
-    
-    // Add to replies subcollection for the conversation view
-    await db.collection('support_tickets').doc(id).collection('replies').add({
-      message,
-      senderId: req.user.uid,
-      senderRole: 'admin',
-      createdAt: Date.now()
+    const ticketRef = db.collection('tickets').doc(id);
+    await ticketRef.collection('messages').add({
+      text: message,
+      sender: 'admin',
+      senderId: req.user?.uid || 'admin',
+      createdAt: new Date(),
+      read: false
     });
-    
-    // Also update the legacy field for backwards compatibility and status
-    await db.collection('support_tickets').doc(id).update({ 
-      status: 'replied', 
-      adminReply: message,
-      updatedAt: Date.now(),
-      lastMessageAt: Date.now()
+    await ticketRef.update({
+      status: 'replied',
+      lastMessage: message,
+      lastMessageAt: new Date()
     });
-    
     res.json({ success: true, message: 'Reply sent' });
   } catch (error) {
     res.status(500).json({ error: error.message });
