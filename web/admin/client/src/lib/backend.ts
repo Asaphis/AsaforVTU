@@ -13,6 +13,7 @@ function getBaseUrl(): string {
   } catch {}
   const isLocal = origin.includes("localhost") || origin.includes("127.0.0.1");
   if (isLocal) return localUrl || "http://localhost:5000";
+  if (origin && origin.includes("asaforadminpanel.onrender.com")) return origin;
   if (prodUrl) return prodUrl;
   if (origin) return origin;
   return "https://asaforvtubackend.onrender.com";
