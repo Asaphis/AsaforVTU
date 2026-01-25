@@ -5,6 +5,56 @@ import { initializeApp, getApps, applicationDefault, cert } from "firebase-admin
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
+function cleanEnvString(s?: string): string {
+  const v = typeof s === "string" ? s.trim().replace(/^`|`$/g, "") : "";
+  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+    return v.slice(1, -1);
+  }
+  return v;
+}
+
+function ensureFirebaseAdminInitialized(): boolean {
+  if (getApps().length) return true;
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+  try {
+    const saRaw = cleanEnvString(process.env.FIREBASE_SERVICE_ACCOUNT);
+    if (saRaw) {
+      const json = JSON.parse(saRaw);
+      initializeApp({ credential: cert(json), projectId: json.project_id || projectId } as any);
+      return true;
+    }
+    const clientEmail = cleanEnvString(process.env.FIREBASE_CLIENT_EMAIL);
+    const rawKey = process.env.FIREBASE_PRIVATE_KEY;
+    if (clientEmail && rawKey) {
+      const privateKey = String(rawKey).replace(/\\n/g, "\n");
+      initializeApp({ credential: cert({ projectId: projectId, clientEmail: clientEmail, privateKey: privateKey }), projectId } as any);
+      return true;
+    }
+    initializeApp({ credential: applicationDefault(), projectId } as any);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getAuthSafe(): any {
+  ensureFirebaseAdminInitialized();
+  try {
+    return getAuth();
+  } catch {
+    return {
+      listUsers: async (_: number) => ({ users: [] }),
+      verifyIdToken: async (_: string) => { throw new Error("auth unavailable"); },
+      getUserByEmail: async (_: string) => { throw new Error("auth unavailable"); },
+      getUser: async (_: string) => { throw new Error("auth unavailable"); },
+      deleteUser: async (_: string) => { throw new Error("auth unavailable"); },
+      updateUser: async (_: string, __: any) => { throw new Error("auth unavailable"); },
+      createUser: async (_: any) => { throw new Error("auth unavailable"); },
+      setCustomUserClaims: async (_: string, __: any) => {},
+    } as any;
+  }
+}
+
 function pickNumber(source: any, keys: string[]): number {
   for (const k of keys) {
     const v = source?.[k];
@@ -65,7 +115,7 @@ export async function registerRoutes(
   async function verifyTokenAndGetEmail(token?: string): Promise<{ email?: string; isAdmin?: boolean }> {
     if (!token) return { email: undefined, isAdmin: false };
     try {
-      const decoded: any = await getAuth().verifyIdToken(token);
+      const decoded: any = await getAuthSafe().verifyIdToken(token);
       const email = String(decoded.email || "").toLowerCase();
       const isAdmin = Boolean(decoded.admin === true || (decoded.customClaims && decoded.customClaims.admin === true));
       return { email: email || undefined, isAdmin };
@@ -159,7 +209,7 @@ export async function registerRoutes(
       status: string;
     }> = [];
     try {
-      const list = await getAuth().listUsers(limit);
+      const list = await getAuthSafe().listUsers(limit);
       baseUsers = list.users.map((u) => ({
         id: u.uid,
         uid: u.uid,
@@ -253,8 +303,8 @@ export async function registerRoutes(
     const uid = String((req.body?.uid as string) || "");
     const email = String((req.body?.email as string) || "");
     const setClaims = async (targetUid: string) => {
-      await getAuth().setCustomUserClaims(targetUid, { admin: true });
-      const user = await getAuth().getUser(targetUid);
+      await getAuthSafe().setCustomUserClaims(targetUid, { admin: true });
+      const user = await getAuthSafe().getUser(targetUid);
       res.json({ success: true, uid: targetUid, email: String(user.email || "") });
     };
     const run = async () => {
@@ -263,7 +313,7 @@ export async function registerRoutes(
         return;
       }
       if (email) {
-        const userRecord = await getAuth().getUserByEmail(email);
+        const userRecord = await getAuthSafe().getUserByEmail(email);
         await setClaims(userRecord.uid);
         return;
       }
@@ -286,11 +336,11 @@ export async function registerRoutes(
         let resolvedEmail = "";
         try {
           if (userId.includes("@")) {
-            const u = await getAuth().getUserByEmail(userId);
+            const u = await getAuthSafe().getUserByEmail(userId);
             resolvedUid = String(u.uid || "").toLowerCase();
             resolvedEmail = String(u.email || userId || "").toLowerCase();
           } else {
-            const u = await getAuth().getUser(userId);
+            const u = await getAuthSafe().getUser(userId);
             resolvedUid = String(u.uid || userId || "").toLowerCase();
             resolvedEmail = String(u.email || "").toLowerCase();
           }
@@ -363,11 +413,11 @@ export async function registerRoutes(
         let resolvedEmail = "";
         try {
           if (userId.includes("@")) {
-            const u = await getAuth().getUserByEmail(userId);
+            const u = await getAuthSafe().getUserByEmail(userId);
             resolvedUid = String(u.uid || "").toLowerCase();
             resolvedEmail = String(u.email || userId || "").toLowerCase();
           } else {
-            const u = await getAuth().getUser(userId);
+            const u = await getAuthSafe().getUser(userId);
             resolvedUid = String(u.uid || userId || "").toLowerCase();
             resolvedEmail = String(u.email || "").toLowerCase();
           }
@@ -433,7 +483,7 @@ export async function registerRoutes(
     const uid = String((req.body?.uid as string) || "");
     const email = String((req.body?.email as string) || "");
     const suspend = Boolean(req.body?.suspend);
-    const auth = getAuth();
+    const auth = getAuthSafe();
     try {
       let targetUid = uid;
       if (!targetUid && email) {
@@ -452,7 +502,7 @@ export async function registerRoutes(
   app.post("/api/admin/users/delete", adminAuth, async (req: Request, res: Response) => {
     const uid = String((req.body?.uid as string) || "");
     const email = String((req.body?.email as string) || "");
-    const auth = getAuth();
+    const auth = getAuthSafe();
     try {
       let targetUid = uid;
       if (!targetUid && email) {
@@ -471,7 +521,7 @@ export async function registerRoutes(
     const uid = String((req.body?.uid as string) || "");
     const email = String((req.body?.email as string) || "");
     const password = String((req.body?.password as string) || "");
-    const auth = getAuth();
+    const auth = getAuthSafe();
     try {
       let targetUid = uid;
       if (!targetUid && email) {
@@ -662,7 +712,7 @@ export async function registerRoutes(
     if (!tokenInfo?.email) return res.status(401).json({ message: "Unauthorized" });
 
     try {
-      const user = await getAuth().getUserByEmail(tokenInfo.email);
+      const user = await getAuthSafe().getUserByEmail(tokenInfo.email);
       return res.json({
         uid: user.uid,
         email: user.email,
@@ -684,8 +734,8 @@ export async function registerRoutes(
 
     const { displayName, phoneNumber } = req.body;
     try {
-      const user = await getAuth().getUserByEmail(tokenInfo.email);
-      await getAuth().updateUser(user.uid, {
+      const user = await getAuthSafe().getUserByEmail(tokenInfo.email);
+      await getAuthSafe().updateUser(user.uid, {
         displayName: displayName || user.displayName,
         phoneNumber: phoneNumber || user.phoneNumber,
       });
@@ -703,8 +753,8 @@ export async function registerRoutes(
 
     const { newPassword } = req.body;
     try {
-      const user = await getAuth().getUserByEmail(tokenInfo.email);
-      await getAuth().updateUser(user.uid, {
+      const user = await getAuthSafe().getUserByEmail(tokenInfo.email);
+      await getAuthSafe().updateUser(user.uid, {
         password: newPassword,
       });
       return res.json({ success: true, message: "Password updated successfully" });
@@ -814,7 +864,7 @@ export async function registerRoutes(
       dailyTotals: [] as Array<{ day: string; total: number }>,
       recentTransactions: [] as any[],
     };
-    const auth = getAuth();
+    const auth = getAuthSafe();
     let usersCount = 0;
     try {
       const users = await auth.listUsers(1000);
@@ -1330,7 +1380,7 @@ export async function registerRoutes(
     const phoneNumber = String((req.body?.phoneNumber as string) || "");
     if (!email || !password) return res.status(400).json({ success: false, message: "email and password required" });
     try {
-      const user = await getAuth().createUser({ email, password, displayName: displayName || undefined, phoneNumber: phoneNumber || undefined });
+      const user = await getAuthSafe().createUser({ email, password, displayName: displayName || undefined, phoneNumber: phoneNumber || undefined });
       res.json({ success: true, uid: user.uid, email: user.email, displayName: user.displayName });
     } catch (e: any) {
       res.status(400).json({ success: false, message: String(e?.message || "error") });
@@ -1357,8 +1407,8 @@ export async function registerRoutes(
     const displayName = String((req.body?.displayName as string) || "");
     if (!email || !password) return res.status(400).json({ success: false, message: "email and password required" });
     try {
-      const user = await getAuth().createUser({ email, password, displayName: displayName || undefined });
-      await getAuth().setCustomUserClaims(user.uid, { admin: true });
+      const user = await getAuthSafe().createUser({ email, password, displayName: displayName || undefined });
+      await getAuthSafe().setCustomUserClaims(user.uid, { admin: true });
       try {
         const db = getFirestore();
         await db.collection("admin_accounts").doc(email.toLowerCase()).set({ email: email.toLowerCase(), uid: user.uid, createdAt: Date.now() }, { merge: true });
