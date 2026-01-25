@@ -55,6 +55,32 @@ function getAuthSafe(): any {
   }
 }
 
+function getFirestoreSafe(): any {
+  ensureFirebaseAdminInitialized();
+  try {
+    return getFirestore();
+  } catch {
+    const emptySnap = { empty: true, docs: [], size: 0, forEach: () => {} };
+    const emptyDoc = { exists: false, id: "", data: () => ({}), get: async () => ({ exists: false, data: () => ({}) }) };
+    const coll = () => ({
+      orderBy: (_: string, __?: any) => coll(),
+      limit: (_: number) => coll(),
+      where: (_: string, __: any, ___: any) => coll(),
+      get: async () => emptySnap,
+      add: async (_: any) => ({ id: "" }),
+      doc: (_: string) => ({
+        get: async () => emptyDoc,
+        set: async (_: any, __?: any) => {},
+        update: async (_: any) => {},
+        delete: async () => {},
+      }),
+    });
+    return {
+      collection: (_: string) => coll(),
+    } as any;
+  }
+}
+
 function pickNumber(source: any, keys: string[]): number {
   for (const k of keys) {
     const v = source?.[k];
@@ -147,7 +173,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/settings", adminAuth, async (_req: Request, res: Response) => {
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const doc = await db.collection("admin_settings").doc("settings").get();
       if (doc.exists) return res.json(doc.data() || settingsStore);
     } catch {}
@@ -158,7 +184,7 @@ export async function registerRoutes(
     const body = req.body || {};
     Object.assign(settingsStore, body);
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       await db.collection("admin_settings").doc("settings").set(settingsStore, { merge: true });
     } catch {}
     return res.json({ message: "Settings updated" });
@@ -166,7 +192,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/transactions", adminAuth, async (_req: Request, res: Response) => {
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const names = ["admin_transactions", "transactions"];
       let txs: any[] = [];
       for (const n of names) {
@@ -198,7 +224,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/users", adminAuth, async (req: Request, res: Response) => {
     const limit = Math.max(1, Math.min(1000, Number((req.query.limit as string) || "100")));
-    const db = getFirestore();
+    const db = getFirestoreSafe();
     let baseUsers: Array<{
       id: string;
       uid: string;
@@ -331,7 +357,7 @@ export async function registerRoutes(
     const newBalance = amount;
     const doInsert = async () => {
       try {
-        const db = getFirestore();
+        const db = getFirestoreSafe();
         let resolvedUid = "";
         let resolvedEmail = "";
         try {
@@ -408,7 +434,7 @@ export async function registerRoutes(
     const walletType = String((req.body?.walletType as string) || "main");
     const doInsert = async () => {
       try {
-        const db = getFirestore();
+        const db = getFirestoreSafe();
         let resolvedUid = "";
         let resolvedEmail = "";
         try {
@@ -542,7 +568,7 @@ export async function registerRoutes(
     const uid = String((req.query as any)?.uid || "").trim();
     if (!email && !uid) return res.json([]);
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const names = ["admin_transactions", "transactions", "wallet_transactions"];
       for (const n of names) {
         let rows: any[] = [];
@@ -638,7 +664,7 @@ export async function registerRoutes(
       return res.status(400).json({ message: "network, name, priceUser, priceApi required" });
     }
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       await db.collection("service_plans").doc(id).set({
         network,
         name,
@@ -655,7 +681,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/plans", adminAuth, async (_req: Request, res: Response) => {
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const snap = await db.collection("service_plans").orderBy("createdAt", "desc").get();
       const rows = snap.docs.map(d => {
         const x: any = d.data() || {};
@@ -682,7 +708,7 @@ export async function registerRoutes(
     const body = req.body || {};
     if (!id) return res.status(400).json({ message: "id and at least one field required" });
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const patch: any = {};
       if (body.network !== undefined) patch.network = String(body.network || "");
       if (body.name !== undefined) patch.name = String(body.name || "");
@@ -699,7 +725,7 @@ export async function registerRoutes(
     const id = String(req.params.id || "");
     if (!id) return res.status(400).json({ message: "id required" });
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       await db.collection("service_plans").doc(id).delete();
     } catch {}
     return res.json({ success: true, id });
@@ -765,7 +791,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/wallet/requests", adminAuth, async (_req: Request, res: Response) => {
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const snap = await db.collection("funding_requests").orderBy("createdAt", "desc").limit(100).get();
       const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       return res.json(rows);
@@ -777,7 +803,7 @@ export async function registerRoutes(
   app.post("/api/admin/wallet/requests/:id/approve", adminAuth, async (req: Request, res: Response) => {
     const id = req.params.id;
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       await db.collection("funding_requests").doc(id).update({ status: "approved", approvedAt: Date.now() });
       return res.json({ success: true });
     } catch (e: any) {
@@ -788,7 +814,7 @@ export async function registerRoutes(
   app.post("/api/admin/wallet/requests/:id/reject", adminAuth, async (req: Request, res: Response) => {
     const id = req.params.id;
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       await db.collection("funding_requests").doc(id).update({ status: "rejected", rejectedAt: Date.now() });
       return res.json({ success: true });
     } catch (e: any) {
@@ -799,7 +825,7 @@ export async function registerRoutes(
   // Support Tickets
   app.get("/api/admin/support/tickets", adminAuth, async (_req: Request, res: Response) => {
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const snap = await db.collection("support_tickets").orderBy("createdAt", "desc").limit(200).get();
       const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       return res.json(rows);
@@ -810,7 +836,7 @@ export async function registerRoutes(
     const { id } = req.params;
     const { message } = req.body;
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       await db.collection("support_tickets").doc(id).update({
         status: "replied",
         adminReply: message,
@@ -823,7 +849,7 @@ export async function registerRoutes(
   // Announcements
   app.get("/api/admin/announcements", adminAuth, async (_req: Request, res: Response) => {
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const snap = await db.collection("announcements").orderBy("createdAt", "desc").get();
       return res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch { return res.json([]); }
@@ -832,7 +858,7 @@ export async function registerRoutes(
   app.post("/api/admin/announcements", adminAuth, async (req: Request, res: Response) => {
     const { title, content, type = "info" } = req.body;
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const doc = await db.collection("announcements").add({
         title,
         content,
@@ -846,7 +872,7 @@ export async function registerRoutes(
 
   app.delete("/api/admin/announcements/:id", adminAuth, async (req: Request, res: Response) => {
     try {
-      await getFirestore().collection("announcements").doc(req.params.id).delete();
+      await getFirestoreSafe().collection("announcements").doc(req.params.id).delete();
       return res.json({ success: true });
     } catch (e: any) { return res.status(400).json({ message: e.message }); }
   });
@@ -873,7 +899,7 @@ export async function registerRoutes(
       usersCount = 0;
     }
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const txNames = ["transactions", "admin_transactions", "wallet_transactions"];
       const walletNames = ["wallets", "user_wallets"];
       let txs: any[] = [];
@@ -943,7 +969,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/wallet/logs", adminAuth, async (_req: Request, res: Response) => {
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const names = ["wallet_logs", "wallet_transactions"];
       for (const n of names) {
         const snap = await db.collection(n).orderBy("createdAt", "desc").limit(200).get();
@@ -970,7 +996,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/wallet/deposits", adminAuth, async (_req: Request, res: Response) => {
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const snap = await db.collection("wallet_deposits").orderBy("createdAt", "desc").limit(200).get();
       const rows = snap.docs.map((d) => {
         const x: any = d.data() || {};
@@ -996,7 +1022,7 @@ export async function registerRoutes(
       return d.getTime();
     };
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const txNames = ["transactions", "admin_transactions", "wallet_transactions"];
       const depositsSnap = await db.collection("wallet_deposits").orderBy("createdAt", "desc").limit(2000).get();
       const deposits = depositsSnap.docs.map(d => d.data() || {});
@@ -1080,7 +1106,7 @@ export async function registerRoutes(
     let walletBalance = 0;
     let totalWalletBalance = 0;
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const txNames = ["transactions", "admin_transactions", "wallet_transactions"];
       const depositsSnap = await db.collection("wallet_deposits").orderBy("createdAt", "desc").limit(1000).get();
       const depositsAll = depositsSnap.docs.map(d => d.data() || {});
@@ -1276,7 +1302,7 @@ export async function registerRoutes(
     const uid = String((req.query as any)?.uid || "").toLowerCase();
     if (!email && !uid) return res.status(400).json({ message: "uid or email required" });
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const txNames = ["transactions", "admin_transactions", "wallet_transactions"];
       const depositsSnap = await db.collection("wallet_deposits").orderBy("createdAt", "desc").limit(2000).get();
       const depositsAll = depositsSnap.docs.map(d => d.data() || {});
@@ -1352,7 +1378,7 @@ export async function registerRoutes(
     const id = String(req.params.id || "");
     if (!id) return res.status(400).json({ message: "id required" });
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const doc = await db.collection("admin_transactions").doc(id).get();
       if (doc.exists) {
         const x: any = doc.data() || {};
@@ -1389,7 +1415,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/admins", adminAuth, async (_req: Request, res: Response) => {
     try {
-      const db = getFirestore();
+      const db = getFirestoreSafe();
       const snap = await db.collection("admin_accounts").orderBy("createdAt", "desc").get();
       const rows = snap.docs.map(d => {
         const x: any = d.data() || {};
@@ -1410,7 +1436,7 @@ export async function registerRoutes(
       const user = await getAuthSafe().createUser({ email, password, displayName: displayName || undefined });
       await getAuthSafe().setCustomUserClaims(user.uid, { admin: true });
       try {
-        const db = getFirestore();
+        const db = getFirestoreSafe();
         await db.collection("admin_accounts").doc(email.toLowerCase()).set({ email: email.toLowerCase(), uid: user.uid, createdAt: Date.now() }, { merge: true });
       } catch {}
       res.json({ success: true, uid: user.uid, email: user.email });
