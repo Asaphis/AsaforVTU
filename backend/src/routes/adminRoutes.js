@@ -70,6 +70,7 @@ router.post('/profile/password', adminController.changeAdminPassword);
 
 // Support & Announcements
 router.get('/support/tickets', adminController.getTickets);
+router.post('/support/tickets', adminController.createTicket);
 router.post('/support/tickets/:id/reply', adminController.replyTicket);
 router.get('/announcements', adminController.getAnnouncements);
 router.post('/announcements', adminController.createAnnouncement);

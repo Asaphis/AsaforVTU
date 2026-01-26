@@ -441,6 +441,31 @@ const getTickets = async (req, res) => {
   }
 };
 
+const createTicket = async (req, res) => {
+  try {
+    const { subject, message, email } = req.body;
+    const ticketRef = await db.collection('tickets').add({
+      subject,
+      email: email || req.user?.email || 'unknown',
+      userId: req.user?.uid || 'unknown',
+      status: 'open',
+      lastMessage: message,
+      lastMessageAt: new Date(),
+      createdAt: new Date()
+    });
+    await ticketRef.collection('messages').add({
+      text: message,
+      sender: 'user',
+      senderId: req.user?.uid || 'unknown',
+      createdAt: new Date(),
+      read: false
+    });
+    res.json({ success: true, id: ticketRef.id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const replyTicket = async (req, res) => {
   try {
     const { id } = req.params;

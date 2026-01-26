@@ -37,7 +37,12 @@ const envOrigins = originsEnv ? originsEnv.split(',').map(s => s.trim()).filter(
 const origins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
 const corsOptions = {
   origin: (origin, callback) => {
-    let isAllowed = !origin || origins.includes(origin);
+    // In development/replit, allow all origins
+    if (!origin || origin.includes('.replit.app') || origin.includes('.replit.dev') || origin.includes('localhost')) {
+      return callback(null, true);
+    }
+    
+    let isAllowed = origins.includes(origin);
     if (!isAllowed && origin) {
       try {
         const host = new URL(origin).hostname.toLowerCase();
@@ -46,15 +51,10 @@ const corsOptions = {
         }
       } catch {}
     }
-    if (!isAllowed) {
-      console.log(`[CORS] Blocked origin: ${origin}`);
-      console.log(`[CORS] Allowed origins: ${origins.join(', ')}`);
-    }
     return isAllowed ? callback(null, true) : callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  // Do not pin allowed headers; let cors echo Access-Control-Request-Headers
   exposedHeaders: ['Content-Length', 'Content-Type'],
   maxAge: 86400,
   optionsSuccessStatus: 200

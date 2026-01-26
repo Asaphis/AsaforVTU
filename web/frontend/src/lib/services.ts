@@ -15,9 +15,14 @@ const resolveBackendUrl = (): string => {
     
     // Always use current origin for API calls if on Replit
     if (host.includes('.replit.app') || host.includes('.replit.dev')) {
-       // Support both -5000 and -3001 formats
-       const backendUrl = `https://${host.replace('-5000.', '-3001.')}`;
-       return backendUrl;
+       // Replit uses subdomains for different ports in some configurations
+       // Or it might be using the same domain with different ports.
+       // Let's try to detect if we're on a port-specific subdomain
+       if (host.includes('-5000.')) {
+         return `https://${host.replace('-5000.', '-3001.')}`;
+       }
+       // Fallback: try to just use the 3001 port on the same host if it's not a subdomain setup
+       return `https://${host}:3001`;
     }
 
     if (host.includes('localhost') || host.includes('127.0.0.1')) {
@@ -30,6 +35,48 @@ const resolveBackendUrl = (): string => {
   const url = envUrl || 'https://asaforvtubackend.onrender.com';
   console.log('[Backend Resolve] Using Production URL:', url);
   return url;
+};
+
+// Announcement interface
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  type: 'info' | 'warning' | 'success' | 'error';
+  active: boolean;
+  createdAt: any;
+}
+
+export const getAnnouncements = async (): Promise<Announcement[]> => {
+  const backendUrl = resolveBackendUrl();
+  try {
+    const res = await fetch(`${backendUrl}/api/admin/announcements`);
+    if (!res.ok) throw new Error('Failed to fetch announcements');
+    return await res.json();
+  } catch (error) {
+    console.error('Error fetching announcements:', error);
+    return [];
+  }
+};
+
+export const createTicket = async (subject: string, message: string): Promise<{ success: boolean; message: string }> => {
+  const backendUrl = resolveBackendUrl();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+  try {
+    const res = await fetch(`${backendUrl}/api/admin/support/tickets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ subject, message, email: auth.currentUser?.email }),
+    });
+    if (!res.ok) throw new Error('Failed to create ticket');
+    return { success: true, message: 'Ticket created successfully' };
+  } catch (error) {
+    console.error('Error creating ticket:', error);
+    return { success: false, message: 'Failed to create ticket' };
+  }
 };
 
 export interface ServiceDoc {
