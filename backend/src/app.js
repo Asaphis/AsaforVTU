@@ -21,8 +21,18 @@ const defaultOrigins = [
   'https://asaforvtubackend.onrender.com',
   'http://localhost:3000',
   'http://localhost:5000',
+  'http://localhost:3001',
+  'http://localhost:3002',
   'http://localhost:5001'
 ];
+
+// Add current replit host dynamically if available
+if (process.env.REPLIT_DEV_DOMAIN) {
+  const devHost = process.env.REPLIT_DEV_DOMAIN;
+  defaultOrigins.push(`https://${devHost}`);
+  defaultOrigins.push(`https://${devHost.replace('-5000.', '-3001.')}`);
+  defaultOrigins.push(`https://${devHost.replace('-5000.', '-3002.')}`);
+}
 const envOrigins = originsEnv ? originsEnv.split(',').map(s => s.trim()).filter(Boolean) : [];
 const origins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
 const corsOptions = {

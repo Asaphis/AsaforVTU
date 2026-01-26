@@ -155,7 +155,7 @@ export async function registerRoutes(
 
   async function adminAuth(req: Request, res: Response, next: NextFunction) {
     // Skip auth check for development/preview on Replit
-    const isDev = process.env.NODE_ENV === "development" || process.env.REPLIT_SLUG;
+    const isDev = process.env.NODE_ENV === "development" || process.env.REPLIT_SLUG || process.env.REPLIT_DEV_DOMAIN;
     if (isDev) {
       console.log("[Admin Auth] Bypassing for development/Replit preview");
       return next();

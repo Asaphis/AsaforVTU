@@ -13,8 +13,15 @@ const resolveBackendUrl = (): string => {
     const host = window.location.hostname.toLowerCase();
     console.log('[Backend Resolve] Current Host:', host);
     
+    // Always use current origin for API calls if on Replit
+    if (host.includes('.replit.app') || host.includes('.replit.dev')) {
+       // Support both -5000 and -3001 formats
+       const backendUrl = `https://${host.replace('-5000.', '-3001.')}`;
+       return backendUrl;
+    }
+
     if (host.includes('localhost') || host.includes('127.0.0.1')) {
-      const url = envUrlLocal || envUrl || 'http://localhost:5000';
+      const url = envUrlLocal || envUrl || 'http://localhost:3001';
       console.log('[Backend Resolve] Using Local URL:', url);
       return url;
     }

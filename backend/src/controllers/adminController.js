@@ -594,6 +594,23 @@ const deleteService = async (req, res) => {
   }
 };
 
+const updateService = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, icon, category, active } = req.body;
+    await db.collection('services').doc(id).update({
+      ...(name && { name }),
+      ...(icon !== undefined && { icon }),
+      ...(category && { category }),
+      ...(active !== undefined && { active }),
+      updatedAt: new Date()
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports.fixGhostWallets = fixGhostWallets;
 module.exports.getServices = getServices;
 module.exports.createService = createService;
