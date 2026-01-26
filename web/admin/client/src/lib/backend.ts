@@ -100,6 +100,22 @@ export async function deleteUser(input: { uid?: string; email?: string }): Promi
   return await request<{ success: boolean; uid?: string; email?: string }>("POST", "/api/admin/users/delete", input);
 }
 
+export async function getServices(): Promise<any[]> {
+  return await request<any[]>("GET", "/api/admin/services");
+}
+
+export async function createService(data: { id?: string; name: string; icon?: string; category?: string }): Promise<{ success: boolean; id: string }> {
+  return await request<{ success: boolean; id: string }>("POST", "/api/admin/services", data);
+}
+
+export async function updateService(id: string, data: { name: string; icon?: string; category?: string }): Promise<{ success: boolean }> {
+  return await request<{ success: boolean }>("PUT", `/api/admin/services/${id}`, data);
+}
+
+export async function deleteService(id: string): Promise<{ success: boolean }> {
+  return await request<{ success: boolean }>("DELETE", `/api/admin/services/${id}`);
+}
+
 export async function updateUserPassword(input: { uid?: string; email?: string; password: string }): Promise<{ success: boolean; uid: string; email: string }> {
   return await request<{ success: boolean; uid: string; email: string }>("POST", "/api/admin/users/password", input);
 }
@@ -201,6 +217,10 @@ export async function getFinanceAnalytics(input?: { uid?: string; email?: string
   const qs = new URLSearchParams({ uid: String(input?.uid || ""), email: String(input?.email || ""), start: input?.start ? String(input.start) : "", end: input?.end ? String(input.end) : "" }).toString();
   return await request("GET", `/api/admin/finance/analytics?${qs}`);
 }
+export async function fixGhostWallets(dryRun: boolean = true) {
+  return await request<any>("POST", "/api/admin/wallet/fix-ghosts", { dryRun });
+}
+
 export async function getWalletLogs(): Promise<any[]> {
   return await request<any[]>("GET", "/api/admin/wallet/logs");
 }

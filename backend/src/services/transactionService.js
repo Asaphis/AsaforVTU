@@ -45,8 +45,16 @@ class TransactionService {
         }
       } else if (type === 'airtime' && details && (details.network || details.networkId)) {
         try {
-          const settingsDoc = await db.collection('admin_settings').doc('settings').get();
-          const st = settingsDoc.exists ? settingsDoc.data() || {} : {};
+          // Check settings/global first (Admin UI updates this), fallback to admin_settings/settings
+          let st = {};
+          const globalSettings = await db.doc('settings/global').get();
+          if (globalSettings.exists) {
+            st = globalSettings.data();
+          } else {
+             const settingsDoc = await db.collection('admin_settings').doc('settings').get();
+             st = settingsDoc.exists ? settingsDoc.data() || {} : {};
+          }
+          
           const airtimeNetworks = st.airtimeNetworks || {};
           const netKey = String(details.network || details.networkId || '').toString().toUpperCase();
           const discount = Number((airtimeNetworks[netKey] && airtimeNetworks[netKey].discount) || 0);

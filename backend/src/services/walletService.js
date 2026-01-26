@@ -46,10 +46,21 @@ class WalletService {
   /**
    * Credit wallet (internal use or funding)
    */
-  async creditWallet(userId, amount, walletType = 'main', description = 'Credit') {
+  async creditWallet(userId, amount, walletType = 'main', description = 'Credit', externalReference = null) {
     const walletRef = db.collection(WALLET_COLLECTION).doc(userId);
     
     return db.runTransaction(async (t) => {
+      // Check for duplicate external reference if provided
+      if (externalReference) {
+         const existingTx = await db.collection(TRANSACTION_COLLECTION)
+            .where('externalReference', '==', externalReference)
+            .limit(1)
+            .get();
+         if (!existingTx.empty) {
+             throw new Error(`Transaction with reference ${externalReference} already exists`);
+         }
+      }
+
       const doc = await t.get(walletRef);
       if (!doc.exists) {
         throw new Error('Wallet not found');
@@ -74,6 +85,7 @@ class WalletService {
         description,
         status: 'success',
         reference: this._genRef('CR'),
+        externalReference: externalReference || null,
         balanceBefore: data[field] || 0,
         balanceAfter: newBalance,
         createdAt: new Date()

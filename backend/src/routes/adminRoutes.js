@@ -12,7 +12,9 @@ router.post('/settings', adminController.updateSettings);
 router.get('/settings', adminController.getSettings);
 router.get('/transactions', adminController.getAllTransactions);
 router.post('/wallet/credit', adminController.creditWallet);
+router.post('/wallet/reverify', adminController.reverifyPayment);
 router.post('/wallet/debit', adminController.debitWallet);
+router.post('/wallet/fix-ghosts', adminController.fixGhostWallets);
 router.get('/users', adminController.listUsers);
 router.post('/users/promote', adminController.promoteToAdmin);
 router.post('/users/create', adminController.createUser);
@@ -72,6 +74,12 @@ router.post('/support/tickets/:id/reply', adminController.replyTicket);
 router.get('/announcements', adminController.getAnnouncements);
 router.post('/announcements', adminController.createAnnouncement);
 router.delete('/announcements/:id', adminController.deleteAnnouncement);
+
+// Service Categories
+router.get('/services', adminController.getServices);
+router.post('/services', adminController.createService);
+router.put('/services/:id', adminController.updateService);
+router.delete('/services/:id', adminController.deleteService);
 
 router.post('/users/verification-link', adminController.generateVerificationLink);
 

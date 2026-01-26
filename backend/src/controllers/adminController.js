@@ -56,6 +56,7 @@ const getAllTransactions = async (req, res) => {
 };
 
 const walletService = require('../services/walletService');
+const flutterwaveService = require('../services/flutterwaveService');
 
 const creditWallet = async (req, res) => {
   try {
@@ -65,41 +66,79 @@ const creditWallet = async (req, res) => {
     if (!amt || amt <= 0) return res.status(400).json({ error: 'Valid amount is required' });
     const wtype = ['main', 'cashback', 'referral'].includes(walletType) ? walletType : 'main';
     const raw = String(userId || '').trim();
-    let uidCandidate = '';
-    let emailCandidate = '';
+    let targetUid = '';
+    
+    // 1. Resolve to UID
     try {
       if (raw.includes('@')) {
-        emailCandidate = raw.toLowerCase();
-        const u = await auth.getUserByEmail(raw);
-        uidCandidate = u.uid;
-      } else {
-        uidCandidate = raw;
-        const u = await auth.getUser(raw);
-        emailCandidate = String(u.email || '').toLowerCase();
-      }
-    } catch {}
-    let chosenId = uidCandidate || emailCandidate || raw;
-    if (!uidCandidate && emailCandidate) {
-      try {
-        const q = await db.collection('users').where('email', '==', emailCandidate).limit(1).get();
-        if (!q.empty) {
-          const doc = q.docs[0];
-          uidCandidate = doc.id;
-          chosenId = uidCandidate || chosenId;
+        // It's an email
+        try {
+            const u = await auth.getUserByEmail(raw);
+            targetUid = u.uid;
+        } catch (e) {
+            // Fallback: Check if we have a user doc with this email
+            const q = await db.collection('users').where('email', '==', raw.toLowerCase()).limit(1).get();
+            if (!q.empty) targetUid = q.docs[0].id;
         }
-      } catch {}
-    }
+      } else {
+        // It's likely a UID
+        targetUid = raw;
+        // Verify it exists if possible, but not strictly required if we trust admin input
+        try {
+            await auth.getUser(targetUid);
+        } catch (e) {
+            // If not in Auth, maybe in Users collection?
+            const d = await db.collection('users').doc(targetUid).get();
+            if (!d.exists) {
+                 // Warning: Crediting a non-existent user ID?
+                 // We'll proceed but log it.
+                 console.warn(`[Admin] Crediting potential non-existent UID: ${targetUid}`);
+            }
+        }
+      }
+    } catch (e) {}
+
+    const finalId = targetUid || raw; // Fallback to raw if resolution fails
+
+    await walletService.createWallet(finalId);
+    const newBalance = await walletService.creditWallet(finalId, amt, wtype, description || 'Admin Credit');
+    
+    // Return extra info for Admin
+    // Log to admin_transactions
     try {
-      const a = uidCandidate ? await db.collection('wallets').doc(uidCandidate).get() : null;
-      const b = emailCandidate ? await db.collection('wallets').doc(emailCandidate).get() : null;
-      const av = a && a.exists ? Number((a.data() || {}).mainBalance || 0) : -1;
-      const bv = b && b.exists ? Number((b.data() || {}).mainBalance || 0) : -1;
-      if (bv > av) chosenId = emailCandidate || chosenId;
-      if (av >= 0 && av >= bv) chosenId = uidCandidate || chosenId;
-    } catch {}
-    await walletService.createWallet(chosenId);
-    const newBalance = await walletService.creditWallet(chosenId, amt, wtype, description || 'Admin Credit');
-    res.json({ success: true, userId: chosenId, newBalance, walletType: wtype });
+      await db.collection('admin_transactions').add({
+        type: 'credit',
+        adminUid: req.user.uid,
+        adminEmail: req.user.email,
+        targetUserId: finalId,
+        amount: amt,
+        walletType: wtype,
+        description: description || 'Admin Credit',
+        createdAt: new Date()
+      });
+    } catch (e) {
+      console.error('Failed to log admin transaction:', e);
+    }
+
+    res.json({ 
+        success: true, 
+        userId: finalId, 
+        newBalance, 
+        walletType: wtype,
+        note: (finalId !== raw) ? `Resolved '${raw}' to UID '${finalId}'` : undefined
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const reverifyPayment = async (req, res) => {
+  try {
+    const { tx_ref, force } = req.body;
+    if (!tx_ref) return res.status(400).json({ error: 'tx_ref is required' });
+    
+    const result = await flutterwaveService.reconcilePayment(tx_ref, force === true || force === 'true');
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -109,7 +148,8 @@ module.exports = {
   updateSettings,
   getSettings,
   getAllTransactions,
-  creditWallet
+  creditWallet,
+  reverifyPayment
 };
 
 const listUsers = async (req, res) => {
@@ -247,41 +287,28 @@ const debitWallet = async (req, res) => {
     if (!amt || amt <= 0) return res.status(400).json({ error: 'Valid amount is required' });
     const wtype = ['main', 'cashback', 'referral'].includes(walletType) ? walletType : 'main';
     const raw = String(userId || '').trim();
-    let uidCandidate = '';
-    let emailCandidate = '';
+    let targetUid = '';
+    
     try {
       if (raw.includes('@')) {
-        emailCandidate = raw.toLowerCase();
-        const u = await auth.getUserByEmail(raw);
-        uidCandidate = u.uid;
-      } else {
-        uidCandidate = raw;
-        const u = await auth.getUser(raw);
-        emailCandidate = String(u.email || '').toLowerCase();
-      }
-    } catch {}
-    let chosenId = uidCandidate || emailCandidate || raw;
-    if (!uidCandidate && emailCandidate) {
-      try {
-        const q = await db.collection('users').where('email', '==', emailCandidate).limit(1).get();
-        if (!q.empty) {
-          const doc = q.docs[0];
-          uidCandidate = doc.id;
-          chosenId = uidCandidate || chosenId;
+        try {
+            const u = await auth.getUserByEmail(raw);
+            targetUid = u.uid;
+        } catch (e) {
+            const q = await db.collection('users').where('email', '==', raw.toLowerCase()).limit(1).get();
+            if (!q.empty) targetUid = q.docs[0].id;
         }
-      } catch {}
-    }
-    try {
-      const a = uidCandidate ? await db.collection('wallets').doc(uidCandidate).get() : null;
-      const b = emailCandidate ? await db.collection('wallets').doc(emailCandidate).get() : null;
-      const av = a && a.exists ? Number((a.data() || {}).mainBalance || 0) : -1;
-      const bv = b && b.exists ? Number((b.data() || {}).mainBalance || 0) : -1;
-      if (bv > av) chosenId = emailCandidate || chosenId;
-      if (av >= 0 && av >= bv) chosenId = uidCandidate || chosenId;
-    } catch {}
-    await walletService.createWallet(chosenId);
-    const newBalance = await walletService.debitWallet(chosenId, amt, wtype, description || 'Admin Debit');
-    res.json({ success: true, userId: chosenId, newBalance, walletType: wtype });
+      } else {
+        targetUid = raw;
+        try { await auth.getUser(targetUid); } catch (e) {}
+      }
+    } catch (e) {}
+
+    const finalId = targetUid || raw;
+
+    await walletService.createWallet(finalId);
+    const newBalance = await walletService.debitWallet(finalId, amt, wtype, description || 'Admin Debit');
+    res.json({ success: true, userId: finalId, newBalance, walletType: wtype });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -485,6 +512,93 @@ module.exports.replyTicket = replyTicket;
 module.exports.getAnnouncements = getAnnouncements;
 module.exports.createAnnouncement = createAnnouncement;
 module.exports.deleteAnnouncement = deleteAnnouncement;
+
+const fixGhostWallets = async (req, res) => {
+  try {
+    const dryRun = req.body.dryRun === true;
+    const snapshot = await db.collection('wallets').get();
+    let migrated = 0;
+    let report = [];
+
+    for (const doc of snapshot.docs) {
+      if (doc.id.includes('@')) {
+         const ghostBalance = Number(doc.data().mainBalance || 0);
+         if (ghostBalance > 0) {
+             let targetUid = null;
+             try {
+                const u = await auth.getUserByEmail(doc.id);
+                targetUid = u.uid;
+             } catch (e) {
+                 const q = await db.collection('users').where('email', '==', doc.id.toLowerCase()).limit(1).get();
+                 if (!q.empty) targetUid = q.docs[0].id;
+             }
+
+             if (targetUid) {
+                 if (!dryRun) {
+                     await walletService.createWallet(targetUid);
+                     await walletService.creditWallet(targetUid, ghostBalance, 'main', `Migrated from ${doc.id}`);
+                     // Zero out ghost wallet
+                     await db.collection('wallets').doc(doc.id).update({ 
+                         mainBalance: 0, 
+                         migrated: true,
+                         migratedTo: targetUid,
+                         migratedAt: new Date()
+                     });
+                 }
+                 report.push({ email: doc.id, targetUid, amount: ghostBalance, status: dryRun ? 'Pending' : 'Migrated' });
+                 migrated++;
+             }
+         }
+      }
+    }
+    res.json({ success: true, count: migrated, report });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getServices = async (req, res) => {
+  try {
+    const snap = await db.collection('services').get();
+    const services = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    res.json(services);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const createService = async (req, res) => {
+  try {
+    const { id, name, icon, category } = req.body;
+    const docId = id || name.toLowerCase().replace(/\s+/g, '-');
+    await db.collection('services').doc(docId).set({
+      name,
+      icon: icon || '',
+      category: category || 'Other',
+      active: true,
+      createdAt: new Date()
+    });
+    res.json({ success: true, id: docId });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteService = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.collection('services').doc(id).delete();
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports.fixGhostWallets = fixGhostWallets;
+module.exports.getServices = getServices;
+module.exports.createService = createService;
+module.exports.updateService = updateService;
+module.exports.deleteService = deleteService;
 
 const generateVerificationLink = async (req, res) => {
   try {

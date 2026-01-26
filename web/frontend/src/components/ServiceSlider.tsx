@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Navigation, Pagination, A11y } from 'swiper/modules';
 import 'swiper/css';
@@ -8,6 +8,7 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'swiper/css/a11y';
 import Image from 'next/image';
+import { getServices } from '@/lib/services';
 
 interface Service {
   id: string;
@@ -17,50 +18,24 @@ interface Service {
 }
 
 const placeholder = '/assets/images/hero-placeholder.png';
-const services: Service[] = [
-  // Mobile Networks - Airtime & Data
-  { id: 'mtn', name: 'MTN', icon: placeholder, category: 'Airtime & Data' },
-  { id: 'airtel', name: 'Airtel', icon: placeholder, category: 'Airtime & Data' },
-  { id: 'glo', name: 'Glo', icon: placeholder, category: 'Airtime & Data' },
-  { id: '9mobile', name: '9mobile', icon: placeholder, category: 'Airtime & Data' },
-  
-  // Data Bundles
-  { id: 'mtn-data', name: 'MTN Data', icon: placeholder, category: 'Data Plans' },
-  { id: 'airtel-data', name: 'Airtel Data', icon: placeholder, category: 'Data Plans' },
-  { id: 'glo-data', name: 'Glo Data', icon: placeholder, category: 'Data Plans' },
-  { id: '9mobile-data', name: '9mobile Data', icon: placeholder, category: 'Data Plans' },
-  
-  // Exam Pins
-  { id: 'waec', name: 'WAEC', icon: placeholder, category: 'Exam PINs' },
-  { id: 'neco', name: 'NECO', icon: placeholder, category: 'Exam PINs' },
-  { id: 'nabteb', name: 'NABTEB', icon: placeholder, category: 'Exam PINs' },
-  
-  // Electricity Bills
-  { id: 'ibedc', name: 'IBEDC', icon: placeholder, category: 'Electricity' },
-  { id: 'ekedc', name: 'EKEDC', icon: placeholder, category: 'Electricity' },
-  { id: 'ikedc', name: 'IKEDC', icon: placeholder, category: 'Electricity' },
-  { id: 'phed', name: 'PHED', icon: placeholder, category: 'Electricity' },
-  { id: 'aedc', name: 'AEDC', icon: placeholder, category: 'Electricity' },
-  { id: 'eedc', name: 'EEDC', icon: placeholder, category: 'Electricity' },
-  { id: 'kedco', name: 'KEDCO', icon: placeholder, category: 'Electricity' },
-  
-  // Cable TV
-  { id: 'dstv', name: 'DStv', icon: placeholder, category: 'Cable TV' },
-  { id: 'gotv', name: 'GOtv', icon: placeholder, category: 'Cable TV' },
-  { id: 'startimes', name: 'Startimes', icon: placeholder, category: 'Cable TV' },
-  
-  // Internet Services
-  { id: 'spectranet', name: 'Spectranet', icon: placeholder, category: 'Internet' },
-  { id: 'smiile', name: 'SMILE', icon: placeholder, category: 'Internet' },
-  
-  // Betting
-  { id: 'bet9ja', name: 'Bet9ja', icon: placeholder, category: 'Betting' },
-  { id: 'betking', name: 'BetKing', icon: placeholder, category: 'Betting' },
-  { id: 'sportybet', name: 'SportyBet', icon: placeholder, category: 'Betting' }
-];
 
 export function ServiceSlider() {
   const swiperRef = useRef<any>(null);
+  const [services, setServices] = useState<Service[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      const docs = await getServices();
+      const mapped = docs.map(d => ({
+        id: d.id,
+        name: d.name,
+        icon: d.icon || placeholder,
+        category: d.category || 'Other'
+      }));
+      setServices(mapped);
+    }
+    load();
+  }, []);
 
   // Group services by category
   const servicesByCategory = services.reduce<Record<string, Service[]>>((acc, service) => {

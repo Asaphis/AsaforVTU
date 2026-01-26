@@ -1,6 +1,5 @@
 import { collection, doc, getDoc, getDocs, query, where, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import sampleServices from '@/data/services.sample.json';
 import app from '@/lib/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth } from '@/lib/firebase';
@@ -290,12 +289,9 @@ export const getServices = async (): Promise<ServiceDoc[]> => {
       return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as ServiceDoc));
     }
   } catch (e) {
-    // fall through to sample fallback
+    console.error('Error fetching services:', e);
   }
-  return (sampleServices as any[]).map((s) => ({
-    id: s.slug,
-    ...s,
-  })) as ServiceDoc[];
+  return [];
 };
 
 export const getServiceBySlug = async (slug: string): Promise<ServiceDoc | null> => {
@@ -307,11 +303,9 @@ export const getServiceBySlug = async (slug: string): Promise<ServiceDoc | null>
       return { id: d.id, ...(d.data() as any) } as ServiceDoc;
     }
   } catch (e) {
-    // fall through to sample lookup
+    // ignore
   }
-  const local = (sampleServices as any[]).find((s) => s.slug === slug);
-  if (!local) return null;
-  return { id: local.slug, ...(local as any) } as ServiceDoc;
+  return null;
 };
 
 export const getServiceById = async (id: string): Promise<ServiceDoc | null> => {

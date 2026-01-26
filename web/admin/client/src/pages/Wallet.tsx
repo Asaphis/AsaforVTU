@@ -14,7 +14,7 @@ import { Check, X, Wallet as WalletIcon, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { creditWallet, debitWallet, getWalletLogs, getWalletRequests, approveWalletRequest, rejectWalletRequest } from "@/lib/backend";
+import { creditWallet, debitWallet, getWalletLogs, getWalletRequests, approveWalletRequest, rejectWalletRequest, fixGhostWallets } from "@/lib/backend";
 import { cn } from "@/lib/utils";
 
 export default function WalletPage() {
@@ -290,6 +290,32 @@ export default function WalletPage() {
                   }}
                 >
                   Debit Wallet
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-amber-200 bg-amber-50">
+              <CardHeader>
+                <CardTitle className="text-amber-800">Troubleshooting</CardTitle>
+                <CardDescription className="text-amber-700">Fix common wallet issues.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  variant="outline" 
+                  className="w-full border-amber-300 text-amber-900 hover:bg-amber-100"
+                  onClick={async () => {
+                     if(!confirm('This will scan for wallets with Email IDs and migrate them to UIDs. Continue?')) return;
+                     try {
+                        const res = await fixGhostWallets(false);
+                        toast({ title: 'Migration Complete', description: `Fixed ${res.count} wallets.` });
+                        load();
+                     } catch(e: any) {
+                        toast({ title: 'Error', description: e.message, variant: 'destructive' });
+                     }
+                  }}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Fix "Ghost" Wallets
                 </Button>
               </CardContent>
             </Card>

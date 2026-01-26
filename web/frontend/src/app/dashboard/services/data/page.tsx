@@ -7,8 +7,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { purchaseData } from '@/lib/services';
 import TransactionPinModal from '@/components/dashboard/TransactionPinModal';
 import TransactionResultModal from '@/components/dashboard/TransactionResultModal';
-import { DATA_PLANS, DataPlan } from '@/data/dataPlans';
-import { getServicePlans, ServicePlan } from '@/lib/services';
+import { getServicePlans } from '@/lib/services';
+
+export interface DataPlan {
+  id: string;
+  name: string;
+  price: number;
+  networkId: number;
+  variation_id: string;
+}
 
 const NETWORKS = [
   { label: 'MTN', value: 'MTN', id: 1 },
@@ -22,10 +29,7 @@ export default function DataPage() {
   const { service, loading, error } = useService('data');
   const [network, setNetwork] = useState(NETWORKS[0]);
   const [phone, setPhone] = useState('');
-  // Initialize with empty or first plan of first network
-  const [selectedPlan, setSelectedPlan] = useState<DataPlan | undefined>(
-    DATA_PLANS[NETWORKS[0].value]?.[0]
-  );
+  const [selectedPlan, setSelectedPlan] = useState<DataPlan | undefined>(undefined);
   const [dynamicPlans, setDynamicPlans] = useState<Record<string, DataPlan[]>>({});
   const [showPinModal, setShowPinModal] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -65,7 +69,7 @@ export default function DataPage() {
         byNet[netKey] = byNet[netKey] ? [...byNet[netKey], dp] : [dp];
       }
       setDynamicPlans(byNet);
-      const initial = byNet[NETWORKS[0].value] || DATA_PLANS[NETWORKS[0].value] || [];
+      const initial = byNet[NETWORKS[0].value] || [];
       setSelectedPlan(initial[0]);
     };
     loadPlans();
@@ -171,7 +175,7 @@ export default function DataPage() {
                           type="button"
                           onClick={() => {
                             setNetwork(n);
-                            const plans = (dynamicPlans[n.value] || DATA_PLANS[n.value] || []);
+                            const plans = (dynamicPlans[n.value] || []);
                             setSelectedPlan(plans[0]);
                           }}
                           className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] border-2 transition-all ${
@@ -215,12 +219,12 @@ export default function DataPage() {
                         className="w-full px-6 py-5 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0B4F6C]/20 focus:bg-white focus:outline-none transition-all font-black text-[#0B4F6C] text-lg appearance-none shadow-inner"
                         value={selectedPlan?.variation_id || ''}
                         onChange={(e) => {
-                            const plans = (dynamicPlans[network.value] || DATA_PLANS[network.value] || []);
+                            const plans = (dynamicPlans[network.value] || []);
                             const plan = plans.find(p => p.variation_id === e.target.value) || plans[0];
                             setSelectedPlan(plan);
                         }}
                       >
-                        {((dynamicPlans[network.value] || DATA_PLANS[network.value] || [])).map(plan => (
+                        {(dynamicPlans[network.value] || []).map(plan => (
                           <option key={plan.variation_id} value={plan.variation_id}>
                             {plan.name} - ₦{plan.price.toLocaleString()}
                           </option>

@@ -96,14 +96,61 @@ class FlutterwaveService {
     const amountOk = Number(vdata.amount) >= Number(expectedAmount);
 
     if (successful && amountOk) {
-      await walletService.createWallet(userId);
-      await walletService.creditWallet(userId, Number(expectedAmount), 'main', 'Flutterwave Wallet Funding');
-      await db.collection('payments').doc(vdata.tx_ref || referenceOrId).update({
-        status: 'success',
-        verifiedAt: new Date(),
-        providerResponse: vdata,
-      });
-      return { success: true, data: vdata };
+      const paymentRef = db.collection('payments').doc(String(referenceOrId));
+      
+      // 1. Acquire Lock via Transaction
+      try {
+        await db.runTransaction(async (t) => {
+           const doc = await t.get(paymentRef);
+           if (!doc.exists) { 
+               // If it doesn't exist, we create it in 'processing_credit' state
+               t.set(paymentRef, { 
+                   status: 'processing_credit', 
+                   createdAt: new Date(),
+                   userId: userId, 
+                   tx_ref: referenceOrId 
+               });
+           } else {
+               const pData = doc.data();
+               // Check if already processed or currently processing
+               if (pData.status === 'success' || pData.status === 'completed' || pData.status === 'processing_credit') {
+                   throw new Error('Payment already processed or in progress');
+               }
+               t.update(paymentRef, { status: 'processing_credit', updatedAt: new Date() });
+           }
+        });
+      } catch (e) {
+          if (e.message.includes('already processed') || e.message.includes('in progress')) {
+              console.log(`[Flutterwave] Payment ${referenceOrId} skipped: ${e.message}`);
+              return { success: true, message: 'Payment already processed', alreadyProcessed: true };
+          }
+          throw e; // Propagate other errors for retry
+      }
+
+      // 2. Perform Wallet Credit (Lock is held)
+      try {
+          await walletService.createWallet(userId);
+          await walletService.creditWallet(userId, Number(expectedAmount), 'main', 'Flutterwave Wallet Funding', referenceOrId);
+          
+          // 3. Mark as Success
+          await paymentRef.set({
+            status: 'success',
+            verifiedAt: new Date(),
+            amountPaid: Number(vdata.amount),
+            providerResponse: vdata,
+            userId: userId
+          }, { merge: true });
+
+          return { success: true };
+      } catch (creditError) {
+          console.error(`[Flutterwave] Credit failed for ${referenceOrId}:`, creditError);
+          // Release lock on failure so it can be retried
+          await paymentRef.update({ 
+              status: 'pending', 
+              notes: `Credit failed: ${creditError.message}. Retrying allowed.` 
+          });
+          throw creditError;
+      }
     } else {
       console.warn(`[Payment Verification Failed] Ref: ${referenceOrId}, User: ${userId}, Status: ${status}, AmountOk: ${amountOk} (Exp: ${expectedAmount}, Act: ${vdata.amount})`);
       await db.collection('payments').doc(vdata.tx_ref || referenceOrId).update({
@@ -112,6 +159,76 @@ class FlutterwaveService {
         providerResponse: vdata,
       });
       return { success: false, data: vdata };
+    }
+  }
+  async reconcilePayment(tx_ref, force = false) {
+    const paymentRef = db.collection('payments').doc(String(tx_ref));
+    const paymentDoc = await paymentRef.get();
+    
+    // 1. Verify with Flutterwave
+    let fwData;
+    try {
+        const res = await this.verifyByReference(tx_ref);
+        fwData = res.data;
+    } catch (e) {
+        if (e.response && e.response.status === 404) {
+             return { success: false, message: 'Transaction not found on Flutterwave' };
+        }
+        return { success: false, message: 'Flutterwave check failed: ' + e.message };
+    }
+
+    if (!fwData || (fwData.status !== 'successful' && fwData.status !== 'success')) {
+        return { success: false, message: `Payment not successful on Flutterwave (Status: ${fwData?.status})` };
+    }
+
+    // 2. Check if already credited in Wallet Transactions (via externalReference)
+    // Note: Older transactions might not have externalReference set, so this check might miss them.
+    // That's why we have 'force'.
+    const existingTx = await db.collection('wallet_transactions')
+        .where('externalReference', '==', String(tx_ref))
+        .limit(1)
+        .get();
+        
+    if (!existingTx.empty && !force) {
+        return { success: false, message: 'Wallet transaction already exists for this reference.' };
+    }
+
+    // 3. Check Payment Doc Status
+    if (paymentDoc.exists) {
+        const pData = paymentDoc.data();
+        if ((pData.status === 'success' || pData.status === 'completed') && !force) {
+             return { success: false, message: 'Payment record already marked as success. Use force=true to override.' };
+        }
+    }
+
+    // 4. Determine User ID
+    const userId = (paymentDoc.exists && paymentDoc.data().userId) || fwData.meta?.userId;
+    if (!userId) {
+        return { success: false, message: 'No User ID found in payment record or Flutterwave metadata.' };
+    }
+
+    // 5. Credit Wallet
+    try {
+        await walletService.createWallet(userId);
+        // We pass tx_ref as externalReference so future checks catch it
+        await walletService.creditWallet(userId, Number(fwData.amount), 'main', 'Flutterwave Funding (Reconciled)', String(tx_ref));
+        
+        await paymentRef.set({
+            status: 'success',
+            verifiedAt: new Date(),
+            amountPaid: Number(fwData.amount),
+            providerResponse: fwData,
+            userId: userId,
+            reconciledAt: new Date(),
+            notes: 'Manually Reconciled via Admin'
+        }, { merge: true });
+
+        return { success: true, message: `Successfully credited ₦${fwData.amount} to user ${userId}` };
+    } catch (e) {
+        if (e.message.includes('already exists')) {
+             return { success: false, message: 'Wallet already credited (caught by duplicate check).' };
+        }
+        throw e;
     }
   }
 }

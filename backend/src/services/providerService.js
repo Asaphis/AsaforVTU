@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { db } = require('../config/firebase');
 
 class ProviderService {
   constructor() {
@@ -9,33 +10,62 @@ class ProviderService {
   _getHeaders() {
     return {
       'Authorization': `Bearer ${this.apiKey}`,
-      'X-API-Key': this.apiKey,
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Type': 'application/json',
       'User-Agent': 'Asafor-VTU/1.0'
     };
   }
 
-  // Helper to map our internal network IDs/Names to Provider Service IDs
-  _mapNetworkToServiceId(network) {
-    // Handle if network is an object (e.g. from frontend select component)
+  /**
+   * Helper to map network to Provider ID dynamically
+   * Fetches from DB settings/global -> networkMappings
+   */
+  async _resolveNetworkId(network) {
     let netInput = network;
     if (typeof network === 'object' && network !== null) {
       netInput = network.value || network.id || network.name || network.label || JSON.stringify(network);
     }
+    const netKey = String(netInput).toLowerCase();
 
-    // Asafor might send "MTN", "mtn", "01", etc.
-    // IA Café expects: "mtn", "airtel", "glo", "9mobile"
-    const net = String(netInput).toLowerCase();
-    
-    if (net.includes('mtn') || net === '1' || net === '01') return 'mtn';
-    if (net.includes('glo') || net === '2' || net === '02') return 'glo';
-    if (net.includes('airtel') || net === '3' || net === '03') return 'airtel';
-    if (net.includes('9mobile') || net.includes('etisalat') || net === '4' || net === '04') return '9mobile';
-    
-    return net; // fallback
+    // 1. Try fetching from DB
+    try {
+      const doc = await db.doc('settings/global').get();
+      if (doc.exists) {
+        const data = doc.data();
+        const mappings = data.networkMappings || {};
+        
+        // Check exact match or contained match
+        // Mappings format: { "mtn": "1", "glo": "2", "airtel": "4", "9mobile": "3" }
+        for (const [key, value] of Object.entries(mappings)) {
+          if (netKey.includes(key.toLowerCase()) || netKey === String(value)) {
+            return value;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[Provider] Error fetching network mappings:', e);
+    }
+
+    // 2. Fallback to passed value if it looks like an ID (digits)
+    if (/^\d+$/.test(netKey)) {
+      return netKey;
+    }
+
+    // 3. Last Resort Defaults (Legacy Hardcoded - kept for safety until Admin configures DB)
+    // MTN=1, Glo=2, 9mobile=3, Airtel=4
+    if (netKey.includes('mtn')) return 1;
+    if (netKey.includes('glo')) return 2;
+    if (netKey.includes('airtel')) return 4;
+    if (netKey.includes('9mobile') || netKey.includes('etisalat')) return 3;
+
+    return netInput; 
   }
 
-  // Helper to map network to ID for Budget Data (MTN=1, Glo=2, 9mobile=3, Airtel=4)
+  // Deprecated synchronous helper - kept for reference but should not be used
+  _mapNetworkToServiceId(network) {
+    return this._mapNetworkToId(network);
+  }
+
+  // Deprecated synchronous helper
   _mapNetworkToId(network) {
     let netInput = network;
     if (typeof network === 'object' && network !== null) {
@@ -48,7 +78,7 @@ class ProviderService {
     if (net.includes('airtel') || net === '3' || net === '03') return 4;
     if (net.includes('9mobile') || net.includes('etisalat') || net === '4' || net === '04') return 3;
     
-    return 1; // Default to MTN
+    return 1; // Default
   }
 
   /**
@@ -60,17 +90,45 @@ class ProviderService {
       return { success: false, message: 'Provider API Key missing', apiResponse: null };
     }
 
-    const serviceId = this._mapNetworkToServiceId(network);
+    // Resolve Network ID dynamically
+    const serviceId = await this._resolveNetworkId(network);
+    // For Airtime, IACafe uses "mtn", "glo", etc. OR IDs? 
+    // Docs say: "mtn", "airtel", "glo", "9mobile" for Airtime endpoint usually, 
+    // BUT budget-data uses IDs. 
+    // Let's assume resolveNetworkId returns IDs (1, 2..) or Strings ("mtn"..) depending on config.
+    // If the provider specifically needs "mtn" string for Airtime but "1" for Data, we might need separate mappings.
+    // However, looking at original code:
+    // _mapNetworkToServiceId returns 'mtn', 'glo'...
+    // _mapNetworkToId returns 1, 2...
+    
+    // We need to handle this distinction.
+    // Let's check the endpoint docs or previous code.
+    // previous _mapNetworkToServiceId returned 'mtn' etc.
+    // previous _mapNetworkToId returned 1, 2 etc.
+    
+    // We should probably convert the ID back to name for Airtime if needed, or maintain two mappings.
+    // Or simpler: The DB mapping should support both or we handle the conversion.
+    
+    // Let's refine _resolveNetworkId to return the ID (1, 2, 3, 4).
+    // And for Airtime, we map ID back to Name if required?
+    // IACafe Airtime usually accepts network_id or service_id.
+    // Original code used `service_id: serviceId` where serviceId was 'mtn', 'glo'.
+    
+    let finalServiceId = serviceId;
+    if (String(serviceId) === '1') finalServiceId = 'mtn';
+    if (String(serviceId) === '2') finalServiceId = 'glo';
+    if (String(serviceId) === '4') finalServiceId = 'airtel';
+    if (String(serviceId) === '3') finalServiceId = '9mobile';
 
     try {
-      const payload = new URLSearchParams({
+      const payload = {
         request_id: requestId,
         phone: phone,
-        service_id: serviceId,
-        amount: String(amount)
-      });
+        service_id: finalServiceId,
+        amount: Number(amount)
+      };
 
-      console.log(`[Provider] Buying Airtime: ${serviceId} ${amount} for ${phone} (ReqID: ${requestId})`);
+      console.log(`[Provider] Buying Airtime: ${finalServiceId} ${amount} for ${phone} (ReqID: ${requestId})`);
 
       const response = await axios.post(`${this.baseUrl}/airtime`, payload, {
         headers: this._getHeaders(),
@@ -123,16 +181,16 @@ class ProviderService {
       return { success: false, message: 'Provider API Key missing', apiResponse: null };
     }
 
-    // Use integer ID for budget-data
-    const networkId = this._mapNetworkToId(network);
+    // Use integer ID for budget-data (Resolved dynamically)
+    const networkId = await this._resolveNetworkId(network);
 
     try {
-      const payload = new URLSearchParams({
+      const payload = {
         request_id: requestId,
         phone: phone,
-        network_id: String(networkId),
-        data_plan: String(planId) // variation_id maps to data_plan
-      });
+        network_id: networkId,
+        data_plan: Number(planId) // variation_id maps to data_plan
+      };
 
       console.log(`[Provider] Buying Data (Budget): Net:${networkId} Plan:${planId} for ${phone} (ReqID: ${requestId})`);
 
@@ -263,9 +321,9 @@ class ProviderService {
         service_id: serviceId, // e.g. "dstv"
         variation_id: variationId // Plan ID e.g. "2701"
       };
-      if (amount) payloadObj.amount = String(amount); // Optional, auto-fetched if null
+      if (amount) payloadObj.amount = Number(amount); // Optional, auto-fetched if null
 
-      const payload = new URLSearchParams(payloadObj);
+      const payload = payloadObj;
 
       const response = await axios.post(`${this.baseUrl}/cable`, payload, {
         headers: this._getHeaders()
