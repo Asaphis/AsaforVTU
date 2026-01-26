@@ -92,43 +92,31 @@ class ProviderService {
 
     // Resolve Network ID dynamically
     const serviceId = await this._resolveNetworkId(network);
-    // For Airtime, IACafe uses "mtn", "glo", etc. OR IDs? 
-    // Docs say: "mtn", "airtel", "glo", "9mobile" for Airtime endpoint usually, 
-    // BUT budget-data uses IDs. 
-    // Let's assume resolveNetworkId returns IDs (1, 2..) or Strings ("mtn"..) depending on config.
-    // If the provider specifically needs "mtn" string for Airtime but "1" for Data, we might need separate mappings.
-    // However, looking at original code:
-    // _mapNetworkToServiceId returns 'mtn', 'glo'...
-    // _mapNetworkToId returns 1, 2...
     
-    // We need to handle this distinction.
-    // Let's check the endpoint docs or previous code.
-    // previous _mapNetworkToServiceId returned 'mtn' etc.
-    // previous _mapNetworkToId returned 1, 2 etc.
+    // IACafe Airtime requires service_id as string: 'mtn', 'glo', '9mobile', 'airtel'
+    let finalServiceId = String(serviceId).toLowerCase();
+    if (finalServiceId === '1') finalServiceId = 'mtn';
+    else if (finalServiceId === '2') finalServiceId = 'glo';
+    else if (finalServiceId === '3') finalServiceId = '9mobile';
+    else if (finalServiceId === '4') finalServiceId = 'airtel';
     
-    // We should probably convert the ID back to name for Airtime if needed, or maintain two mappings.
-    // Or simpler: The DB mapping should support both or we handle the conversion.
-    
-    // Let's refine _resolveNetworkId to return the ID (1, 2, 3, 4).
-    // And for Airtime, we map ID back to Name if required?
-    // IACafe Airtime usually accepts network_id or service_id.
-    // Original code used `service_id: serviceId` where serviceId was 'mtn', 'glo'.
-    
-    let finalServiceId = serviceId;
-    if (String(serviceId) === '1') finalServiceId = 'mtn';
-    if (String(serviceId) === '2') finalServiceId = 'glo';
-    if (String(serviceId) === '4') finalServiceId = 'airtel';
-    if (String(serviceId) === '3') finalServiceId = '9mobile';
+    // Normalize phone: +234 and 234 normalized to 0-prefix
+    let normalizedPhone = phone;
+    if (normalizedPhone.startsWith('+234')) {
+      normalizedPhone = '0' + normalizedPhone.slice(4);
+    } else if (normalizedPhone.startsWith('234')) {
+      normalizedPhone = '0' + normalizedPhone.slice(3);
+    }
 
     try {
       const payload = {
         request_id: requestId,
-        phone: phone,
+        phone: normalizedPhone,
         service_id: finalServiceId,
         amount: Number(amount)
       };
 
-      console.log(`[Provider] Buying Airtime: ${finalServiceId} ${amount} for ${phone} (ReqID: ${requestId})`);
+      console.log(`[Provider] Buying Airtime: ${finalServiceId} ${amount} for ${normalizedPhone} (ReqID: ${requestId})`);
 
       const response = await axios.post(`${this.baseUrl}/airtime`, payload, {
         headers: this._getHeaders(),
@@ -183,16 +171,24 @@ class ProviderService {
 
     // Use integer ID for budget-data (Resolved dynamically)
     const networkId = await this._resolveNetworkId(network);
+    
+    // Normalize phone: +234 and 234 normalized to 0-prefix
+    let normalizedPhone = phone;
+    if (normalizedPhone.startsWith('+234')) {
+      normalizedPhone = '0' + normalizedPhone.slice(4);
+    } else if (normalizedPhone.startsWith('234')) {
+      normalizedPhone = '0' + normalizedPhone.slice(3);
+    }
 
     try {
       const payload = {
         request_id: requestId,
-        phone: phone,
-        network_id: networkId,
+        phone: normalizedPhone,
+        network_id: Number(networkId),
         data_plan: Number(planId) // variation_id maps to data_plan
       };
 
-      console.log(`[Provider] Buying Data (Budget): Net:${networkId} Plan:${planId} for ${phone} (ReqID: ${requestId})`);
+      console.log(`[Provider] Buying Data (Budget): Net:${networkId} Plan:${planId} for ${normalizedPhone} (ReqID: ${requestId})`);
 
       const response = await axios.post(`${this.baseUrl}/budget-data`, payload, {
         headers: this._getHeaders(),
