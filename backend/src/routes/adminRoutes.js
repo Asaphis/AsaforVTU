@@ -265,7 +265,7 @@ router.get('/finance/analytics', async (req, res) => {
   try {
     // 1. Fetch All Relevant Transactions (Service & Wallet)
     // We fetch a large batch to ensure we have enough history for Ratio calculation and Reporting
-    const txNames = ['transactions', 'admin_transactions', 'wallet_transactions'];
+    const txNames = ['transactions', 'wallet_transactions'];
     let allTransactions = [];
     
     // Helper to fetch and normalize

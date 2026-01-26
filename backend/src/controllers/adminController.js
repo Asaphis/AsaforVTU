@@ -104,9 +104,10 @@ const creditWallet = async (req, res) => {
     const newBalance = await walletService.creditWallet(finalId, amt, wtype, description || 'Admin Credit');
     
     // Return extra info for Admin
-    // Log to admin_transactions
+    // We already log to wallet_transactions in walletService.creditWallet
+    // Log to admin_audit for tracking WHO performed the action
     try {
-      await db.collection('admin_transactions').add({
+      await db.collection('admin_audit').add({
         type: 'credit',
         adminUid: req.user.uid,
         adminEmail: req.user.email,
@@ -117,7 +118,7 @@ const creditWallet = async (req, res) => {
         createdAt: new Date()
       });
     } catch (e) {
-      console.error('Failed to log admin transaction:', e);
+      console.error('Failed to log admin audit:', e);
     }
 
     res.json({ 
