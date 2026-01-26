@@ -533,6 +533,7 @@ module.exports.getAdminProfile = getAdminProfile;
 module.exports.updateAdminProfile = updateAdminProfile;
 module.exports.changeAdminPassword = changeAdminPassword;
 module.exports.getTickets = getTickets;
+module.exports.createTicket = createTicket;
 module.exports.replyTicket = replyTicket;
 module.exports.getAnnouncements = getAnnouncements;
 module.exports.createAnnouncement = createAnnouncement;

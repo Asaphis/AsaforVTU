@@ -63,7 +63,7 @@ export const createTicket = async (subject: string, message: string): Promise<{ 
   const backendUrl = resolveBackendUrl();
   const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
   try {
-    const res = await fetch(`${backendUrl}/api/admin/support/tickets`, {
+    const res = await fetch(`${backendUrl}/api/admin/support/tickets/create`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
