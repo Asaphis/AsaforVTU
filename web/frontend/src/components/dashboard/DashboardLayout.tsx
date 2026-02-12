@@ -202,7 +202,7 @@ function WalletBalanceHeader() {
     <div className="bg-gray-50/50 px-4 py-2 rounded-2xl border border-gray-100 flex items-center gap-4 group">
       <div className="text-right">
         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Balance</p>
-        <p className="text-lg font-black text-[#0B4F6C] tracking-tight leading-none">{show ? amount : '••••••'}</p>
+        <p className="text-base font-bold text-[#0B4F6C] tracking-tight leading-none">{show ? amount : '••••••'}</p>
       </div>
       <button 
         className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-100 shadow-sm text-gray-400 hover:text-[#0B4F6C] transition-all active:scale-90" 

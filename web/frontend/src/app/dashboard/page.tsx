@@ -246,8 +246,8 @@ export default function Dashboard() {
                 <p className="text-blue-100/60 font-bold uppercase tracking-widest text-[9px]">Primary Balance</p>
               </div>
               <div className="flex items-center justify-between">
-                <h2 className="text-4xl lg:text-5xl font-black tracking-tighter">walletBalance.main
-                  {showMain ? <span className="flex items-baseline gap-1.5"><span className="text-xl font-medium text-blue-200/50">₦</span>{(user.walletBalance || 0).toLocaleString()}</span> : '••••••'}
+                <h2 className="text-2xl lg:text-3xl font-black tracking-tight">
+                  {showMain ? <span className="flex items-baseline gap-1.5"><span className="text-lg font-medium text-blue-200/50">₦</span>{(user.walletBalance || 0).toLocaleString()}</span> : '••••••'}
                 </h2>
                 <button 
                   className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all active:scale-90" 
@@ -306,8 +306,8 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center justify-between mb-6">
-              <p className="text-3xl font-black text-[#0B4F6C]">
-                {showCashback ? <span className="text-lg text-gray-300 mr-1">₦</span> : ''}
+              <p className="text-xl font-bold text-[#0B4F6C]">
+                {showCashback ? <span className="text-base text-gray-300 mr-1">₦</span> : ''}
                 {showCashback ? (walletBalance?.cashbackBalance || 0).toLocaleString() : '••••••'}
               </p>
               <button className="p-2 text-gray-400 hover:text-[#0B4F6C]" onClick={() => { setShowCashback(s => !s); sessionStorage.setItem('showCashbackBalance', String(!showCashback)); }}>
@@ -334,8 +334,8 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center justify-between mb-6">
-              <p className="text-3xl font-black text-[#0B4F6C]">
-                {showReferral ? <span className="text-lg text-gray-300 mr-1">₦</span> : ''}
+              <p className="text-xl font-bold text-[#0B4F6C]">
+                {showReferral ? <span className="text-base text-gray-300 mr-1">₦</span> : ''}
                 {showReferral ? (walletBalance?.referralBalance || 0).toLocaleString() : '••••••'}
               </p>
               <button className="p-2 text-gray-400 hover:text-[#0B4F6C]" onClick={() => { setShowReferral(s => !s); sessionStorage.setItem('showReferralBalance', String(!showReferral)); }}>
