@@ -773,7 +773,7 @@ export async function registerRoutes(
   app.get("/api/admin/plans", adminAuth, async (_req: Request, res: Response) => {
     try {
       const db = getFirestoreSafe();
-      const snap = await db.collection("service_plans").orderBy("createdAt", "desc").get();
+      const snap = await db.collection("service_plans").get();
       const rows = snap.docs.map(d => {
         const x: any = d.data() || {};
         return {
