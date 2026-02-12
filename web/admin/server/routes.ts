@@ -822,6 +822,65 @@ export async function registerRoutes(
     return res.json({ success: true, id });
   });
 
+  // Service Categories
+  app.get("/api/admin/services", adminAuth, async (_req: Request, res: Response) => {
+    try {
+      const db = getFirestoreSafe();
+      const snap = await db.collection("services").get();
+      const services = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      return res.json(services);
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/admin/services", adminAuth, async (req: Request, res: Response) => {
+    try {
+      const db = getFirestoreSafe();
+      const { id, name, icon, category } = req.body || {};
+      const docId = id || String(name).toLowerCase().replace(/\s+/g, '-');
+      await db.collection("services").doc(docId).set({
+        name,
+        icon: icon || '',
+        category: category || 'Other',
+        active: true,
+        createdAt: Date.now()
+      });
+      return res.json({ success: true, id: docId });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put("/api/admin/services/:id", adminAuth, async (req: Request, res: Response) => {
+    try {
+      const db = getFirestoreSafe();
+      const { id } = req.params;
+      const { name, icon, category, active } = req.body || {};
+      const patch: any = {};
+      if (name !== undefined) patch.name = name;
+      if (icon !== undefined) patch.icon = icon;
+      if (category !== undefined) patch.category = category;
+      if (active !== undefined) patch.active = active;
+      patch.updatedAt = Date.now();
+      await db.collection("services").doc(id).set(patch, { merge: true });
+      return res.json({ success: true });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete("/api/admin/services/:id", adminAuth, async (req: Request, res: Response) => {
+    try {
+      const db = getFirestoreSafe();
+      const { id } = req.params;
+      await db.collection("services").doc(id).delete();
+      return res.json({ success: true });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
   app.get("/api/admin/profile", adminAuth, async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization || "";
     const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
