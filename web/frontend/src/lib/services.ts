@@ -14,17 +14,6 @@ const resolveBackendUrl = (): string => {
     console.log('[Backend Resolve] Current Host:', host);
     
     // Always use current origin for API calls if on Replit
-    if (host.includes('.replit.app') || host.includes('.replit.dev')) {
-       // Replit uses subdomains for different ports in some configurations
-       // Or it might be using the same domain with different ports.
-       // Let's try to detect if we're on a port-specific subdomain
-       if (host.includes('-5000.')) {
-         return `https://${host.replace('-5000.', '-3001.')}`;
-       }
-       // Fallback: try to just use the 3001 port on the same host if it's not a subdomain setup
-       return `https://${host}:3001`;
-    }
-
     if (host.includes('localhost') || host.includes('127.0.0.1')) {
       const url = envUrlLocal || envUrl || 'http://localhost:3001';
       console.log('[Backend Resolve] Using Local URL:', url);
@@ -129,6 +118,26 @@ export const getTickets = async (): Promise<any[]> => {
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Error fetching tickets:', error);
+    return [];
+  }
+};
+
+export const getTicketMessages = async (ticketId: string): Promise<any[]> => {
+  const backendUrl = resolveBackendUrl();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+  try {
+    const res = await fetch(`${backendUrl}/api/support/tickets/${ticketId}/messages`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!res.ok) throw new Error('Failed to fetch messages');
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching ticket messages:', error);
     return [];
   }
 };
@@ -391,15 +400,11 @@ export const processTransaction = async (
 
 export const getServices = async (): Promise<ServiceDoc[]> => {
   try {
-    // First try backend API
+    // First try public backend API
     const backendUrl = resolveBackendUrl();
-    const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
-    const res = await fetch(`${backendUrl}/api/admin/services`, {
+    const res = await fetch(`${backendUrl}/api/services`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
     
     if (res.ok) {
@@ -431,45 +436,13 @@ export const getServices = async (): Promise<ServiceDoc[]> => {
 
 export const getServiceBySlug = async (slug: string): Promise<ServiceDoc | null> => {
   try {
-    // Try backend first
-    const backendUrl = resolveBackendUrl();
-    const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
-    const res = await fetch(`${backendUrl}/api/admin/services`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-    
-    if (res.ok) {
-      const services = await res.json();
-      const service = Array.isArray(services) ? services.find((s: any) => s.slug === slug || s.id === slug) : null;
-      if (service) return service as ServiceDoc;
-    }
-    
-    // Fallback to Firestore
-    const q = query(collection(db, 'services'), where('slug', '==', slug));
-    const snap = await getDocs(q);
-    if (!snap.empty) {
-      const d = snap.docs[0];
-      return { id: d.id, ...(d.data() as any) } as ServiceDoc;
-    }
-  } catch (e) {
-    console.error('Error fetching service:', e);
-    // Try Firestore fallback
-    try {
-      const q = query(collection(db, 'services'), where('slug', '==', slug));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const d = snap.docs[0];
-        return { id: d.id, ...(d.data() as any) } as ServiceDoc;
-      }
-    } catch (e2) {
-      console.error('Error fetching service from Firestore:', e2);
-    }
+    const services = await getServices();
+    const service = services.find(s => s.slug === slug || s.id === slug);
+    return service || null;
+  } catch (error) {
+    console.error('Error fetching service by slug:', error);
+    return null;
   }
-  return null;
 };
 
 export const getServiceById = async (id: string): Promise<ServiceDoc | null> => {
@@ -538,21 +511,29 @@ export const transferWallet = async (amount: number, fromWalletType: 'cashback' 
 };
 
 export const getAdminSettings = async (): Promise<any> => {
-  const backendUrl = resolveBackendUrl();
   try {
-    const res = await fetch(`${backendUrl}/api/settings`, { 
+    const backendUrl = resolveBackendUrl();
+    const res = await fetch(`${backendUrl}/api/settings`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     });
-    if (!res.ok) throw new Error('Failed to fetch settings');
-    return await res.json();
-  } catch (e) {
-    console.warn('Backend settings failed, using Firestore:', e);
-    try {
-      const docSnap = await getDoc(doc(db, 'settings', 'admin_settings'));
-      return docSnap.exists() ? docSnap.data() : null;
-    } catch {
-      return null;
+    
+    if (res.ok) {
+      return await res.json();
     }
+  } catch (e) {
+    console.error('Error fetching settings:', e);
   }
+  
+  // Return default settings if backend fails
+  return {
+    airtimeNetworks: {
+      MTN: { enabled: true, discount: 0 },
+      Airtel: { enabled: true, discount: 0 },
+      Glo: { enabled: true, discount: 0 },
+      "9mobile": { enabled: true, discount: 0 }
+    },
+    systemStatus: 'online',
+    announcementsEnabled: true
+  };
 };

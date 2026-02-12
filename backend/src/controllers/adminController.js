@@ -434,9 +434,60 @@ const changeAdminPassword = async (req, res) => {
 
 const getTickets = async (req, res) => {
   try {
-    const snap = await db.collection('tickets').orderBy('lastMessageAt', 'desc').get();
+    const email = (req.user && req.user.email || '').toLowerCase();
+    const allowed = (process.env.ADMIN_EMAILS || 'asaphis.org@gmail.com')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    const isAdmin = req.user && (
+      req.user.admin === true || 
+      (req.user.customClaims && req.user.customClaims.admin === true) ||
+      (email && allowed.includes(email))
+    );
+
+    let query = db.collection('tickets').where('deleted', '==', false);
+    
+    // If not admin, only show own tickets
+    if (!isAdmin) {
+      query = query.where('userId', '==', req.user.uid);
+    }
+
+    const snap = await query.orderBy('lastMessageAt', 'desc').get();
     const tickets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     res.json(tickets);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getTicketMessages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const ticketRef = db.collection('tickets').doc(id);
+    const ticketDoc = await ticketRef.get();
+    
+    if (!ticketDoc.exists) return res.status(404).json({ error: 'Ticket not found' });
+    
+    const ticketData = ticketDoc.data();
+    const email = (req.user && req.user.email || '').toLowerCase();
+    const allowed = (process.env.ADMIN_EMAILS || 'asaphis.org@gmail.com')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    const isAdmin = req.user && (
+      req.user.admin === true || 
+      (req.user.customClaims && req.user.customClaims.admin === true) ||
+      (email && allowed.includes(email))
+    );
+
+    // Security check: must be admin or ticket owner
+    if (!isAdmin && ticketData.userId !== req.user.uid) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const snap = await ticketRef.collection('messages').orderBy('createdAt', 'asc').get();
+    const messages = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    res.json(messages);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -555,6 +606,7 @@ module.exports.getAdminProfile = getAdminProfile;
 module.exports.updateAdminProfile = updateAdminProfile;
 module.exports.changeAdminPassword = changeAdminPassword;
 module.exports.getTickets = getTickets;
+module.exports.getTicketMessages = getTicketMessages;
 module.exports.createTicket = createTicket;
 module.exports.replyTicket = replyTicket;
 module.exports.getAnnouncements = getAnnouncements;

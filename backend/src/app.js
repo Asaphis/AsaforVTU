@@ -69,8 +69,19 @@ app.use(morgan('dev'));
 app.get('/', (req, res) => {
   res.status(200).json({ message: 'Asafor VTU Backend is running' });
 });
-// Public Plans endpoint for user frontend
-app.get('/api/plans', async (_req, res) => {
+// Public services endpoint for user frontend
+app.get('/api/services', async (_req, res) => {
+  try {
+    if (!db) return res.json([]);
+    const snap = await db.collection('services').get();
+    const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    res.json(rows);
+  } catch (e) {
+    res.json([]);
+  }
+});
+
+// Public plans endpoint for user frontend
   try {
     if (!db) return res.json([]);
     const snap = await db.collection('service_plans').get();
@@ -98,7 +109,19 @@ app.get('/api/settings', async (_req, res) => {
   try {
     if (!db) return res.json({});
     const doc = await db.collection('settings').doc('global').get();
-    if (!doc.exists) return res.json({});
+    if (!doc.exists) {
+      // Return defaults if document doesn't exist
+      return res.json({
+        airtimeNetworks: {
+          MTN: { enabled: true, discount: 0 },
+          Airtel: { enabled: true, discount: 0 },
+          Glo: { enabled: true, discount: 0 },
+          "9mobile": { enabled: true, discount: 0 }
+        },
+        systemStatus: 'online',
+        announcementsEnabled: true
+      });
+    }
     const data = doc.data();
     // Only expose non-sensitive fields
     res.json({

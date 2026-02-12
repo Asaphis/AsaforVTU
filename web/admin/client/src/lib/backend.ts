@@ -18,11 +18,7 @@ function getBaseUrl(): string {
     return localUrl || "http://localhost:3001";
   }
   
-  // Use the explicitly provided production backend URL if available
-  if (prodUrl) return prodUrl;
-  
-  // Default to the known backend URL
-  return "https://asaforvtubackend.onrender.com";
+  return prodUrl || "https://asaforvtubackend.onrender.com";
 }
 
 async function getToken(): Promise<string> {

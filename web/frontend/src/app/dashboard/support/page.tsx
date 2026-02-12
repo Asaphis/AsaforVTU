@@ -18,7 +18,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
-import { createTicket, replyToTicket } from '@/lib/services';
+import { createTicket, replyToTicket, getTicketMessages, getTickets } from '@/lib/services';
 
 export default function SupportPage() {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -52,6 +52,9 @@ export default function SupportPage() {
       if (unsubscribe) unsubscribe();
 
       if (user) {
+        // Initial fetch from backend
+        getTickets().then(setTickets);
+
         console.log("Setting up ticket listener for user:", user.uid, user.email);
         const ticketsRef = collection(db, 'tickets');
         
@@ -105,24 +108,19 @@ export default function SupportPage() {
       return;
     }
 
+    // Initial fetch
+    getTicketMessages(selectedTicket.id).then(setReplies);
+
     const repliesRef = collection(db, 'tickets', selectedTicket.id, 'messages');
-    const q = query(repliesRef, limit(100));
+    // Use orderBy for server-side sorting as requested in implementation update
+    const q = query(repliesRef, orderBy('createdAt', 'asc'));
 
     const unsubscribe = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // Sort on client side
-      const sorted = data.sort((a: any, b: any) => {
-        const getTime = (val: any) => {
-          if (!val) return 0;
-          if (typeof val === 'number') return val;
-          if (typeof val === 'string') return new Date(val).getTime();
-          if (val.toDate) return val.toDate().getTime();
-          if (val.seconds) return val.seconds * 1000;
-          return new Date(val).getTime() || 0;
-        };
-        return getTime(a.createdAt) - getTime(b.createdAt);
-      });
-      setReplies(sorted);
+      const messages = snap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setReplies(messages);
       
       const unreadAdminMessages = snap.docs.filter(d => d.data().sender === 'admin' && !d.data().read);
       unreadAdminMessages.forEach(d => {

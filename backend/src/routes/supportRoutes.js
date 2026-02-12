@@ -8,7 +8,9 @@ const router = express.Router();
 router.use(verifyToken);
 
 // Support tickets (Users can create and reply, Admins can do more)
+router.get('/tickets', adminController.getTickets);
 router.post('/tickets/create', adminController.createTicket);
+router.get('/tickets/:id/messages', adminController.getTicketMessages);
 router.post('/tickets/:id/reply', adminController.replyTicket);
 
 module.exports = router;
