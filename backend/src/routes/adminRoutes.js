@@ -699,7 +699,7 @@ router.get('/transactions/:id', async (req, res) => {
 
 router.get('/plans', async (_req, res) => {
   try {
-    const snap = await db.collection('service_plans').orderBy('createdAt', 'desc').get();
+    const snap = await db.collection('service_plans').get();
     const rows = snap.docs.map(d => {
       const x = d.data() || {};
       return { id: d.id, network: x.network || '', name: x.name || '', priceUser: Number(x.priceUser || x.price_user || 0), priceApi: Number(x.priceApi || x.price_api || 0), active: x.active !== false, metadata: x.metadata || null, createdAt: x.createdAt || Date.now() };
