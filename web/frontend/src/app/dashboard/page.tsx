@@ -49,10 +49,16 @@ export default function Dashboard() {
   useEffect(() => {
     const loadAnnouncements = async () => {
       try {
-        const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(3));
+        const q = query(collection(db, 'announcements'), limit(10));
         const snap = await getDocs(q);
         const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setAnnouncements(data.filter((a: any) => a.active !== false));
+        // Filter and sort on client side
+        const filtered = data.filter((a: any) => a.active !== false).sort((a: any, b: any) => {
+          const aTime = a.createdAt ? (typeof a.createdAt === 'number' ? a.createdAt : a.createdAt.toDate?.()?.getTime() || 0) : 0;
+          const bTime = b.createdAt ? (typeof b.createdAt === 'number' ? b.createdAt : b.createdAt.toDate?.()?.getTime() || 0) : 0;
+          return bTime - aTime;
+        }).slice(0, 3);
+        setAnnouncements(filtered);
       } catch (e) {
         console.error('Announcements load failed', e);
       }

@@ -105,11 +105,17 @@ export default function SupportPage() {
     }
 
     const repliesRef = collection(db, 'tickets', selectedTicket.id, 'messages');
-    const q = query(repliesRef, orderBy('createdAt', 'asc'));
+    const q = query(repliesRef, limit(100));
 
     const unsubscribe = onSnapshot(q, (snap) => {
-      const messages = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setReplies(messages);
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Sort on client side
+      const sorted = data.sort((a: any, b: any) => {
+        const aTime = a.createdAt ? (typeof a.createdAt === 'number' ? a.createdAt : a.createdAt.toDate?.()?.getTime() || 0) : 0;
+        const bTime = b.createdAt ? (typeof b.createdAt === 'number' ? b.createdAt : b.createdAt.toDate?.()?.getTime() || 0) : 0;
+        return aTime - bTime;
+      });
+      setReplies(sorted);
       
       const unreadAdminMessages = snap.docs.filter(d => d.data().sender === 'admin' && !d.data().read);
       unreadAdminMessages.forEach(d => {
