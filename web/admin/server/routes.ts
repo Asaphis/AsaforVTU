@@ -976,7 +976,7 @@ export async function registerRoutes(
   app.get("/api/admin/support/tickets", adminAuth, async (_req: Request, res: Response) => {
     try {
       const db = getFirestoreSafe();
-      const snap = await db.collection("tickets").orderBy("lastMessageAt", "desc").limit(200).get();
+      const snap = await db.collection("tickets").limit(200).get();
       const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       return res.json(rows);
     } catch { return res.json([]); }
@@ -1007,7 +1007,7 @@ export async function registerRoutes(
   app.get("/api/admin/announcements", adminAuth, async (_req: Request, res: Response) => {
     try {
       const db = getFirestoreSafe();
-      const snap = await db.collection("announcements").orderBy("createdAt", "desc").get();
+      const snap = await db.collection("announcements").get();
       return res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch { return res.json([]); }
   });

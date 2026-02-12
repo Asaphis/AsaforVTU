@@ -73,7 +73,7 @@ app.get('/', (req, res) => {
 app.get('/api/plans', async (_req, res) => {
   try {
     if (!db) return res.json([]);
-    const snap = await db.collection('service_plans').orderBy('createdAt', 'desc').get();
+    const snap = await db.collection('service_plans').get();
     const rows = snap.docs.map(d => {
       const x = d.data() || {};
       return {
