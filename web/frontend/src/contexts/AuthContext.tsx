@@ -96,6 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               referralBalance: backendBalances.referralBalance,
             };
           }
+
+          // Sync email verified status to Firestore if needed
+          if (isEmailVerified && !finalUserData.isVerified) {
+            await updateDoc(userRef, { isVerified: true, emailVerified: true });
+            console.log('[Auth] Synced verified status to Firestore');
+          }
         } catch (e: any) {
           console.warn('[Auth] Backend sync failed or timed out:', e.message);
         }
