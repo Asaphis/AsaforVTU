@@ -425,175 +425,209 @@ export async function registerRoutes(
     });
   });
 
-  app.post("/api/admin/wallet/credit", adminAuth, (req: Request, res: Response) => {
-    const userId = String((req.body?.userId as string) || "");
-    const amount = Number((req.body?.amount as number) || 0);
-    const walletType = String((req.body?.walletType as string) || "main");
-    const newBalance = amount;
-    const doInsert = async () => {
+  app.post("/api/admin/wallet/credit", adminAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = String((req.body?.userId as string) || "");
+      const amount = Number((req.body?.amount as number) || 0);
+      const walletType = String((req.body?.walletType as string) || "main");
+      
+      if (!userId || !amount || amount <= 0) {
+        return res.status(400).json({ success: false, message: "Invalid userId or amount" });
+      }
+
+      const db = getFirestoreSafe();
+      let resolvedUid = "";
+      let resolvedEmail = "";
+      
       try {
-        const db = getFirestoreSafe();
-        let resolvedUid = "";
-        let resolvedEmail = "";
+        if (userId.includes("@")) {
+          const u = await getAuthSafe().getUserByEmail(userId);
+          resolvedUid = String(u.uid || "").toLowerCase();
+          resolvedEmail = String(u.email || userId || "").toLowerCase();
+        } else {
+          const u = await getAuthSafe().getUser(userId);
+          resolvedUid = String(u.uid || userId || "").toLowerCase();
+          resolvedEmail = String(u.email || "").toLowerCase();
+        }
+      } catch (authError: any) {
+        console.error("[Admin Credit] Auth lookup failed:", authError?.message);
+        // Try to find user by email in Firestore
+        if (userId.includes("@")) {
+          resolvedEmail = userId.toLowerCase();
+        } else {
+          resolvedUid = userId.toLowerCase();
+        }
+      }
+
+      if (!resolvedUid && resolvedEmail) {
         try {
-          if (userId.includes("@")) {
-            const u = await getAuthSafe().getUserByEmail(userId);
-            resolvedUid = String(u.uid || "").toLowerCase();
-            resolvedEmail = String(u.email || userId || "").toLowerCase();
-          } else {
-            const u = await getAuthSafe().getUser(userId);
-            resolvedUid = String(u.uid || userId || "").toLowerCase();
-            resolvedEmail = String(u.email || "").toLowerCase();
+          const q = await db.collection("users").where("email", "==", resolvedEmail).limit(1).get();
+          if (!q.empty) {
+            resolvedUid = String(q.docs[0].id || "").toLowerCase();
           }
-        } catch {
-          if (userId.includes("@")) {
-            resolvedEmail = userId.toLowerCase();
-          } else {
-            resolvedUid = userId.toLowerCase();
-          }
+        } catch (e: any) {
+          console.error("[Admin Credit] User lookup failed:", e?.message);
         }
-        if (!resolvedUid && resolvedEmail) {
-          try {
-            const q = await db.collection("users").where("email", "==", resolvedEmail).limit(1).get();
-            if (!q.empty) {
-              resolvedUid = String(q.docs[0].id || "").toLowerCase();
-            }
-          } catch {}
-        }
-        const targetIds = Array.from(new Set([resolvedUid, resolvedEmail].filter(Boolean)));
-        const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        await db.collection("admin_transactions").doc(id).set({
-          id,
-          user_email: userId,
-          amount,
-          status: "success",
-          type: "credit",
-          createdAt: Date.now(),
-        });
-        const keyA = walletType === "cashback" ? "cashback_balance" : walletType === "referral" ? "referral_balance" : "main_balance";
-        const keyB = walletType === "cashback" ? "cashbackBalance" : walletType === "referral" ? "referralBalance" : "mainBalance";
-        for (const tid of targetIds) {
-          const uw = db.collection("user_wallets").doc(tid);
-          const snap = await uw.get();
-          const dataUW: any = snap.exists ? (snap.data() as any) : {};
-          const startUW = walletType === "cashback"
-            ? Number(dataUW.cashback_balance || dataUW.cashbackBalance || 0)
-            : walletType === "referral"
-            ? Number(dataUW.referral_balance || dataUW.referralBalance || 0)
-            : Number(dataUW.main_balance || dataUW.mainBalance || dataUW.balance || 0);
-          const updatedUW: any = { [keyA]: startUW + amount, [keyB]: startUW + amount, updated_at: Date.now() };
-          if (walletType === "main") updatedUW.balance = startUW + amount;
-          await uw.set(updatedUW, { merge: true });
-          const w = db.collection("wallets").doc(tid);
-          const wsnap = await w.get();
-          const dataW: any = wsnap.exists ? (wsnap.data() as any) : {};
-          const startW = walletType === "cashback"
-            ? Number(dataW.cashback_balance || dataW.cashbackBalance || 0)
-            : walletType === "referral"
-            ? Number(dataW.referral_balance || dataW.referralBalance || 0)
-            : Number(dataW.main_balance || dataW.mainBalance || dataW.balance || 0);
-          const updatedW: any = { [keyA]: startW + amount, [keyB]: startW + amount, updated_at: Date.now() };
-          if (walletType === "main") updatedW.balance = startW + amount;
-          await w.set(updatedW, { merge: true });
-        }
-        const logId = `wl_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        await db.collection("wallet_logs").doc(logId).set({
-          id: logId,
-          user_email: userId,
-          type: "credit",
-          amount,
-          description: String(req.body?.description || "Admin credit"),
-          createdAt: Date.now(),
-        });
-      } catch {}
-    };
-    doInsert().catch(() => {});
-    res.json({ success: true, userId, newBalance, walletType });
+      }
+
+      if (!resolvedUid && !resolvedEmail) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+
+      const targetIds = Array.from(new Set([resolvedUid, resolvedEmail].filter(Boolean)));
+      const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      
+      // Record admin transaction
+      await db.collection("admin_transactions").doc(id).set({
+        id,
+        user_email: userId,
+        user_id: resolvedUid,
+        amount,
+        status: "success",
+        type: "credit",
+        createdAt: Date.now(),
+      });
+
+      // Update wallet - only use "wallets" collection (consistent with main backend)
+      const keyA = walletType === "cashback" ? "cashback_balance" : walletType === "referral" ? "referral_balance" : "main_balance";
+      const keyB = walletType === "cashback" ? "cashbackBalance" : walletType === "referral" ? "referralBalance" : "mainBalance";
+      
+      for (const tid of targetIds) {
+        const w = db.collection("wallets").doc(tid);
+        const wsnap = await w.get();
+        const dataW: any = wsnap.exists ? (wsnap.data() as any) : {};
+        const startW = walletType === "cashback"
+          ? Number(dataW.cashback_balance || dataW.cashbackBalance || 0)
+          : walletType === "referral"
+          ? Number(dataW.referral_balance || dataW.referralBalance || 0)
+          : Number(dataW.main_balance || dataW.mainBalance || dataW.balance || 0);
+        const updatedW: any = { [keyA]: startW + amount, [keyB]: startW + amount, updatedAt: Date.now() };
+        if (walletType === "main") updatedW.balance = startW + amount;
+        await w.set(updatedW, { merge: true });
+      }
+
+      // Log the transaction
+      const logId = `wl_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      await db.collection("wallet_logs").doc(logId).set({
+        id: logId,
+        user_email: userId,
+        user_id: resolvedUid,
+        type: "credit",
+        amount,
+        description: String(req.body?.description || "Admin credit"),
+        createdAt: Date.now(),
+      });
+
+      const finalBalance = amount; // Returned for reference
+      res.json({ success: true, userId, newBalance: finalBalance, walletType });
+    } catch (error: any) {
+      console.error("[Admin Credit] Error:", error?.message);
+      res.status(500).json({ success: false, message: error?.message || "Credit failed" });
+    }
   });
 
-  app.post("/api/admin/wallet/debit", adminAuth, (req: Request, res: Response) => {
-    const userId = String((req.body?.userId as string) || "");
-    const amount = Number((req.body?.amount as number) || 0);
-    const walletType = String((req.body?.walletType as string) || "main");
-    const doInsert = async () => {
+  app.post("/api/admin/wallet/debit", adminAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = String((req.body?.userId as string) || "");
+      const amount = Number((req.body?.amount as number) || 0);
+      const walletType = String((req.body?.walletType as string) || "main");
+      
+      if (!userId || !amount || amount <= 0) {
+        return res.status(400).json({ success: false, message: "Invalid userId or amount" });
+      }
+
+      const db = getFirestoreSafe();
+      let resolvedUid = "";
+      let resolvedEmail = "";
+      
       try {
-        const db = getFirestoreSafe();
-        let resolvedUid = "";
-        let resolvedEmail = "";
+        if (userId.includes("@")) {
+          const u = await getAuthSafe().getUserByEmail(userId);
+          resolvedUid = String(u.uid || "").toLowerCase();
+          resolvedEmail = String(u.email || userId || "").toLowerCase();
+        } else {
+          const u = await getAuthSafe().getUser(userId);
+          resolvedUid = String(u.uid || userId || "").toLowerCase();
+          resolvedEmail = String(u.email || "").toLowerCase();
+        }
+      } catch (authError: any) {
+        console.error("[Admin Debit] Auth lookup failed:", authError?.message);
+        if (userId.includes("@")) {
+          resolvedEmail = userId.toLowerCase();
+        } else {
+          resolvedUid = userId.toLowerCase();
+        }
+      }
+
+      if (!resolvedUid && resolvedEmail) {
         try {
-          if (userId.includes("@")) {
-            const u = await getAuthSafe().getUserByEmail(userId);
-            resolvedUid = String(u.uid || "").toLowerCase();
-            resolvedEmail = String(u.email || userId || "").toLowerCase();
-          } else {
-            const u = await getAuthSafe().getUser(userId);
-            resolvedUid = String(u.uid || userId || "").toLowerCase();
-            resolvedEmail = String(u.email || "").toLowerCase();
+          const q = await db.collection("users").where("email", "==", resolvedEmail).limit(1).get();
+          if (!q.empty) {
+            resolvedUid = String(q.docs[0].id || "").toLowerCase();
           }
-        } catch {
-          if (userId.includes("@")) {
-            resolvedEmail = userId.toLowerCase();
-          } else {
-            resolvedUid = userId.toLowerCase();
-          }
+        } catch (e: any) {
+          console.error("[Admin Debit] User lookup failed:", e?.message);
         }
-        if (!resolvedUid && resolvedEmail) {
-          try {
-            const q = await db.collection("users").where("email", "==", resolvedEmail).limit(1).get();
-            if (!q.empty) {
-              resolvedUid = String(q.docs[0].id || "").toLowerCase();
-            }
-          } catch {}
+      }
+
+      if (!resolvedUid && !resolvedEmail) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+
+      const targetIds = Array.from(new Set([resolvedUid, resolvedEmail].filter(Boolean)));
+      const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      
+      // Record admin transaction
+      await db.collection("admin_transactions").doc(id).set({
+        id,
+        user_email: userId,
+        user_id: resolvedUid,
+        amount,
+        status: "success",
+        type: "debit",
+        createdAt: Date.now(),
+      });
+
+      // Update wallet - only use "wallets" collection (consistent with main backend)
+      const keyA = walletType === "cashback" ? "cashback_balance" : walletType === "referral" ? "referral_balance" : "main_balance";
+      const keyB = walletType === "cashback" ? "cashbackBalance" : walletType === "referral" ? "referralBalance" : "mainBalance";
+      
+      for (const tid of targetIds) {
+        const w = db.collection("wallets").doc(tid);
+        const wsnap = await w.get();
+        const dataW: any = wsnap.exists ? (wsnap.data() as any) : {};
+        const startW = walletType === "cashback"
+          ? Number(dataW.cashback_balance || dataW.cashbackBalance || 0)
+          : walletType === "referral"
+          ? Number(dataW.referral_balance || dataW.referralBalance || 0)
+          : Number(dataW.main_balance || dataW.mainBalance || dataW.balance || 0);
+        
+        if (startW < amount) {
+          return res.status(400).json({ success: false, message: "Insufficient balance" });
         }
-        const targetIds = Array.from(new Set([resolvedUid, resolvedEmail].filter(Boolean)));
-        const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        await db.collection("admin_transactions").doc(id).set({
-          id,
-          user_email: userId,
-          amount,
-          status: "success",
-          type: "debit",
-          createdAt: Date.now(),
-        });
-        const keyA = walletType === "cashback" ? "cashback_balance" : walletType === "referral" ? "referral_balance" : "main_balance";
-        const keyB = walletType === "cashback" ? "cashbackBalance" : walletType === "referral" ? "referralBalance" : "mainBalance";
-        for (const tid of targetIds) {
-          const uw = db.collection("user_wallets").doc(tid);
-          const snap = await uw.get();
-          const dataUW: any = snap.exists ? (snap.data() as any) : {};
-          const startUW = walletType === "cashback"
-            ? Number(dataUW.cashback_balance || dataUW.cashbackBalance || 0)
-            : walletType === "referral"
-            ? Number(dataUW.referral_balance || dataUW.referralBalance || 0)
-            : Number(dataUW.main_balance || dataUW.mainBalance || dataUW.balance || 0);
-          const updatedUW: any = { [keyA]: startUW - amount, [keyB]: startUW - amount, updated_at: Date.now() };
-          if (walletType === "main") updatedUW.balance = startUW - amount;
-          await uw.set(updatedUW, { merge: true });
-          const w = db.collection("wallets").doc(tid);
-          const wsnap = await w.get();
-          const dataW: any = wsnap.exists ? (wsnap.data() as any) : {};
-          const startW = walletType === "cashback"
-            ? Number(dataW.cashback_balance || dataW.cashbackBalance || 0)
-            : walletType === "referral"
-            ? Number(dataW.referral_balance || dataW.referralBalance || 0)
-            : Number(dataW.main_balance || dataW.mainBalance || dataW.balance || 0);
-          const updatedW: any = { [keyA]: startW - amount, [keyB]: startW - amount, updated_at: Date.now() };
-          if (walletType === "main") updatedW.balance = startW - amount;
-          await w.set(updatedW, { merge: true });
-        }
-        const logId = `wl_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        await db.collection("wallet_logs").doc(logId).set({
-          id: logId,
-          user_email: userId,
-          type: "debit",
-          amount,
-          description: String(req.body?.description || "Admin debit"),
-          createdAt: Date.now(),
-        });
-      } catch {}
-    };
-    doInsert().catch(() => {});
-    res.json({ success: true, userId, newBalance: 0, walletType });
+        
+        const updatedW: any = { [keyA]: startW - amount, [keyB]: startW - amount, updatedAt: Date.now() };
+        if (walletType === "main") updatedW.balance = startW - amount;
+        await w.set(updatedW, { merge: true });
+      }
+
+      // Log the transaction
+      const logId = `wl_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      await db.collection("wallet_logs").doc(logId).set({
+        id: logId,
+        user_email: userId,
+        user_id: resolvedUid,
+        type: "debit",
+        amount,
+        description: String(req.body?.description || "Admin debit"),
+        createdAt: Date.now(),
+      });
+
+      res.json({ success: true, userId, newBalance: 0, walletType });
+    } catch (error: any) {
+      console.error("[Admin Debit] Error:", error?.message);
+      res.status(500).json({ success: false, message: error?.message || "Debit failed" });
+    }
   });
 
   app.post("/api/admin/users/suspend", adminAuth, async (req: Request, res: Response) => {
