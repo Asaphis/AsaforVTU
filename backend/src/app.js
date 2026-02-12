@@ -82,6 +82,7 @@ app.get('/api/services', async (_req, res) => {
 });
 
 // Public plans endpoint for user frontend
+app.get('/api/plans', async (_req, res) => {
   try {
     if (!db) return res.json([]);
     const snap = await db.collection('service_plans').get();
