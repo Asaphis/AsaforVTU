@@ -189,10 +189,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 function WalletBalanceHeader() {
   const { user } = useAuth();
-  const [show, setShow] = useState<boolean>(false);
+  const [show, setShow] = useState<boolean>(true); // Show by default
   useEffect(() => {
     const v = sessionStorage.getItem('showMainBalance');
-    setShow(v === 'true');
+    if (v !== null) setShow(v === 'true');
   }, []);
   useEffect(() => {
     sessionStorage.setItem('showMainBalance', String(show));

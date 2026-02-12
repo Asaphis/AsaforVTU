@@ -14,9 +14,9 @@ import { useWalletListener } from '@/hooks/useWalletListener';
 export default function Dashboard() {
   const router = useRouter();
   const { user, loading, initialized, refreshUser } = useAuth();
-  const [showMain, setShowMain] = useState(false);
-  const [showCashback, setShowCashback] = useState(false);
-  const [showReferral, setShowReferral] = useState(false);
+  const [showMain, setShowMain] = useState(true); // Show by default
+  const [showCashback, setShowCashback] = useState(true); // Show by default
+  const [showReferral, setShowReferral] = useState(true); // Show by default
   const [processingWithdrawal, setProcessingWithdrawal] = useState(false);
   const { addNotification } = useNotifications();
   const [recent, setRecent] = useState<any[]>([]);
