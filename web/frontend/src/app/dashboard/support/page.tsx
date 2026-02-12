@@ -176,6 +176,17 @@ export default function SupportPage() {
       setNewTicketData({ subject: '', message: '' });
       setShowNewTicket(false);
       // The Firestore listener will automatically pick up the new ticket
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, type: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0] || !selectedTicket) return;
+    const file = e.target.files[0];
+    setIsUploading(true);
     try {
       const storageRef = ref(storage, `support/${selectedTicket.id}/${Date.now()}-${file.name}`);
       await uploadBytes(storageRef, file);

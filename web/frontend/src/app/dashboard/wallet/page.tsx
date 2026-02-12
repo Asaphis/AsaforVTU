@@ -85,10 +85,6 @@ export default function WalletPage() {
       } else {
         alert(result.message || 'Transfer failed');
       }
-        fetchBalance();
-      } else {
-        alert(result.message);
-      }
     } catch (e: any) {
       alert(e.message || 'Transfer failed');
     } finally {
