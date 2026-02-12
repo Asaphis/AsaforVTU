@@ -72,7 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userData = userDoc.data() as Omit<UserProfile, 'uid'>;
         console.log('[Auth] Firestore user data loaded successfully');
         
-        let finalUserData = { ...userData };
+        // Always use Firebase Auth's emailVerified status, not the Firestore value
+        // This ensures verified users can access the dashboard even if Firestore is outdated
+        const isEmailVerified = firebaseUser.emailVerified;
+        
+        let finalUserData = { ...userData, isVerified: isEmailVerified, emailVerified: isEmailVerified };
         
         try {
           console.log('[Auth] Fetching fresh wallet balance from backend...');
