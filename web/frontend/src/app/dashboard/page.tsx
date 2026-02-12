@@ -9,6 +9,7 @@ import { doc, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getWalletHistory, getWalletBalance, getAnnouncements } from '@/lib/services';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { useWalletListener } from '@/hooks/useWalletListener';
 
 export default function Dashboard() {
   const router = useRouter();
