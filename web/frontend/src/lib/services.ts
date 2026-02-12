@@ -50,16 +50,33 @@ export interface Announcement {
 export const getAnnouncements = async (): Promise<Announcement[]> => {
   const backendUrl = resolveBackendUrl();
   try {
-    const res = await fetch(`${backendUrl}/api/admin/announcements`);
-    if (!res.ok) throw new Error('Failed to fetch announcements');
-    return await res.json();
+    // Try backend API first
+    const res = await fetch(`${backendUrl}/api/admin/announcements`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    }
   } catch (error) {
-    console.error('Error fetching announcements:', error);
+    console.error('Error fetching announcements from backend:', error);
+  }
+  
+  // Fallback: try Firestore
+  try {
+    const q = query(collection(db, 'announcements'), limit(10));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Announcement));
+  } catch (error) {
+    console.error('Error fetching announcements from Firestore:', error);
     return [];
   }
 };
 
-export const createTicket = async (subject: string, message: string): Promise<{ success: boolean; message: string }> => {
+export const createTicket = async (subject: string, message: string): Promise<{ success: boolean; message: string; ticketId?: string }> => {
   const backendUrl = resolveBackendUrl();
   const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
   try {
@@ -71,11 +88,53 @@ export const createTicket = async (subject: string, message: string): Promise<{ 
       },
       body: JSON.stringify({ subject, message, email: auth.currentUser?.email }),
     });
-    if (!res.ok) throw new Error('Failed to create ticket');
-    return { success: true, message: 'Ticket created successfully' };
-  } catch (error) {
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to create ticket');
+    return { success: true, message: 'Ticket created successfully', ticketId: data.id };
+  } catch (error: any) {
     console.error('Error creating ticket:', error);
-    return { success: false, message: 'Failed to create ticket' };
+    return { success: false, message: error?.message || 'Failed to create ticket' };
+  }
+};
+
+export const replyToTicket = async (ticketId: string, message: string): Promise<{ success: boolean; message: string }> => {
+  const backendUrl = resolveBackendUrl();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+  try {
+    const res = await fetch(`${backendUrl}/api/admin/support/tickets/${ticketId}/reply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ message }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to send reply');
+    return { success: true, message: 'Reply sent successfully' };
+  } catch (error: any) {
+    console.error('Error replying to ticket:', error);
+    return { success: false, message: error?.message || 'Failed to send reply' };
+  }
+};
+
+export const getTickets = async (): Promise<any[]> => {
+  const backendUrl = resolveBackendUrl();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+  try {
+    const res = await fetch(`${backendUrl}/api/admin/support/tickets`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!res.ok) throw new Error('Failed to fetch tickets');
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching tickets:', error);
+    return [];
   }
 };
 
@@ -337,6 +396,23 @@ export const processTransaction = async (
 
 export const getServices = async (): Promise<ServiceDoc[]> => {
   try {
+    // First try backend API
+    const backendUrl = resolveBackendUrl();
+    const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+    const res = await fetch(`${backendUrl}/api/admin/services`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    
+    if (res.ok) {
+      const services = await res.json();
+      return Array.isArray(services) ? services : [];
+    }
+    
+    // Fallback to Firestore if backend fails
     const col = collection(db, 'services');
     const snap = await getDocs(col);
     if (!snap.empty) {
@@ -344,12 +420,40 @@ export const getServices = async (): Promise<ServiceDoc[]> => {
     }
   } catch (e) {
     console.error('Error fetching services:', e);
+    // Try fallback to Firestore
+    try {
+      const col = collection(db, 'services');
+      const snap = await getDocs(col);
+      if (!snap.empty) {
+        return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as ServiceDoc));
+      }
+    } catch (e2) {
+      console.error('Error fetching services from Firestore fallback:', e2);
+    }
   }
   return [];
 };
 
 export const getServiceBySlug = async (slug: string): Promise<ServiceDoc | null> => {
   try {
+    // Try backend first
+    const backendUrl = resolveBackendUrl();
+    const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+    const res = await fetch(`${backendUrl}/api/admin/services`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    
+    if (res.ok) {
+      const services = await res.json();
+      const service = Array.isArray(services) ? services.find((s: any) => s.slug === slug || s.id === slug) : null;
+      if (service) return service as ServiceDoc;
+    }
+    
+    // Fallback to Firestore
     const q = query(collection(db, 'services'), where('slug', '==', slug));
     const snap = await getDocs(q);
     if (!snap.empty) {
@@ -357,7 +461,18 @@ export const getServiceBySlug = async (slug: string): Promise<ServiceDoc | null>
       return { id: d.id, ...(d.data() as any) } as ServiceDoc;
     }
   } catch (e) {
-    // ignore
+    console.error('Error fetching service:', e);
+    // Try Firestore fallback
+    try {
+      const q = query(collection(db, 'services'), where('slug', '==', slug));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const d = snap.docs[0];
+        return { id: d.id, ...(d.data() as any) } as ServiceDoc;
+      }
+    } catch (e2) {
+      console.error('Error fetching service from Firestore:', e2);
+    }
   }
   return null;
 };

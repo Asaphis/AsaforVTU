@@ -13,11 +13,12 @@ import { db, auth, storage } from '@/lib/firebase';
 import { 
   collection, addDoc, query, where, getDocs, 
   orderBy, doc, runTransaction, onSnapshot, 
-  serverTimestamp, updateDoc
+  serverTimestamp, updateDoc, limit
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
+import { createTicket, replyToTicket } from '@/lib/services';
 
 export default function SupportPage() {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -133,26 +134,14 @@ export default function SupportPage() {
     
     setSendingReply(true);
     try {
-      const ticketRef = doc(db, 'tickets', selectedTicket.id);
-      const messagesRef = collection(ticketRef, 'messages');
+      // Use backend API to send reply
+      const result = await replyToTicket(selectedTicket.id, replyMessage);
+      if (!result.success) {
+        throw new Error(result.message);
+      }
       
-      const messageObj = {
-        text: replyMessage,
-        sender: 'user',
-        senderId: auth.currentUser.uid,
-        senderEmail: auth.currentUser.email,
-        createdAt: serverTimestamp(),
-        read: false
-      };
-      
-      await addDoc(messagesRef, messageObj);
-      await updateDoc(ticketRef, { 
-        status: 'open',
-        lastMessage: replyMessage,
-        lastMessageAt: serverTimestamp()
-      });
-
       setReplyMessage('');
+      toast({ title: "Success", description: "Reply sent successfully" });
     } catch (e: any) {
       toast({ title: "Error", description: e.message, type: "destructive" });
     } finally {
@@ -177,31 +166,16 @@ export default function SupportPage() {
       };
       
       const docRef = await addDoc(collection(db, 'tickets'), ticketData);
-      await addDoc(collection(db, 'tickets', docRef.id, 'messages'), {
-        text: newTicketData.message,
-        sender: 'user',
-        senderId: auth.currentUser.uid,
-        senderEmail: auth.currentUser.email,
-        createdAt: serverTimestamp(),
-        read: true
-      });
-
+      // Use backend API to create ticket
+      const result = await createTicket(newTicketData.subject, newTicketData.message);
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+      
       toast({ title: "Success", description: "Ticket created successfully" });
       setNewTicketData({ subject: '', message: '' });
       setShowNewTicket(false);
-      setSelectedTicket({ id: docRef.id, ...ticketData });
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, type: "destructive" });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedTicket || !auth.currentUser) return;
-
-    setIsUploading(true);
+      // The Firestore listener will automatically pick up the new ticket
     try {
       const storageRef = ref(storage, `support/${selectedTicket.id}/${Date.now()}-${file.name}`);
       await uploadBytes(storageRef, file);

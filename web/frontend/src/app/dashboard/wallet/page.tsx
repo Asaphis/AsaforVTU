@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Wallet, CreditCard, ArrowRightLeft, Eye, EyeOff, Copy } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getWalletBalance, transferWallet, initiateFunding } from '@/lib/services';
+import { useWalletListener } from '@/hooks/useWalletListener';
 import { useToast } from '@/components/ui/toast'; // Assuming we have toast, otherwise use alert
 
 export default function WalletPage() {
@@ -12,39 +13,21 @@ export default function WalletPage() {
   const [showCashback, setShowCashback] = useState(false);
   const [showReferral, setShowReferral] = useState(false);
   
-  // Local state for balance to reflect backend source of truth
-  const [balances, setBalances] = useState({
-    mainBalance: user?.walletBalance || 0,
-    cashbackBalance: user?.cashbackBalance || 0,
-    referralBalance: user?.referralBalance || 0
-  });
+  // Use real-time wallet listener for live updates
+  const { balance, loading, error, refresh } = useWalletListener(!!user);
   
-  // Initial fetch from backend
-  const fetchBalance = async () => {
-    try {
-      const data = await getWalletBalance();
-      if (data) {
-        setBalances(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch wallet balance:", error);
-    }
-  };
+  const [balances, setBalances] = useState({
+    mainBalance: 0,
+    cashbackBalance: 0,
+    referralBalance: 0
+  });
 
+  // Update local state when balance updates
   useEffect(() => {
-    // Update balances from context if available (optimistic/fallback)
-    if (user) {
-      setBalances(prev => ({
-        ...prev,
-        mainBalance: user.walletBalance ?? prev.mainBalance,
-        cashbackBalance: user.cashbackBalance ?? prev.cashbackBalance,
-        referralBalance: user.referralBalance ?? prev.referralBalance
-      }));
+    if (balance) {
+      setBalances(balance);
     }
-    
-    // Fetch fresh data from backend
-    fetchBalance();
-  }, [user]);
+  }, [balance]);
 
   useEffect(() => {
     setShowMain(sessionStorage.getItem('showMainBalance') === 'true');
@@ -97,7 +80,11 @@ export default function WalletPage() {
       const result = await transferWallet(amount, type);
       if (result.success) {
         alert(`Transferred ${format(amount)} to main wallet`);
-        // Refresh balance
+        // Refresh balance immediately after transfer
+        await refresh();
+      } else {
+        alert(result.message || 'Transfer failed');
+      }
         fetchBalance();
       } else {
         alert(result.message);

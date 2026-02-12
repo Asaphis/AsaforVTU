@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Smartphone, Wifi, Tv, Zap, CreditCard, GraduationCap, Eye, EyeOff, ChevronLeft, ChevronRight, Pause, Play, Megaphone } from 'lucide-react';
@@ -7,9 +5,8 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { getWalletHistory } from '@/lib/services';
+import { getWalletHistory, getWalletBalance, getAnnouncements } from '@/lib/services';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -23,6 +20,9 @@ export default function Dashboard() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [currentAnnIndex, setCurrentAnnIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  
+  // Use real-time wallet listener for live balance updates (polls every 10 seconds)
+  const { balance: walletBalance, refresh: refreshBalance } = useWalletListener(!!user);
 
   const nextAnnouncement = useCallback(() => {
     setAnnouncements(prev => {
@@ -49,21 +49,26 @@ export default function Dashboard() {
   useEffect(() => {
     const loadAnnouncements = async () => {
       try {
-        const q = query(collection(db, 'announcements'), limit(10));
-        const snap = await getDocs(q);
-        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // Filter and sort on client side
-        const filtered = data.filter((a: any) => a.active !== false).sort((a: any, b: any) => {
-          const aTime = a.createdAt ? (typeof a.createdAt === 'number' ? a.createdAt : a.createdAt.toDate?.()?.getTime() || 0) : 0;
-          const bTime = b.createdAt ? (typeof b.createdAt === 'number' ? b.createdAt : b.createdAt.toDate?.()?.getTime() || 0) : 0;
-          return bTime - aTime;
-        }).slice(0, 3);
+        const data = await getAnnouncements();
+        const filtered = data
+          .filter((a: any) => a.active !== false)
+          .sort((a: any, b: any) => {
+            const aTime = a.createdAt ? (typeof a.createdAt === 'number' ? a.createdAt : a.createdAt.toDate?.()?.getTime() || 0) : 0;
+            const bTime = b.createdAt ? (typeof b.createdAt === 'number' ? b.createdAt : b.createdAt.toDate?.()?.getTime() || 0) : 0;
+            return bTime - aTime;
+          })
+          .slice(0, 3);
         setAnnouncements(filtered);
       } catch (e) {
         console.error('Announcements load failed', e);
       }
     };
-    if (user) loadAnnouncements();
+    if (user) {
+      loadAnnouncements();
+      // Refresh announcements every 30 seconds
+      const interval = setInterval(loadAnnouncements, 30000);
+      return () => clearInterval(interval);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -78,6 +83,25 @@ export default function Dashboard() {
     setShowCashback(sc);
     setShowReferral(sr);
   }, [initialized, user, loading, router]);
+
+  // Fetch wallet balance from backend (single source of truth)
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!user) return;
+      try {
+        const balance = await getWalletBalance();
+        if (balance) {
+          // Note: Real-time listener from useWalletListener will keep this updated
+        }
+      } catch (e) {
+        console.error('Failed to fetch wallet balance:', e);
+      }
+    };
+    
+    if (user) {
+      fetchBalance();
+    }
+  }, [user]);
 
   useEffect(() => {
     const loadRecent = async () => {
@@ -95,7 +119,7 @@ export default function Dashboard() {
   const handleWithdraw = async (type: 'referral' | 'cashback') => {
     if (!user || processingWithdrawal) return;
     
-    const amount = type === 'referral' ? (user.referralBalance ?? 0) : (user.cashbackBalance ?? 0);
+    const amount = type === 'referral' ? (walletBalance?.referralBalance ?? 0) : (walletBalance?.cashbackBalance ?? 0);
     if (amount <= 0) {
       addNotification('warning', 'Insufficient balance', 'No funds available to withdraw');
       return;
@@ -127,6 +151,7 @@ export default function Dashboard() {
         });
       });
       addNotification('success', 'Withdrawal successful', `₦${amount.toLocaleString()} moved to main wallet`);
+      await refreshBalance?.();
       await refreshUser();
     } catch (error) {
       console.error("Withdrawal failed: ", error);
@@ -218,7 +243,7 @@ export default function Dashboard() {
                 <p className="text-blue-100/60 font-bold uppercase tracking-widest text-[9px]">Primary Balance</p>
               </div>
               <div className="flex items-center justify-between">
-                <h2 className="text-4xl lg:text-5xl font-black tracking-tighter">
+                <h2 className="text-4xl lg:text-5xl font-black tracking-tighter">walletBalance.main
                   {showMain ? <span className="flex items-baseline gap-1.5"><span className="text-xl font-medium text-blue-200/50">₦</span>{(user.walletBalance || 0).toLocaleString()}</span> : '••••••'}
                 </h2>
                 <button 
@@ -280,16 +305,16 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-6">
               <p className="text-3xl font-black text-[#0B4F6C]">
                 {showCashback ? <span className="text-lg text-gray-300 mr-1">₦</span> : ''}
-                {showCashback ? (user.cashbackBalance || 0).toLocaleString() : '••••••'}
+                {showCashback ? (walletBalance?.cashbackBalance || 0).toLocaleString() : '••••••'}
               </p>
-              <button className="p-2 text-gray-400 hover:text-[#0B4F6C]" onClick={() => setShowCashback(s => !s)}>
+              <button className="p-2 text-gray-400 hover:text-[#0B4F6C]" onClick={() => { setShowCashback(s => !s); sessionStorage.setItem('showCashbackBalance', String(!showCashback)); }}>
                 {showCashback ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
             <button 
               onClick={() => handleWithdraw('cashback')}
               className="w-full py-3.5 rounded-xl bg-[#0B4F6C] text-white font-bold text-[10px] uppercase tracking-widest hover:bg-[#0D2B5D] transition-all disabled:opacity-30"
-              disabled={processingWithdrawal || (user.cashbackBalance || 0) <= 0}
+              disabled={processingWithdrawal || (walletBalance?.cashbackBalance || 0) <= 0}
             >
               MOVE TO PRIMARY
             </button>
@@ -308,16 +333,16 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-6">
               <p className="text-3xl font-black text-[#0B4F6C]">
                 {showReferral ? <span className="text-lg text-gray-300 mr-1">₦</span> : ''}
-                {showReferral ? (user.referralBalance || 0).toLocaleString() : '••••••'}
+                {showReferral ? (walletBalance?.referralBalance || 0).toLocaleString() : '••••••'}
               </p>
-              <button className="p-2 text-gray-400 hover:text-[#0B4F6C]" onClick={() => setShowReferral(s => !s)}>
+              <button className="p-2 text-gray-400 hover:text-[#0B4F6C]" onClick={() => { setShowReferral(s => !s); sessionStorage.setItem('showReferralBalance', String(!showReferral)); }}>
                 {showReferral ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
             <button 
               onClick={() => handleWithdraw('referral')}
               className="w-full py-3.5 rounded-xl bg-[#C58A17] text-white font-bold text-[10px] uppercase tracking-widest hover:bg-[#A67513] transition-all disabled:opacity-30"
-              disabled={processingWithdrawal || (user.referralBalance || 0) <= 0}
+              disabled={processingWithdrawal || (walletBalance?.referralBalance || 0) <= 0}
             >
               MOVE TO PRIMARY
             </button>
