@@ -101,28 +101,35 @@ export default function SupportPage() {
     }
   }, [selectedTicket?.id]);
 
+  useEffect(() => {
+    if (!db) {
+      console.error("Firebase DB is not initialized");
+      return;
+    }
+    
+    try {
+      const annRef = collection(db, 'announcements');
+      const q = query(annRef, orderBy('createdAt', 'desc'));
+      
+      const unsubscribe = onSnapshot(q, (snap: any) => {
+        const annList = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+        setAnnouncements(annList);
+      }, (err: any) => {
+        console.error("Announcements listener error:", err);
+      });
+
+      return () => unsubscribe();
+    } catch (e) {
+      console.error("Failed to setup announcements listener:", e);
+    }
+  }, []);
+
   useEffect(() => { loadData(); }, []);
 
   const handleReply = async (id: string) => {
     if (!replyMsg.trim()) return;
     try {
-      const ticketRef = doc(db, 'tickets', id);
-      const replyRef = collection(ticketRef, 'messages');
-      
-      const replyObj = {
-        text: replyMsg,
-        sender: 'admin',
-        createdAt: serverTimestamp(),
-        read: false
-      };
-      
-      await addDoc(replyRef, replyObj);
-      await updateDoc(ticketRef, { 
-        status: 'open',
-        lastMessage: replyMsg,
-        lastMessageAt: serverTimestamp()
-      });
-
+      await replyTicket(id, replyMsg);
       toast({ title: "Success", description: "Reply sent" });
       setReplyMsg('');
     } catch (e: any) {

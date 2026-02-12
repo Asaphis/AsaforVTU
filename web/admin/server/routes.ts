@@ -1025,13 +1025,13 @@ export async function registerRoutes(
       await tRef.collection("messages").add({
         text: message,
         sender: "admin",
-        createdAt: Date.now(),
+        createdAt: new Date(),
         read: false
       });
       await tRef.update({
         status: "replied",
         lastMessage: message,
-        lastMessageAt: Date.now()
+        lastMessageAt: new Date()
       });
       return res.json({ success: true });
     } catch (e: any) { return res.status(400).json({ message: e.message }); }
@@ -1042,7 +1042,14 @@ export async function registerRoutes(
     try {
       const db = getFirestoreSafe();
       const snap = await db.collection("announcements").get();
-      return res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Sort in memory for consistency
+      rows.sort((a: any, b: any) => {
+        const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt || 0);
+        const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt || 0);
+        return Number(tB) - Number(tA);
+      });
+      return res.json(rows);
     } catch { return res.json([]); }
   });
 
@@ -1055,7 +1062,7 @@ export async function registerRoutes(
         content,
         type,
         active: true,
-        createdAt: Date.now()
+        createdAt: new Date()
       });
       return res.json({ id: doc.id });
     } catch (e: any) { return res.status(400).json({ message: e.message }); }

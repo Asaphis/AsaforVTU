@@ -208,13 +208,45 @@ export default function ServicesPage() {
                             setAirtimeNetworks(updated);
                             try {
                               await updateAdminSettings({ airtimeNetworks: updated as any });
-                              toast({ title: "Settings updated", description: `${network}` });
+                              toast({ title: "Settings updated", description: `${network} status changed` });
                             } catch (e: any) {
                               toast({ title: "Update failed", description: e.message || "Unable to save settings", variant: "destructive" });
                             }
                           }}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            const currentDiscount = airtimeNetworks[network]?.discount ?? 2;
+                            const val = prompt(`Set discount for ${network} (%)`, String(currentDiscount));
+                            if (val === null) return;
+                            const discount = parseFloat(val);
+                            if (isNaN(discount)) {
+                              toast({ title: "Invalid input", description: "Please enter a valid number", variant: "destructive" });
+                              return;
+                            }
+                            
+                            const updated = { 
+                              ...airtimeNetworks, 
+                              [network]: { 
+                                ...(airtimeNetworks[network] || { enabled: true }), 
+                                discount 
+                              } 
+                            };
+                            setAirtimeNetworks(updated);
+                            try {
+                              await updateAdminSettings({ airtimeNetworks: updated as any });
+                              toast({ title: "Discount updated", description: `${network} set to ${discount}%` });
+                            } catch (e: any) {
+                              toast({ title: "Update failed", description: e.message, variant: "destructive" });
+                            }
+                          }}
                         >
-                        </Switch>
+                          <Edit className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, query, where, runTransaction } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, runTransaction, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import app from '@/lib/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -50,29 +50,24 @@ export interface Announcement {
 export const getAnnouncements = async (): Promise<Announcement[]> => {
   const backendUrl = resolveBackendUrl();
   try {
-    // Try backend API first
-    const res = await fetch(`${backendUrl}/api/admin/announcements`, {
+    const res = await fetch(`${backendUrl}/api/announcements`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' }
     });
-    if (res.ok) {
-      const data = await res.json();
-      return Array.isArray(data) ? data : [];
+    const data = await res.json();
+    if (Array.isArray(data)) return data as Announcement[];
+    throw new Error('Invalid response');
+  } catch (e) {
+    console.warn('Backend announcements failed, using Firestore:', e);
+    // Fallback: try Firestore
+    try {
+      const q = query(collection(db, 'announcements'), where('active', '==', true), limit(10));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Announcement));
+    } catch (error) {
+      console.error('Error fetching announcements from Firestore:', error);
+      return [];
     }
-  } catch (error) {
-    console.error('Error fetching announcements from backend:', error);
-  }
-  
-  // Fallback: try Firestore
-  try {
-    const q = query(collection(db, 'announcements'), limit(10));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Announcement));
-  } catch (error) {
-    console.error('Error fetching announcements from Firestore:', error);
-    return [];
   }
 };
 
@@ -80,7 +75,7 @@ export const createTicket = async (subject: string, message: string): Promise<{ 
   const backendUrl = resolveBackendUrl();
   const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
   try {
-    const res = await fetch(`${backendUrl}/api/admin/support/tickets/create`, {
+    const res = await fetch(`${backendUrl}/api/support/tickets/create`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -101,7 +96,7 @@ export const replyToTicket = async (ticketId: string, message: string): Promise<
   const backendUrl = resolveBackendUrl();
   const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
   try {
-    const res = await fetch(`${backendUrl}/api/admin/support/tickets/${ticketId}/reply`, {
+    const res = await fetch(`${backendUrl}/api/support/tickets/${ticketId}/reply`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -122,7 +117,7 @@ export const getTickets = async (): Promise<any[]> => {
   const backendUrl = resolveBackendUrl();
   const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
   try {
-    const res = await fetch(`${backendUrl}/api/admin/support/tickets`, {
+    const res = await fetch(`${backendUrl}/api/support/tickets`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -540,4 +535,24 @@ export const transferWallet = async (amount: number, fromWalletType: 'cashback' 
     return { success: false, message: (data && (data.error || data.message)) || 'Transfer failed' };
   }
   return { success: true, message: 'Transfer successful' };
+};
+
+export const getAdminSettings = async (): Promise<any> => {
+  const backendUrl = resolveBackendUrl();
+  try {
+    const res = await fetch(`${backendUrl}/api/settings`, { 
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) throw new Error('Failed to fetch settings');
+    return await res.json();
+  } catch (e) {
+    console.warn('Backend settings failed, using Firestore:', e);
+    try {
+      const docSnap = await getDoc(doc(db, 'settings', 'admin_settings'));
+      return docSnap.exists() ? docSnap.data() : null;
+    } catch {
+      return null;
+    }
+  }
 };

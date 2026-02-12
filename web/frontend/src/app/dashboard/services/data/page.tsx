@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Wifi, Smartphone, ChevronRight, ArrowRightLeft } from 'lucide-react';
 import { useService } from '@/hooks/useServices';
 import { useAuth } from '@/contexts/AuthContext';
-import { purchaseData } from '@/lib/services';
+import { purchaseData, getAdminSettings } from '@/lib/services';
 import TransactionPinModal from '@/components/dashboard/TransactionPinModal';
 import TransactionResultModal from '@/components/dashboard/TransactionResultModal';
 import { getServicePlans } from '@/lib/services';
@@ -33,6 +33,29 @@ export default function DataPage() {
   const [dynamicPlans, setDynamicPlans] = useState<Record<string, DataPlan[]>>({});
   const [showPinModal, setShowPinModal] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [adminSettings, setAdminSettings] = useState<any>(null);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await getAdminSettings();
+        setAdminSettings(settings);
+        // If MTN is disabled, select first enabled network
+        if (settings?.airtimeNetworks) {
+          if (settings.airtimeNetworks['MTN']?.enabled === false) {
+            const firstEnabled = NETWORKS.find(n => settings.airtimeNetworks[n.value]?.enabled !== false);
+            if (firstEnabled) setNetwork(firstEnabled);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load admin settings", e);
+      } finally {
+        setLoadingSettings(false);
+      }
+    };
+    loadSettings();
+  }, []);
   
   const [resultModal, setResultModal] = useState<{
     open: boolean;
@@ -169,24 +192,30 @@ export default function DataPage() {
                        <div className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" /> Network Infrastructure
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {NETWORKS.map(n => (
-                        <button
-                          key={n.value}
-                          type="button"
-                          onClick={() => {
-                            setNetwork(n);
-                            const plans = (dynamicPlans[n.value] || []);
-                            setSelectedPlan(plans[0]);
-                          }}
-                          className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] border-2 transition-all ${
-                            network.value === n.value 
-                              ? 'bg-[#0B4F6C] border-[#0B4F6C] text-white shadow-2xl shadow-[#0B4F6C]/30 scale-[1.05]' 
-                              : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-100 hover:bg-white shadow-inner'
-                          }`}
-                        >
-                          {n.label}
-                        </button>
-                      ))}
+                      {NETWORKS.map(n => {
+                        const isEnabled = adminSettings?.airtimeNetworks?.[n.value]?.enabled !== false;
+                        return (
+                          <button
+                            key={n.value}
+                            type="button"
+                            disabled={!isEnabled}
+                            onClick={() => {
+                              setNetwork(n);
+                              const plans = (dynamicPlans[n.value] || []);
+                              setSelectedPlan(plans[0]);
+                            }}
+                            className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] border-2 transition-all ${
+                              network.value === n.value 
+                                ? 'bg-[#0B4F6C] border-[#0B4F6C] text-white shadow-2xl shadow-[#0B4F6C]/30 scale-[1.05]' 
+                                : isEnabled
+                                  ? 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-100 hover:bg-white shadow-inner'
+                                  : 'bg-gray-100 border-transparent text-gray-300 cursor-not-allowed grayscale'
+                            }`}
+                          >
+                            {n.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -246,11 +275,11 @@ export default function DataPage() {
                 <button 
                     type="submit" 
                     className="w-full py-6 rounded-2xl bg-[#C58A17] text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-[#A67513] transition-all shadow-2xl shadow-[#C58A17]/30 disabled:opacity-30 relative z-10 group" 
-                    disabled={!service.enabled || processing}
+                    disabled={!service.enabled || adminSettings?.airtimeNetworks?.[network.value]?.enabled === false || processing}
                 >
                   <span className="flex items-center justify-center gap-3">
-                    {processing ? 'SYNCING DATA NODES...' : service.enabled ? `ALLOCATE ${selectedPlan?.name?.split('(')[0] || 'DATA'}` : 'OFFLINE'}
-                    {!processing && <ArrowRightLeft size={18} className="group-hover:rotate-90 transition-transform duration-500" />}
+                     {processing ? 'EXECUTING PROTOCOL...' : (service.enabled && adminSettings?.airtimeNetworks?.[network.value]?.enabled !== false) ? `INITIATE ${network.label} TOPUP` : 'OFFLINE'}
+                     {!processing && <ArrowRightLeft size={18} className="group-hover:rotate-90 transition-transform duration-500" />}
                   </span>
                 </button>
               </form>

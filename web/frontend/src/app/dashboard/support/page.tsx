@@ -112,9 +112,15 @@ export default function SupportPage() {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       // Sort on client side
       const sorted = data.sort((a: any, b: any) => {
-        const aTime = a.createdAt ? (typeof a.createdAt === 'number' ? a.createdAt : a.createdAt.toDate?.()?.getTime() || 0) : 0;
-        const bTime = b.createdAt ? (typeof b.createdAt === 'number' ? b.createdAt : b.createdAt.toDate?.()?.getTime() || 0) : 0;
-        return aTime - bTime;
+        const getTime = (val: any) => {
+          if (!val) return 0;
+          if (typeof val === 'number') return val;
+          if (typeof val === 'string') return new Date(val).getTime();
+          if (val.toDate) return val.toDate().getTime();
+          if (val.seconds) return val.seconds * 1000;
+          return new Date(val).getTime() || 0;
+        };
+        return getTime(a.createdAt) - getTime(b.createdAt);
       });
       setReplies(sorted);
       
@@ -154,19 +160,7 @@ export default function SupportPage() {
     
     setSubmitting(true);
     try {
-      const ticketData = {
-        userId: auth.currentUser.uid,
-        userEmail: auth.currentUser.email,
-        subject: newTicketData.subject,
-        lastMessage: newTicketData.message,
-        status: 'open',
-        createdAt: serverTimestamp(),
-        lastMessageAt: serverTimestamp(),
-        deleted: false
-      };
-      
-      const docRef = await addDoc(collection(db, 'tickets'), ticketData);
-      // Use backend API to create ticket
+      // Use backend API to create ticket - this is the single source of truth
       const result = await createTicket(newTicketData.subject, newTicketData.message);
       if (!result.success) {
         throw new Error(result.message);
@@ -175,7 +169,7 @@ export default function SupportPage() {
       toast({ title: "Success", description: "Ticket created successfully" });
       setNewTicketData({ subject: '', message: '' });
       setShowNewTicket(false);
-      // The Firestore listener will automatically pick up the new ticket
+      // The Firestore listener will automatically pick up the new ticket created by the backend
     } catch (e: any) {
       toast({ title: "Error", description: e.message, type: "destructive" });
     } finally {

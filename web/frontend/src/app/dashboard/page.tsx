@@ -28,17 +28,17 @@ export default function Dashboard() {
   const { balance: walletBalance, refresh: refreshBalance } = useWalletListener(!!user);
 
   const nextAnnouncement = useCallback(() => {
-    setAnnouncements(prev => {
+    setAnnouncements((prev: any[]) => {
       if (prev.length <= 1) return prev;
-      setCurrentAnnIndex(current => (current + 1) % prev.length);
+      setCurrentAnnIndex((current: number) => (current + 1) % prev.length);
       return prev;
     });
   }, []);
 
   const prevAnnouncement = useCallback(() => {
-    setAnnouncements(prev => {
+    setAnnouncements((prev: any[]) => {
       if (prev.length <= 1) return prev;
-      setCurrentAnnIndex(current => (current - 1 + prev.length) % prev.length);
+      setCurrentAnnIndex((current: number) => (current - 1 + prev.length) % prev.length);
       return prev;
     });
   }, []);
@@ -56,9 +56,15 @@ export default function Dashboard() {
         const filtered = data
           .filter((a: any) => a.active !== false)
           .sort((a: any, b: any) => {
-            const aTime = a.createdAt ? (typeof a.createdAt === 'number' ? a.createdAt : a.createdAt.toDate?.()?.getTime() || 0) : 0;
-            const bTime = b.createdAt ? (typeof b.createdAt === 'number' ? b.createdAt : b.createdAt.toDate?.()?.getTime() || 0) : 0;
-            return bTime - aTime;
+            const getTime = (val: any) => {
+              if (!val) return 0;
+              if (typeof val === 'number') return val;
+              if (typeof val === 'string') return new Date(val).getTime();
+              if (val.toDate) return val.toDate().getTime();
+              if (val.seconds) return val.seconds * 1000;
+              return new Date(val).getTime() || 0;
+            };
+            return getTime(b.createdAt) - getTime(a.createdAt);
           })
           .slice(0, 3);
         setAnnouncements(filtered);
@@ -134,12 +140,12 @@ export default function Dashboard() {
 
     setProcessingWithdrawal(true);
     try {
-      await runTransaction(db, async (transaction) => {
+      await runTransaction(db, async (transaction: any) => {
         const userRef = doc(db, 'users', user.uid);
         const userDoc = await transaction.get(userRef);
         if (!userDoc.exists()) throw new Error("User does not exist!");
 
-        const userData = userDoc.data();
+        const userData: any = userDoc.data();
         const currentBalance = type === 'referral' ? (userData.referralBalance || 0) : (userData.cashbackBalance || 0);
         
         if (currentBalance < amount) {
@@ -202,7 +208,7 @@ export default function Dashboard() {
               </div>
               
               <div className="flex-grow relative h-[48px] flex flex-col justify-center">
-                {announcements.map((ann, index) => (
+                {announcements.map((ann: any, index: number) => (
                   <div 
                     key={ann.id}
                     className={`absolute inset-0 flex flex-col justify-center transition-all duration-700 ease-in-out ${
@@ -221,7 +227,7 @@ export default function Dashboard() {
 
               <div className="flex items-center gap-3 flex-shrink-0">
                 <div className="flex gap-1">
-                  {announcements.map((_, i) => (
+                  {announcements.map((_: any, i: number) => (
                     <div 
                       key={i} 
                       className={`h-1.5 rounded-full transition-all duration-300 ${i === currentAnnIndex ? 'w-6 bg-[#C58A17]' : 'w-1.5 bg-white/20'}`} 
@@ -404,7 +410,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="space-y-4">
-                {recent.map((tx) => (
+                {recent.map((tx: any) => (
                   <div key={tx.id} className="flex items-center justify-between p-5 rounded-[2rem] hover:bg-gray-50 transition-all duration-300 border border-transparent hover:border-gray-100 group">
                     <div className="flex items-center gap-5">
                       <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-inner ${

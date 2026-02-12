@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { Smartphone, ArrowRightLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Smartphone, ArrowRightLeft, Info } from 'lucide-react';
 import { useService } from '@/hooks/useServices';
 import { useAuth } from '@/contexts/AuthContext';
 import TransactionPinModal from '@/components/dashboard/TransactionPinModal';
 import TransactionResultModal from '@/components/dashboard/TransactionResultModal';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { purchaseAirtime } from '@/lib/services';
+import { purchaseAirtime, getAdminSettings } from '@/lib/services';
 
 export default function AirtimePage() {
   const { user } = useAuth();
@@ -17,6 +17,34 @@ export default function AirtimePage() {
   const [amount, setAmount] = useState('100');
   const [showPinModal, setShowPinModal] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [adminSettings, setAdminSettings] = useState<any>(null);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await getAdminSettings();
+        setAdminSettings(settings);
+        // If MTN is disabled, select first enabled network
+        if (settings?.airtimeNetworks) {
+          if (settings.airtimeNetworks['MTN']?.enabled === false) {
+            const firstEnabled = Object.keys(settings.airtimeNetworks).find(k => settings.airtimeNetworks[k]?.enabled);
+            if (firstEnabled) setNetwork(firstEnabled);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load admin settings", e);
+      } finally {
+        setLoadingSettings(false);
+      }
+    };
+    loadSettings();
+  }, []);
+
+  const networks = ['MTN', 'Glo', 'Airtel', '9mobile'];
+  const currentNetworkSettings = adminSettings?.airtimeNetworks?.[network] || { discount: 0, enabled: true };
+  const discount = Number(currentNetworkSettings.discount || 0);
+  const payableAmount = Number(amount) * (1 - discount / 100);
   
   const [resultModal, setResultModal] = useState<{
     open: boolean;
@@ -122,20 +150,33 @@ export default function AirtimePage() {
                        <div className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" /> Select Network Infrastructure
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {['MTN', 'Glo', 'Airtel', '9mobile'].map((net) => (
-                        <button
-                          key={net}
-                          type="button"
-                          onClick={() => setNetwork(net)}
-                          className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all border-2 ${
-                            network === net 
-                              ? 'bg-[#0B4F6C] text-white border-[#0B4F6C] shadow-2xl shadow-[#0B4F6C]/30 scale-[1.05]' 
-                              : 'bg-gray-50 text-gray-400 border-transparent hover:border-gray-100 hover:bg-white shadow-inner'
-                          }`}
-                        >
-                          {net}
-                        </button>
-                      ))}
+                      {networks.map((net) => {
+                        const isEnabled = adminSettings?.airtimeNetworks?.[net]?.enabled !== false;
+                        const netDiscount = adminSettings?.airtimeNetworks?.[net]?.discount || 0;
+                        
+                        return (
+                          <button
+                            key={net}
+                            type="button"
+                            disabled={!isEnabled}
+                            onClick={() => setNetwork(net)}
+                            className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all border-2 relative overflow-hidden ${
+                              network === net 
+                                ? 'bg-[#0B4F6C] text-white border-[#0B4F6C] shadow-2xl shadow-[#0B4F6C]/30 scale-[1.05]' 
+                                : isEnabled 
+                                  ? 'bg-gray-50 text-gray-400 border-transparent hover:border-gray-100 hover:bg-white shadow-inner'
+                                  : 'bg-gray-100 text-gray-300 border-transparent cursor-not-allowed grayscale'
+                            }`}
+                          >
+                            {net}
+                            {isEnabled && netDiscount > 0 && (
+                              <div className="absolute top-0 right-0 bg-[#C58A17] text-white text-[8px] px-1.5 py-0.5 rounded-bl-lg font-black">
+                                -{netDiscount}%
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -160,9 +201,16 @@ export default function AirtimePage() {
                   </div>
 
                   <div className="space-y-4">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 flex items-center gap-2">
-                       <div className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" /> Value Appropriation (₦)
-                    </label>
+                    <div className="flex justify-between items-center px-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" /> Value Appropriation (₦)
+                      </label>
+                      {discount > 0 && (
+                        <div className="text-[9px] font-black text-[#C58A17] uppercase tracking-wider flex items-center gap-1">
+                          <Info size={12} /> {discount}% Discount Applied
+                        </div>
+                      )}
+                    </div>
                     <div className="relative group">
                       <span className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 font-black text-xl group-focus-within:text-[#0B4F6C] transition-colors">₦</span>
                       <input 
@@ -173,22 +221,30 @@ export default function AirtimePage() {
                         min="50"
                         required
                       />
+                      {discount > 0 && (
+                        <div className="absolute right-6 top-1/2 -translate-y-1/2 text-right">
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter line-through decoration-[#C58A17]/30">₦{Number(amount).toLocaleString()}</p>
+                          <p className="text-sm font-black text-[#0B4F6C]">₦{payableAmount.toLocaleString()}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   <div className="bg-[#0B4F6C]/5 p-6 rounded-[2rem] border border-[#0B4F6C]/5 flex justify-between items-center group overflow-hidden relative">
                       <div className="tech-pattern absolute inset-0 opacity-[0.02]" />
-                      <span className="text-[10px] font-black text-[#0B4F6C]/60 uppercase tracking-[0.2em] relative z-10">Available Liquidity</span>
+                      <div className="relative z-10">
+                        <span className="text-[10px] font-black text-[#0B4F6C]/60 uppercase tracking-[0.2em]">Available Liquidity</span>
+                      </div>
                       <span className="text-xl font-black text-[#0B4F6C] relative z-10 tracking-tighter">₦{user?.walletBalance?.toLocaleString() ?? '0.00'}</span>
                   </div>
 
                   <button 
                       type="submit" 
                       className="w-full py-6 rounded-2xl bg-[#C58A17] text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-[#A67513] transition-all active:scale-[0.98] shadow-2xl shadow-[#C58A17]/30 disabled:opacity-30 group" 
-                      disabled={!service.enabled || processing}
+                      disabled={!service.enabled || !currentNetworkSettings.enabled || processing}
                   >
                     <span className="flex items-center justify-center gap-3">
-                       {processing ? 'EXECUTING PROTOCOL...' : service.enabled ? `INITIATE ${network} TOPUP` : 'OFFLINE'}
+                       {processing ? 'EXECUTING PROTOCOL...' : (service.enabled && currentNetworkSettings.enabled) ? `INITIATE ${network} TOPUP` : 'OFFLINE'}
                        {!processing && <ArrowRightLeft size={18} className="group-hover:rotate-90 transition-transform duration-500" />}
                     </span>
                   </button>

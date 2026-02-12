@@ -448,11 +448,13 @@ const createTicket = async (req, res) => {
     const ticketRef = await db.collection('tickets').add({
       subject,
       email: email || req.user?.email || 'unknown',
+      userEmail: email || req.user?.email || 'unknown',
       userId: req.user?.uid || 'unknown',
       status: 'open',
       lastMessage: message,
       lastMessageAt: new Date(),
-      createdAt: new Date()
+      createdAt: new Date(),
+      deleted: false
     });
     await ticketRef.collection('messages').add({
       text: message,
@@ -471,19 +473,38 @@ const replyTicket = async (req, res) => {
   try {
     const { id } = req.params;
     const { message } = req.body;
+    
+    // Determine if sender is admin
+    const allowed = (process.env.ADMIN_EMAILS || 'asaphis.org@gmail.com')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    const email = (req.user && req.user.email || '').toLowerCase();
+    const isAdmin = req.user && (
+      req.user.admin === true || 
+      (req.user.customClaims && req.user.customClaims.admin === true) ||
+      (email && allowed.includes(email))
+    );
+
     const ticketRef = db.collection('tickets').doc(id);
+    const ticketDoc = await ticketRef.get();
+    if (!ticketDoc.exists) return res.status(404).json({ error: 'Ticket not found' });
+
     await ticketRef.collection('messages').add({
       text: message,
-      sender: 'admin',
-      senderId: req.user?.uid || 'admin',
+      sender: isAdmin ? 'admin' : 'user',
+      senderId: req.user?.uid || 'unknown',
+      senderEmail: req.user?.email || 'unknown',
       createdAt: new Date(),
       read: false
     });
+
     await ticketRef.update({
-      status: 'replied',
+      status: isAdmin ? 'replied' : 'open',
       lastMessage: message,
       lastMessageAt: new Date()
     });
+
     res.json({ success: true, message: 'Reply sent' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -596,13 +617,15 @@ const getServices = async (req, res) => {
 
 const createService = async (req, res) => {
   try {
-    const { id, name, icon, category } = req.body;
+    const { id, name, icon, category, active, enabled } = req.body;
     const docId = id || name.toLowerCase().replace(/\s+/g, '-');
+    const isActive = active !== undefined ? active : (enabled !== undefined ? enabled : true);
     await db.collection('services').doc(docId).set({
       name,
       icon: icon || '',
       category: category || 'Other',
-      active: true,
+      active: isActive,
+      enabled: isActive,
       createdAt: new Date()
     });
     res.json({ success: true, id: docId });
@@ -624,14 +647,18 @@ const deleteService = async (req, res) => {
 const updateService = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, icon, category, active } = req.body;
-    await db.collection('services').doc(id).update({
+    const { name, icon, category, active, enabled } = req.body;
+    const isActive = active !== undefined ? active : (enabled !== undefined ? enabled : active);
+    
+    const updateData = {
       ...(name && { name }),
       ...(icon !== undefined && { icon }),
       ...(category && { category }),
-      ...(active !== undefined && { active }),
+      ...(isActive !== undefined && { active: isActive, enabled: isActive }),
       updatedAt: new Date()
-    });
+    };
+    
+    await db.collection('services').doc(id).update(updateData);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

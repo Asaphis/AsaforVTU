@@ -7,14 +7,21 @@ function getBaseUrl(): string {
   const trimSlash = (s: string) => s.replace(/\/+$/, "");
   const prodUrl = trimSlash(strip(prodUrlRaw || ""));
   const localUrl = trimSlash(strip(localUrlRaw || ""));
+  
   let origin = "";
   try {
     origin = window.location.origin;
   } catch {}
   const isLocal = origin.includes("localhost") || origin.includes("127.0.0.1");
-  if (isLocal) return localUrl || "http://localhost:5000";
-  if (origin) return origin;
+
+  if (isLocal) {
+    return localUrl || "http://localhost:3001";
+  }
+  
+  // Use the explicitly provided production backend URL if available
   if (prodUrl) return prodUrl;
+  
+  // Default to the known backend URL
   return "https://asaforvtubackend.onrender.com";
 }
 

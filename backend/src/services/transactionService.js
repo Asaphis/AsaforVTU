@@ -45,35 +45,46 @@ class TransactionService {
         }
       } else if (type === 'airtime' && details && (details.network || details.networkId)) {
         try {
-          // Check settings/global first (Admin UI updates this), fallback to admin_settings/settings
-          let st = {};
-          const globalSettings = await db.doc('settings/global').get();
-          if (globalSettings.exists) {
-            st = globalSettings.data();
-          } else {
-             const settingsDoc = await db.collection('admin_settings').doc('settings').get();
-             st = settingsDoc.exists ? settingsDoc.data() || {} : {};
-          }
+          const settingsDoc = await db.collection('settings').doc('global').get();
+          const st = settingsDoc.exists ? settingsDoc.data() || {} : {};
           
           const airtimeNetworks = st.airtimeNetworks || {};
           const netKey = String(details.network || details.networkId || '').toString().toUpperCase();
           const discount = Number((airtimeNetworks[netKey] && airtimeNetworks[netKey].discount) || 0);
           const rate = (100 - discount) / 100;
-          providerCost = Math.round(Number(amount || 0) * rate);
-        } catch {}
+          
+          // User pays discounted amount
+          userPrice = Math.round(Number(amount || 0) * rate);
+          // Provider cost is the same in this case unless we have a different API rate
+          providerCost = userPrice; 
+        } catch (e) {
+          console.error('[TransactionService] Airtime settings lookup failed:', e);
+        }
       }
-    } catch {}
+    } catch (e) {
+      console.error('[TransactionService] Pricing resolution failed:', e);
+    }
+
+    // Update amount to be what user actually pays
+    const finalDebitAmount = userPrice;
+
+    // Re-check balance with the actual price
+    if ((bal.mainBalance || 0) < finalDebitAmount) {
+      throw new Error(`Insufficient funds. Required: ₦${finalDebitAmount}`);
+    }
+
     const transactionData = {
       id: transactionRef.id,
       userId,
       type,
-      amount,
+      amount: Number(amount), // Face value
+      payableAmount: finalDebitAmount, // Actual amount debited
       details,
       requestId: idempotencyKey,
       status: 'pending',
       createdAt: new Date(),
       provider: providerName,
-      userPrice,
+      userPrice: finalDebitAmount,
       providerCost,
       smsCost,
       serviceType: type
@@ -82,7 +93,7 @@ class TransactionService {
 
     // 4. Debit Wallet
     try {
-      await walletService.debitWallet(userId, amount, 'main', `${type} Purchase: ${details.phone}`);
+      await walletService.debitWallet(userId, finalDebitAmount, 'main', `${type} Purchase: ${details.phone}`);
     } catch (error) {
       await transactionRef.update({ status: 'failed', failureReason: 'Debit failed' });
       throw error;

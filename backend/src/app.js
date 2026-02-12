@@ -93,18 +93,70 @@ app.get('/api/plans', async (_req, res) => {
   }
 });
 
+// Public settings for user frontend
+app.get('/api/settings', async (_req, res) => {
+  try {
+    if (!db) return res.json({});
+    const doc = await db.collection('settings').doc('global').get();
+    if (!doc.exists) return res.json({});
+    const data = doc.data();
+    // Only expose non-sensitive fields
+    res.json({
+      airtimeNetworks: data.airtimeNetworks || {},
+      systemStatus: data.systemStatus || 'online',
+      announcementsEnabled: data.announcementsEnabled !== false
+    });
+  } catch (e) {
+    res.json({});
+  }
+});
+
+app.get('/api/announcements', async (_req, res) => {
+  try {
+    if (!db) return res.json([]);
+    
+    // Fetch active announcements. 
+    // We avoid complex orderBy in Firestore to prevent index requirements.
+    const snap = await db.collection('announcements')
+      .where('active', '==', true)
+      .limit(50)
+      .get();
+      
+    let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    
+    // Sort in memory by createdAt descending
+    rows.sort((a, b) => {
+      const getTime = (val) => {
+        if (!val) return 0;
+        if (typeof val === 'number') return val;
+        if (val.toDate) return val.toDate().getTime();
+        if (val.seconds) return val.seconds * 1000;
+        return new Date(val).getTime() || 0;
+      };
+      return getTime(b.createdAt) - getTime(a.createdAt);
+    });
+    
+    res.json(rows.slice(0, 10));
+  } catch (e) {
+    console.error('Error fetching public announcements:', e);
+    res.json([]);
+  }
+});
+
 // Import Routes
 const walletRoutes = require('./routes/walletRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
+const supportRoutes = require('./routes/supportRoutes');
 
 app.use('/api/wallet', walletRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/support', supportRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
