@@ -144,6 +144,14 @@ export async function deletePlan(id: string): Promise<{ success: boolean; id: st
   return await request<{ success: boolean; id: string }>("DELETE", `/api/admin/plans/${encodeURIComponent(id)}`);
 }
 
+export async function syncPlans(payload: { type?: string; network?: string }): Promise<any> {
+  return await request<any>("POST", "/api/admin/plans/sync", payload);
+}
+
+export async function getProviders(): Promise<any> {
+  return await request<any>("GET", "/api/admin/providers");
+}
+
 export async function updateAdminProfile(payload: {
   displayName?: string;
   phoneNumber?: string;
