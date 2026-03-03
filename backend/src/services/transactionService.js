@@ -111,6 +111,16 @@ class TransactionService {
           throw new Error('Data plan ID (variation_id) is required for data purchase');
         }
         result = await providerService.purchaseData(idempotencyKey, details.phone, details.planId, details.network || details.networkId);
+      } else if (type === 'cable') {
+        if (!details.customerId || !details.serviceId || !details.planId) {
+          throw new Error('customerId, serviceId, and planId are required for cable TV');
+        }
+        result = await providerService.purchaseCableTV(idempotencyKey, details.customerId, details.serviceId, details.planId, amount);
+      } else if (type === 'electricity') {
+        if (!details.customerId || !details.serviceId || !details.variationId || !amount) {
+          throw new Error('customerId, serviceId, variationId (prepaid/postpaid), and amount are required for electricity');
+        }
+        result = await providerService.purchaseElectricity(idempotencyKey, details.customerId, details.serviceId, details.variationId, amount);
       } else {
         // Fallback for other types
         result = { success: false, message: 'Service not implemented yet' };

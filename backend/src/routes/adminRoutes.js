@@ -5,6 +5,14 @@ const { db, auth } = require('../config/firebase');
 
 const router = express.Router();
 
+// Network mapping for IA Café provider
+const NETWORK_ID_MAP = {
+  mtn: 1,
+  glo: 2,
+  '9mobile': 3,
+  airtel: 4
+};
+
 router.use(verifyToken);
 router.use(isAdmin);
 
@@ -129,19 +137,29 @@ router.get('/stats', async (_req, res) => {
       const d = new Date(t.createdAt);
       return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     }).reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    
+    // Fix: Properly dedupe wallet balances across collections
     let walletSum = 0;
+    const walletSeen = new Map();
     const walletNames = ['wallets', 'user_wallets'];
     for (const n of walletNames) {
-      const snap = await db.collection(n).limit(1000).get();
+      const snap = await db.collection(n).limit(5000).get();
       if (!snap.empty) {
-        walletSum = snap.docs.reduce((sum, d) => {
+        for (const d of snap.docs) {
           const x = d.data() || {};
+          // Use uid or document ID as unique key
+          const key = String(x.uid || x.userId || d.id || '').toLowerCase();
           const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
-          return sum + mb;
-        }, 0);
-        break;
+          // Only add if not already present or if this balance is higher
+          if (!walletSeen.has(key)) {
+            walletSeen.set(key, mb);
+          } else {
+            walletSeen.set(key, Math.max(walletSeen.get(key), mb));
+          }
+        }
       }
     }
+    walletSum = Array.from(walletSeen.values()).reduce((s, v) => s + v, 0);
     result.walletBalance = walletSum;
     const days = [];
     for (let i = 6; i >= 0; i--) {
@@ -751,6 +769,198 @@ router.delete('/plans/:id', async (req, res) => {
     await db.collection('service_plans').doc(id).delete();
   } catch {}
   return res.json({ success: true, id });
+});
+
+// Sync plans from IA Café provider
+router.post('/plans/sync', async (req, res) => {
+  try {
+    const { type, network } = req.body; // type: 'data', 'cable', 'budget'
+    const providerService = require('../services/providerService');
+    
+    const results = {
+      success: true,
+      imported: 0,
+      updated: 0,
+      errors: [],
+      plans: []
+    };
+
+    // Helper to calculate profit margin
+    const calculateUserPrice = (apiPrice, networkKey, type) => {
+      // Your profit calculation: +50 for 500MB, +100 for 1GB, +200 for 2GB, etc.
+      const gb = apiPrice / 1000; // approximate GB based on price
+      let profit = 0;
+      
+      if (apiPrice <= 100) profit = 20;
+      else if (apiPrice <= 200) profit = 30;
+      else if (apiPrice <= 300) profit = 40;
+      else if (apiPrice <= 500) profit = 50;
+      else if (apiPrice <= 700) profit = 70;
+      else if (apiPrice <= 1000) profit = 100;
+      else if (apiPrice <= 1500) profit = 150;
+      else if (apiPrice <= 2000) profit = 200;
+      else if (apiPrice <= 3000) profit = 250;
+      else if (apiPrice <= 5000) profit = 400;
+      else profit = Math.round(apiPrice * 0.15); // 15% for larger plans
+      
+      return Math.round(apiPrice + profit);
+    };
+
+    // Network mapping for IA Café
+    const networks = {
+      mtn: { id: 'mtn', name: 'MTN' },
+      glo: { id: 'glo', name: 'Glo' },
+      airtel: { id: 'airtel', name: 'Airtel' },
+      '9mobile': { id: '9mobile', name: '9mobile' }
+    };
+
+    // Fetch budget data plans
+    if (type === 'budget' || !type) {
+      for (const [netKey, netInfo] of Object.entries(networks)) {
+        try {
+          const planResult = await providerService.getBudgetDataPlans(NETWORK_ID_MAP[netKey]);
+          if (planResult.success && planResult.data) {
+            for (const plan of planResult.data) {
+              const variationId = plan.plan_id || plan.variation_id;
+              const apiPrice = Number(plan.price || plan.amount || 0);
+              const planName = plan.name || plan.plan_name || `${plan.size || 'Unknown'} - ${plan.validity || ''}`;
+              
+              if (!variationId) continue;
+              
+              const id = `budget_${netKey}_${variationId}`;
+              const priceUser = calculateUserPrice(apiPrice, netKey, 'budget');
+              
+              const planData = {
+                network: netInfo.name,
+                networkKey: netKey,
+                name: planName,
+                priceUser,
+                priceApi: apiPrice,
+                type: 'data',
+                subType: 'budget',
+                active: true,
+                metadata: {
+                  variation_id: String(variationId),
+                  network_id: NETWORK_ID_MAP[netKey],
+                  plan_id: variationId,
+                  validity: plan.validity,
+                  size: plan.size
+                },
+                createdAt: Date.now()
+              };
+              
+              await db.collection('service_plans').doc(id).set(planData, { merge: true });
+              results.imported++;
+              results.plans.push(planData);
+            }
+          }
+        } catch (e) {
+          results.errors.push(`Error fetching ${netKey} budget plans: ${e.message}`);
+        }
+      }
+    }
+
+    // Fetch standard data plans
+    if (type === 'data' || !type) {
+      for (const [netKey, netInfo] of Object.entries(networks)) {
+        try {
+          const planResult = await providerService.getVariations('data', netKey);
+          if (planResult.success && planResult.data) {
+            for (const plan of planResult.data) {
+              const variationId = plan.variation_id;
+              const apiPrice = Number(plan.price || 0);
+              const planName = plan.name;
+              
+              if (!variationId) continue;
+              
+              const id = `data_${netKey}_${variationId}`;
+              const priceUser = calculateUserPrice(apiPrice, netKey, 'data');
+              
+              const planData = {
+                network: netInfo.name,
+                networkKey: netKey,
+                name: planName,
+                priceUser,
+                priceApi: apiPrice,
+                type: 'data',
+                subType: 'standard',
+                active: true,
+                metadata: {
+                  variation_id: variationId
+                },
+                createdAt: Date.now()
+              };
+              
+              await db.collection('service_plans').doc(id).set(planData, { merge: true });
+              results.imported++;
+              results.plans.push(planData);
+            }
+          }
+        } catch (e) {
+          results.errors.push(`Error fetching ${netKey} data plans: ${e.message}`);
+        }
+      }
+    }
+
+    // Fetch cable TV plans
+    if (type === 'cable' || !type) {
+      const cableServices = ['dstv', 'gotv', 'startimes', 'showmax'];
+      for (const serviceId of cableServices) {
+        try {
+          const planResult = await providerService.getVariations('cable', serviceId);
+          if (planResult.success && planResult.data) {
+            for (const plan of planResult.data) {
+              const variationId = plan.variation_id;
+              const apiPrice = Number(plan.price || 0);
+              const planName = plan.name;
+              
+              if (!variationId) continue;
+              
+              const id = `cable_${serviceId}_${variationId}`;
+              const priceUser = calculateUserPrice(apiPrice, serviceId, 'cable');
+              
+              const planData = {
+                network: serviceId.toUpperCase(),
+                networkKey: serviceId,
+                name: planName,
+                priceUser,
+                priceApi: apiPrice,
+                type: 'cable',
+                active: true,
+                metadata: {
+                  variation_id: variationId,
+                  service_id: serviceId
+                },
+                createdAt: Date.now()
+              };
+              
+              await db.collection('service_plans').doc(id).set(planData, { merge: true });
+              results.imported++;
+              results.plans.push(planData);
+            }
+          }
+        } catch (e) {
+          results.errors.push(`Error fetching ${serviceId} cable plans: ${e.message}`);
+        }
+      }
+    }
+
+    return res.json(results);
+  } catch (error) {
+    console.error('[Admin] Plans sync error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get providers from IA Café
+router.get('/providers', async (_req, res) => {
+  try {
+    const providerService = require('../services/providerService');
+    const result = await providerService.getProviders();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 module.exports = router;

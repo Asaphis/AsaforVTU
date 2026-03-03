@@ -16,6 +16,99 @@ class ProviderService {
   }
 
   /**
+   * Get Available Providers
+   * Endpoint: GET /providers
+   */
+  async getProviders() {
+    try {
+      const response = await axios.get(`${this.baseUrl}/providers`, {
+        headers: this._getHeaders(),
+        timeout: 15000
+      });
+      
+      if (response.data && response.data.success) {
+        return {
+          success: true,
+          data: response.data.data
+        };
+      }
+      return { success: false, message: 'Failed to fetch providers' };
+    } catch (error) {
+      const errData = error.response?.data || {};
+      console.error('[Provider] Get Providers Error:', errData);
+      return { success: false, message: errData.error?.message || error.message };
+    }
+  }
+
+  /**
+   * Get Variations (Plans) for Data or Cable TV
+   * Endpoint: GET /variations?product=data&service_id=mtn
+   * Endpoint: GET /variations?product=cable&service_id=dstv
+   */
+  async getVariations(product, serviceId) {
+    try {
+      const params = {
+        product: product // 'data' or 'cable'
+      };
+      if (serviceId) {
+        params.service_id = serviceId;
+      }
+      
+      const response = await axios.get(`${this.baseUrl}/variations`, {
+        params,
+        headers: this._getHeaders(),
+        timeout: 15000
+      });
+      
+      const data = response.data;
+      if (data.code === 'success' || data.success === true) {
+        return {
+          success: true,
+          product: data.product,
+          data: data.data || []
+        };
+      }
+      return { success: false, message: data.message || data.error?.message || 'Failed to fetch variations' };
+    } catch (error) {
+      const errData = error.response?.data || {};
+      console.error('[Provider] Get Variations Error:', errData);
+      return { success: false, message: errData.error?.message || error.message };
+    }
+  }
+
+  /**
+   * Get Budget Data Plans
+   * Endpoint: GET /budget-data/plans?network_id=1
+   */
+  async getBudgetDataPlans(networkId) {
+    try {
+      const params = {};
+      if (networkId) {
+        params.network_id = networkId;
+      }
+      
+      const response = await axios.get(`${this.baseUrl}/budget-data/plans`, {
+        params,
+        headers: this._getHeaders(),
+        timeout: 15000
+      });
+      
+      const data = response.data;
+      if (data.code === 'success' || data.success === true) {
+        return {
+          success: true,
+          data: data.data || []
+        };
+      }
+      return { success: false, message: data.message || data.error?.message || 'Failed to fetch plans' };
+    } catch (error) {
+      const errData = error.response?.data || {};
+      console.error('[Provider] Get Budget Data Plans Error:', errData);
+      return { success: false, message: errData.error?.message || error.message };
+    }
+  }
+
+  /**
    * Helper to map network to Provider ID dynamically
    * Fetches from DB settings/global -> networkMappings
    */

@@ -338,6 +338,11 @@ const createUser = async (req, res) => {
       { merge: true }
     );
     await walletService.createWallet(user.uid);
+    
+    // Send welcome email/notification
+    const notificationService = require('../services/notificationService');
+    await notificationService.sendWelcomeEmail(email, displayName || 'User', password);
+    
     let verificationLink;
     if (requireVerification) {
       try {

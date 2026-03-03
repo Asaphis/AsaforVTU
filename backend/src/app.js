@@ -82,25 +82,51 @@ app.get('/api/services', async (_req, res) => {
 });
 
 // Public plans endpoint for user frontend
-app.get('/api/plans', async (_req, res) => {
+app.get('/api/plans', async (req, res) => {
   try {
     if (!db) return res.json([]);
-    const snap = await db.collection('service_plans').get();
-    const rows = snap.docs.map(d => {
+    const { type, network } = req.query;
+    
+    let query = db.collection('service_plans');
+    const snap = await query.get();
+    
+    let rows = snap.docs.map(d => {
       const x = d.data() || {};
       return {
         id: d.id,
         network: x.network || '',
+        networkKey: x.networkKey || '',
         name: x.name || '',
+        type: x.type || 'data',
+        subType: x.subType || '',
         priceUser: Number(x.priceUser || x.price_user || 0),
         priceApi: Number(x.priceApi || x.price_api || 0),
         active: x.active !== false,
         metadata: x.metadata || null,
         createdAt: x.createdAt || new Date(),
       };
-    }).filter(r => r.active);
+    });
+    
+    // Filter by active status
+    rows = rows.filter(r => r.active);
+    
+    // Filter by type if provided
+    if (type) {
+      rows = rows.filter(r => r.type === type);
+    }
+    
+    // Filter by network if provided
+    if (network) {
+      const netLower = String(network).toLowerCase();
+      rows = rows.filter(r => 
+        r.network.toLowerCase() === netLower || 
+        r.networkKey.toLowerCase() === netLower
+      );
+    }
+    
     res.json(rows);
   } catch (e) {
+    console.error('Error fetching plans:', e);
     res.json([]);
   }
 });
@@ -174,6 +200,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const supportRoutes = require('./routes/supportRoutes');
+const vtuRoutes = require('./routes/vtuRoutes');
 
 app.use('/api/wallet', walletRoutes);
 app.use('/api/transactions', transactionRoutes);
@@ -181,6 +208,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/vtu', vtuRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
