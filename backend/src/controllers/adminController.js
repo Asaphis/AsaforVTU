@@ -519,6 +519,15 @@ const createTicket = async (req, res) => {
       createdAt: new Date(),
       read: false
     });
+    
+    // Send notification to admin
+    try {
+      const adminEmails = (process.env.ADMIN_EMAILS || 'asaphis.org@gmail.com').split(',');
+      console.log(`[TICKET] New ticket created: ${subject} from ${email || req.user?.email} - Ticket ID: ${ticketRef.id}`);
+    } catch (notifyErr) {
+      console.error('[TICKET] Notification error:', notifyErr);
+    }
+    
     res.json({ success: true, id: ticketRef.id });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -587,6 +596,11 @@ const createAnnouncement = async (req, res) => {
       active: true,
       createdAt: new Date()
     });
+    
+    // Log announcement creation for monitoring
+    console.log(`[ANNOUNCEMENT] New announcement created: ${title} - ID: ${docRef.id}`);
+    console.log(`[ANNOUNCEMENT] Content preview: ${content?.substring(0, 100)}...`);
+    
     res.json({ success: true, id: docRef.id });
   } catch (error) {
     res.status(500).json({ error: error.message });

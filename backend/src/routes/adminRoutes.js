@@ -106,20 +106,30 @@ router.get('/stats', async (_req, res) => {
     try {
       const list = await auth.listUsers(1000);
       usersCount = list.users.length;
-    } catch {
-      const snap = await db.collection('users').limit(1000).get();
-      usersCount = snap.size;
+    } catch (e) {
+      console.log('[Stats] Could not get auth users:', e.message);
+      try {
+        const snap = await db.collection('users').limit(1000).get();
+        usersCount = snap.size;
+      } catch (e2) {
+        console.log('[Stats] Could not get users collection:', e2.message);
+      }
     }
+    
     let txs = [];
-    const txNames = ['admin_transactions', 'transactions', 'wallet_transactions'];
+    const txNames = ['transactions', 'admin_transactions', 'wallet_transactions'];
     for (const n of txNames) {
-      const snap = await db.collection(n).orderBy('createdAt', 'desc').limit(500).get();
-      if (!snap.empty) {
-        txs = snap.docs.map(d => {
-          const x = d.data() || {};
-          return { id: d.id, user: x.user || x.user_email || x.userEmail || x.email || x.userId || '', amount: Number(x.amount || 0), status: x.status || 'success', type: x.type || 'transaction', createdAt: x.createdAt || x.timestamp || Date.now() };
-        });
-        break;
+      try {
+        const snap = await db.collection(n).limit(500).get();
+        if (!snap.empty) {
+          txs = snap.docs.map(d => {
+            const x = d.data() || {};
+            return { id: d.id, user: x.user || x.user_email || x.userEmail || x.email || x.userId || '', amount: Number(x.amount || 0), status: x.status || 'success', type: x.type || 'transaction', createdAt: x.createdAt || x.timestamp || Date.now() };
+          });
+          break;
+        }
+      } catch (e) {
+        console.log('[Stats] Could not get', n, ':', e.message);
       }
     }
     result.totalTransactions = txs.length;
@@ -134,8 +144,10 @@ router.get('/stats', async (_req, res) => {
     result.totalUsers = usersCount;
     const now = new Date();
     result.todaySales = txs.filter(t => {
-      const d = new Date(t.createdAt);
-      return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      try {
+        const d = new Date(t.createdAt);
+        return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      } catch { return false; }
     }).reduce((sum, t) => sum + Number(t.amount || 0), 0);
     
     // Fix: Properly dedupe wallet balances across collections
@@ -143,20 +155,22 @@ router.get('/stats', async (_req, res) => {
     const walletSeen = new Map();
     const walletNames = ['wallets', 'user_wallets'];
     for (const n of walletNames) {
-      const snap = await db.collection(n).limit(5000).get();
-      if (!snap.empty) {
-        for (const d of snap.docs) {
-          const x = d.data() || {};
-          // Use uid or document ID as unique key
-          const key = String(x.uid || x.userId || d.id || '').toLowerCase();
-          const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
-          // Only add if not already present or if this balance is higher
-          if (!walletSeen.has(key)) {
-            walletSeen.set(key, mb);
-          } else {
-            walletSeen.set(key, Math.max(walletSeen.get(key), mb));
+      try {
+        const snap = await db.collection(n).limit(5000).get();
+        if (!snap.empty) {
+          for (const d of snap.docs) {
+            const x = d.data() || {};
+            const key = String(x.uid || x.userId || d.id || '').toLowerCase();
+            const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
+            if (!walletSeen.has(key)) {
+              walletSeen.set(key, mb);
+            } else {
+              walletSeen.set(key, Math.max(walletSeen.get(key), mb));
+            }
           }
         }
+      } catch (e) {
+        console.log('[Stats] Could not get', n, ':', e.message);
       }
     }
     walletSum = Array.from(walletSeen.values()).reduce((s, v) => s + v, 0);

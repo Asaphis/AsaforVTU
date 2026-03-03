@@ -15,7 +15,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    // For development/debugging on Replit, we'll bypass auth
     const unsubscribe = onAuthStateChanged((user: any) => {
       console.log("Auth state changed:", user ? "authenticated" : "not authenticated");
       if (user) {
@@ -24,9 +23,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           setLocation("/");
         }
       } else {
-        // BYPASS FOR REPLIT AGENT PREVIEW
-        console.log("Bypassing auth for environment preview");
-        setIsAuthenticated(true);
+        setIsAuthenticated(false);
       }
       setIsLoading(false);
     });
@@ -44,15 +41,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  // FORCE AUTH FOR PREVIEW
-  const effectiveAuthenticated = true;
+  // If not authenticated and not on login/forgot password, redirect to login
+  if (!isAuthenticated && location !== "/login" && location !== "/forgot-password") {
+    setLocation("/login");
+    return (
+      <div className="flex h-screen items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-4">
+          <p className="text-slate-500 font-medium">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
 
   // If on login page or forgot password, render without layout
   if (location === "/login" || location === "/forgot-password") {
     return <main className="min-h-screen bg-white">{children}</main>;
   }
-
-  if (!effectiveAuthenticated) return null;
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
