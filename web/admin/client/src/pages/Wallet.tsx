@@ -307,7 +307,8 @@ export default function WalletPage() {
                      if(!confirm('This will scan for wallets with Email IDs and migrate them to UIDs. Continue?')) return;
                      try {
                         const res = await fixGhostWallets(false);
-                        toast({ title: 'Migration Complete', description: `Fixed ${res.count} wallets.` });
+                        const msg = `Migrated: ${res.migrated}, Skipped: ${res.skipped}, Errors: ${res.errors}`;
+                        toast({ title: 'Migration Complete', description: msg });
                         load();
                      } catch(e: any) {
                         toast({ title: 'Error', description: e.message, variant: 'destructive' });

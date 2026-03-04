@@ -19,6 +19,7 @@ const defaultOrigins = [
   'https://asaforadmin.onrender.com',
   'https://asaforvtuadminpanel.onrender.com',
   'https://asaforvtubackend.onrender.com',
+  'https://vtu.ferixas.com',
   'http://localhost:3000',
   'http://localhost:5000',
   'http://localhost:3001',
@@ -200,7 +201,6 @@ const adminRoutes = require('./routes/adminRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const supportRoutes = require('./routes/supportRoutes');
-const vtuRoutes = require('./routes/vtuRoutes');
 
 app.use('/api/wallet', walletRoutes);
 app.use('/api/transactions', transactionRoutes);
@@ -208,7 +208,6 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/support', supportRoutes);
-app.use('/api/vtu', vtuRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {

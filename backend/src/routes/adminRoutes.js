@@ -101,20 +101,15 @@ router.get('/stats', async (_req, res) => {
     todaySales: 0,
     dailyTotals: [],
     recentTransactions: [],
+    error: null
   };
+  
   try {
-    let usersCount = 0;
-    try {
-      const list = await auth.listUsers(1000);
-      usersCount = list.users.length;
-    } catch (e) {
-      console.log('[Stats] Could not get auth users:', e.message);
-      try {
-        const snap = await db.collection('users').limit(1000).get();
-        usersCount = snap.size;
-      } catch (e2) {
-        console.log('[Stats] Could not get users collection:', e2.message);
-      }
+    // Check if Firebase is initialized
+    const { db, auth, firebaseInitialized } = require('../config/firebase');
+    if (!firebaseInitialized || !db) {
+      result.error = 'Database not initialized. Check FIREBASE_* environment variables.';
+      return res.status(503).json(result);
     }
     
     let txs = [];
@@ -263,27 +258,30 @@ router.get('/finance/analytics', async (req, res) => {
     if (targets.length === 0) return 0;
     let best = 0;
     const pickMain = (x) => pickNumber(x, ['mainBalance', 'main_balance', 'balance']);
-    const sources = ['wallets', 'user_wallets'];
-    for (const src of sources) {
+    
+    // Try UID first
+    try {
+      if (uidRaw) {
+        const snap = await db.collection('wallets').doc(uidRaw).get();
+        if (snap.exists) {
+          best = Math.max(best, pickMain(snap.data()));
+        }
+      }
+    } catch {}
+    
+    // Try by email field if not found or email provided
+    if (emailRaw) {
       try {
-        const snap = await db.collection(src).limit(5000).get();
-        if (snap.empty) continue;
-        for (const d of snap.docs) {
-          const x = d.data() || {};
-          const candidates = [
-            String(x.uid || '').toLowerCase(),
-            String(x.userId || '').toLowerCase(),
-            String(x.email || '').toLowerCase(),
-            String(x.user_email || '').toLowerCase(),
-            String(d.id || '').toLowerCase(),
-          ].filter(Boolean);
-          const match = candidates.some(k => targets.includes(k));
-          if (match) {
-            best = Math.max(best, pickMain(x));
-          }
+        const snap = await db.collection('wallets')
+          .where('email', '==', emailRaw.toLowerCase())
+          .limit(1)
+          .get();
+        if (!snap.empty) {
+          best = Math.max(best, pickMain(snap.docs[0].data()));
         }
       } catch {}
     }
+    
     return best;
   };
   const getCreatedMs = (v) => {

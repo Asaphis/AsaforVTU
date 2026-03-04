@@ -69,38 +69,58 @@ const creditWallet = async (req, res) => {
     let targetUid = '';
     
     // 1. Resolve to UID
+    let resolutionError = null;
     try {
       if (raw.includes('@')) {
         // It's an email
         try {
             const u = await auth.getUserByEmail(raw);
             targetUid = u.uid;
+            console.log(`[Admin Credit] Resolved email ${raw} to UID ${targetUid}`);
         } catch (e) {
             // Fallback: Check if we have a user doc with this email
             const q = await db.collection('users').where('email', '==', raw.toLowerCase()).limit(1).get();
-            if (!q.empty) targetUid = q.docs[0].id;
+            if (!q.empty) {
+              targetUid = q.docs[0].id;
+              console.log(`[Admin Credit] Resolved email ${raw} to UID from users collection: ${targetUid}`);
+            } else {
+              resolutionError = `User with email '${raw}' not found in system`;
+            }
         }
       } else {
         // It's likely a UID
         targetUid = raw;
-        // Verify it exists if possible, but not strictly required if we trust admin input
+        // Verify it exists if possible
         try {
-            await auth.getUser(targetUid);
+            const u = await auth.getUser(targetUid);
+            console.log(`[Admin Credit] Verified UID ${targetUid} exists in Auth`);
         } catch (e) {
             // If not in Auth, maybe in Users collection?
             const d = await db.collection('users').doc(targetUid).get();
-            if (!d.exists) {
-                 // Warning: Crediting a non-existent user ID?
-                 // We'll proceed but log it.
-                 console.warn(`[Admin] Crediting potential non-existent UID: ${targetUid}`);
+            if (d.exists) {
+              console.log(`[Admin Credit] UID ${targetUid} found in users collection`);
+            } else {
+              resolutionError = `User ID '${raw}' not found in system`;
             }
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('[Admin Credit] Resolution error:', e.message);
+      resolutionError = e.message;
+    }
 
-    const finalId = targetUid || raw; // Fallback to raw if resolution fails
+    // If resolution failed, return error instead of using fallback
+    if (resolutionError || !targetUid) {
+      console.error(`[Admin Credit] FAILED - Could not resolve '${raw}': ${resolutionError}`);
+      return res.status(400).json({ error: resolutionError || `Could not resolve user '${raw}'. Please enter a valid email or UID.` });
+    }
 
-    await walletService.createWallet(finalId);
+    const finalId = targetUid;
+    console.log(`[Admin Credit] Crediting user ${finalId} (from input '${raw}') with amount ${amt}`);
+
+    // Pass email to walletService for storage (to support future email lookups)
+    const userEmail = raw.includes('@') ? raw.toLowerCase() : null;
+    await walletService.createWallet(finalId, userEmail);
     const newBalance = await walletService.creditWallet(finalId, amt, wtype, description || 'Admin Credit');
     
     // Return extra info for Admin
@@ -202,31 +222,50 @@ const listUsers = async (req, res) => {
     } catch {}
     const balances = {};
     try {
-      const names = ['user_wallets', 'wallets'];
-      for (const n of names) {
-        const snap = await db.collection(n).limit(1000).get();
-        for (const d of snap.docs) {
-          const x = d.data() || {};
-          const uidKey = String(x.userId || d.id || '').toLowerCase();
-          const emailKey = String(x.user_email || x.userEmail || '').toLowerCase();
-          const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
-          const cb = Number(x.cashbackBalance || x.cashback_balance || 0);
-          const rb = Number(x.referralBalance || x.referral_balance || 0);
-          const value = { main_balance: mb, cashback_balance: cb, referral_balance: rb };
-          if (uidKey) {
-            balances[uidKey] = value;
-          }
-          if (emailKey) {
-            balances[emailKey] = value;
-          }
+      // IMPORTANT: Only use 'wallets' collection - that's where walletService writes to
+      // The 'user_wallets' collection is deprecated/legacy and should not be used
+      const snap = await db.collection('wallets').limit(1000).get();
+      for (const d of snap.docs) {
+        const x = d.data() || {};
+        // Document ID should be the UID
+        const uidKey = String(d.id || '').toLowerCase();
+        const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
+        const cb = Number(x.cashbackBalance || x.cashback_balance || 0);
+        const rb = Number(x.referralBalance || x.referral_balance || 0);
+        const value = { main_balance: mb, cashback_balance: cb, referral_balance: rb };
+        if (uidKey) {
+          balances[uidKey] = value;
         }
       }
-    } catch {}
+    } catch (e) {
+      console.error('Error fetching wallet balances:', e.message);
+    }
+    
+    // Also fetch wallets by email (for wallets created with email as lookup key)
+    const emailWallets = {};
+    try {
+      const emailSnapshot = await db.collection('wallets').where('email', '!=', null).get();
+      for (const d of emailSnapshot.docs) {
+        const x = d.data() || {};
+        const emailKey = String(x.email || '').toLowerCase();
+        if (emailKey) {
+          emailWallets[emailKey] = {
+            main_balance: Number(x.mainBalance || x.main_balance || 0),
+            cashback_balance: Number(x.cashbackBalance || x.cashback_balance || 0),
+            referral_balance: Number(x.referralBalance || x.referral_balance || 0)
+          };
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching email wallets:', e.message);
+    }
+    
     const users = baseUsers.map(u => {
       const uidKey = String(u.uid || u.id || '').toLowerCase();
       const emailKey = String(u.email || '').toLowerCase();
       const profile = profiles[uidKey] || profiles[emailKey];
-      const bal = balances[uidKey] || balances[emailKey];
+      // First check UID-based wallet, then fall back to email-based wallet
+      const bal = balances[uidKey] || emailWallets[emailKey];
       const phone = u.phone || (profile ? profile.phone : '');
       const displayName = u.displayName || (profile ? profile.displayName : '');
       return {
@@ -290,22 +329,50 @@ const debitWallet = async (req, res) => {
     const raw = String(userId || '').trim();
     let targetUid = '';
     
+    // 1. Resolve to UID - same logic as creditWallet
+    let resolutionError = null;
     try {
       if (raw.includes('@')) {
         try {
             const u = await auth.getUserByEmail(raw);
             targetUid = u.uid;
+            console.log(`[Admin Debit] Resolved email ${raw} to UID ${targetUid}`);
         } catch (e) {
             const q = await db.collection('users').where('email', '==', raw.toLowerCase()).limit(1).get();
-            if (!q.empty) targetUid = q.docs[0].id;
+            if (!q.empty) {
+              targetUid = q.docs[0].id;
+              console.log(`[Admin Debit] Resolved email ${raw} to UID from users collection: ${targetUid}`);
+            } else {
+              resolutionError = `User with email '${raw}' not found in system`;
+            }
         }
       } else {
         targetUid = raw;
-        try { await auth.getUser(targetUid); } catch (e) {}
+        try { 
+            const u = await auth.getUser(targetUid);
+            console.log(`[Admin Debit] Verified UID ${targetUid} exists in Auth`);
+        } catch (e) {
+            const d = await db.collection('users').doc(targetUid).get();
+            if (d.exists) {
+              console.log(`[Admin Debit] UID ${targetUid} found in users collection`);
+            } else {
+              resolutionError = `User ID '${raw}' not found in system`;
+            }
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('[Admin Debit] Resolution error:', e.message);
+      resolutionError = e.message;
+    }
 
-    const finalId = targetUid || raw;
+    // If resolution failed, return error instead of using fallback
+    if (resolutionError || !targetUid) {
+      console.error(`[Admin Debit] FAILED - Could not resolve '${raw}': ${resolutionError}`);
+      return res.status(400).json({ error: resolutionError || `Could not resolve user '${raw}'. Please enter a valid email or UID.` });
+    }
+
+    const finalId = targetUid;
+    console.log(`[Admin Debit] Debiting user ${finalId} (from input '${raw}') with amount ${amt}`);
 
     await walletService.createWallet(finalId);
     const newBalance = await walletService.debitWallet(finalId, amt, wtype, description || 'Admin Debit');
@@ -637,41 +704,103 @@ const fixGhostWallets = async (req, res) => {
     const dryRun = req.body.dryRun === true;
     const snapshot = await db.collection('wallets').get();
     let migrated = 0;
+    let skipped = 0;
+    let errors = 0;
     let report = [];
 
-    for (const doc of snapshot.docs) {
-      if (doc.id.includes('@')) {
-         const ghostBalance = Number(doc.data().mainBalance || 0);
-         if (ghostBalance > 0) {
-             let targetUid = null;
-             try {
-                const u = await auth.getUserByEmail(doc.id);
-                targetUid = u.uid;
-             } catch (e) {
-                 const q = await db.collection('users').where('email', '==', doc.id.toLowerCase()).limit(1).get();
-                 if (!q.empty) targetUid = q.docs[0].id;
-             }
+    console.log(`[Ghost Wallet Fix] Starting - found ${snapshot.size} wallets`);
 
-             if (targetUid) {
-                 if (!dryRun) {
-                     await walletService.createWallet(targetUid);
-                     await walletService.creditWallet(targetUid, ghostBalance, 'main', `Migrated from ${doc.id}`);
-                     // Zero out ghost wallet
-                     await db.collection('wallets').doc(doc.id).update({ 
-                         mainBalance: 0, 
-                         migrated: true,
-                         migratedTo: targetUid,
-                         migratedAt: new Date()
-                     });
-                 }
-                 report.push({ email: doc.id, targetUid, amount: ghostBalance, status: dryRun ? 'Pending' : 'Migrated' });
-                 migrated++;
-             }
-         }
+    for (const doc of snapshot.docs) {
+      // Check if document ID looks like an email (contains @)
+      if (doc.id.includes('@')) {
+        const ghostBalance = Number(doc.data().mainBalance || 0);
+        const ghostCashback = Number(doc.data().cashbackBalance || 0);
+        const ghostReferral = Number(doc.data().referralBalance || 0);
+        const totalGhost = ghostBalance + ghostCashback + ghostReferral;
+        
+        console.log(`[Ghost Wallet Fix] Found ghost wallet: ${doc.id} with balance ${totalGhost}`);
+        
+        let targetUid = null;
+        try {
+          // 1. Try Firebase Auth
+          const u = await auth.getUserByEmail(doc.id);
+          targetUid = u.uid;
+          console.log(`[Ghost Wallet Fix] Resolved via Auth: ${doc.id} -> ${targetUid}`);
+        } catch (e) {
+          // 2. Try users collection
+          const q = await db.collection('users').where('email', '==', doc.id.toLowerCase()).limit(1).get();
+          if (!q.empty) {
+            targetUid = q.docs[0].id;
+            console.log(`[Ghost Wallet Fix] Resolved via users: ${doc.id} -> ${targetUid}`);
+          }
+        }
+
+        if (targetUid) {
+          try {
+            if (!dryRun) {
+              // Check if target wallet already exists
+              const targetDoc = await db.collection('wallets').doc(targetUid).get();
+              
+              if (targetDoc.exists) {
+                // Merge balances
+                const targetData = targetDoc.data();
+                await db.collection('wallets').doc(targetUid).update({
+                  mainBalance: (targetData.mainBalance || 0) + ghostBalance,
+                  cashbackBalance: (targetData.cashbackBalance || 0) + ghostCashback,
+                  referralBalance: (targetData.referralBalance || 0) + ghostReferral,
+                  migratedFrom: doc.id,
+                  migratedAt: new Date()
+                });
+                console.log(`[Ghost Wallet Fix] Merged to existing wallet ${targetUid}`);
+              } else {
+                // Create new wallet
+                await db.collection('wallets').doc(targetUid).set({
+                  mainBalance: ghostBalance,
+                  cashbackBalance: ghostCashback,
+                  referralBalance: ghostReferral,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                  migratedFrom: doc.id,
+                  migratedAt: new Date()
+                });
+                console.log(`[Ghost Wallet Fix] Created new wallet for ${targetUid}`);
+              }
+              
+              // Delete the ghost wallet
+              await db.collection('wallets').doc(doc.id).delete();
+              console.log(`[Ghost Wallet Fix] Deleted ghost wallet ${doc.id}`);
+            }
+            
+            report.push({ 
+              email: doc.id, 
+              targetUid, 
+              balance: ghostBalance,
+              cashback: ghostCashback,
+              referral: ghostReferral,
+              total: totalGhost,
+              status: dryRun ? 'Pending' : 'Migrated' 
+            });
+            migrated++;
+          } catch (err) {
+            console.error(`[Ghost Wallet Fix] Error processing ${doc.id}:`, err.message);
+            report.push({ email: doc.id, error: err.message, status: 'Error' });
+            errors++;
+          }
+        } else {
+          console.log(`[Ghost Wallet Fix] Could not resolve UID for ${doc.id} - skipping`);
+          report.push({ email: doc.id, error: 'Could not resolve UID', status: 'Skipped' });
+          skipped++;
+        }
+      } else {
+        // Not an email-based wallet - skip
+        skipped++;
       }
     }
-    res.json({ success: true, count: migrated, report });
+    
+    console.log(`[Ghost Wallet Fix] Complete - Migrated: ${migrated}, Skipped: ${skipped}, Errors: ${errors}`);
+    res.json({ success: true, migrated, skipped, errors, report });
   } catch (error) {
+    console.error('[Ghost Wallet Fix] Fatal error:', error);
     res.status(500).json({ error: error.message });
   }
 };

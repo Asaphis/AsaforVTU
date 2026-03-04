@@ -11,6 +11,7 @@ const origins = originsEnv ? originsEnv.split(',').map(s => s.trim()).filter(Boo
   'https://www.Asafor.com',
   'https://asaforvtu.onrender.com',
   'https://asaforadmin.onrender.com',
+  'https://vtu.ferixas.com',
   'http://localhost:3000',
   'http://localhost:5000',
   'http://localhost:5001'

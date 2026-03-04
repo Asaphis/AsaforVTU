@@ -4,10 +4,10 @@ const verifyToken = async (req, res, next) => {
   try {
     // Check if Firebase is initialized
     if (!firebaseInitialized || !auth) {
-      console.error('[Auth Middleware] Firebase not initialized');
+      console.error('[Auth Middleware] Firebase not initialized. Check FIREBASE_* environment variables.');
       return res.status(503).json({ 
         error: 'Authentication service unavailable',
-        details: 'Firebase not configured. Please check server logs and ensure FIREBASE_* environment variables are set.',
+        details: 'Server configuration issue. Please contact support or check environment variables.',
         code: 'FIREBASE_NOT_INITIALIZED'
       });
     }
