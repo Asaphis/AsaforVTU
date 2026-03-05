@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 import { 
   MessageCircle, History, Send, Paperclip, 
   Image as ImageIcon, CheckCircle2, Check, CheckCheck,
-  ChevronLeft, Plus, X, User, MessageSquare
+  ChevronLeft, ChevronRight, Plus, X, User, MessageSquare
 } from 'lucide-react';
 import { db, auth, storage } from '@/lib/firebase';
 import { 
