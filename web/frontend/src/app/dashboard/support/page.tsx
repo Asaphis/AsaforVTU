@@ -43,94 +43,37 @@ export default function SupportPage() {
     scrollToBottom();
   }, [replies]);
 
-  // Real-time tickets listener (ADMIN LOGIC STYLE)
+  // Tickets: backend polling to avoid Firestore permission issues
   useEffect(() => {
-    if (!db) return;
-    
-    let unsubscribe = () => {};
+    let interval: any;
     const unsubAuth = auth.onAuthStateChanged((user) => {
-      if (unsubscribe) unsubscribe();
-
+      if (interval) clearInterval(interval);
       if (user) {
-        // Initial fetch from backend
         getTickets().then(setTickets);
-
-        console.log("Setting up ticket listener for user:", user.uid, user.email);
-        const ticketsRef = collection(db, 'tickets');
-        
-        // Query by userId OR userEmail to ensure we fetch existing records
-        const q = query(
-          ticketsRef, 
-          where('userId', 'in', [user.uid, user.email || ''])
-        );
-
-        unsubscribe = onSnapshot(q, (snap) => {
-          const ticketList = snap.docs
-            .filter(d => !d.data().deleted)
-            .map(d => ({ id: d.id, ...d.data() }))
-            .sort((a: any, b: any) => {
-              const timeA = a.lastMessageAt?.seconds || 0;
-              const timeB = b.lastMessageAt?.seconds || 0;
-              return timeB - timeA;
-            });
-          
-          console.log("Tickets update (Manual Sort):", ticketList.length);
-          setTickets(ticketList);
-          
-          if (selectedTicket) {
-            const updated = ticketList.find(t => t.id === selectedTicket.id);
-            if (updated) setSelectedTicket(updated);
-          }
-        }, (error) => {
-          console.error("Tickets listener error:", error);
-          // Fallback query if 'in' fails
-          const fallbackQ = query(ticketsRef, where('userId', '==', user.uid));
-          onSnapshot(fallbackQ, (fSnap) => {
-             const fList = fSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-             setTickets(fList);
-          });
-        });
+        interval = setInterval(() => {
+          getTickets().then(setTickets).catch(() => {});
+        }, 5000);
       } else {
         setTickets([]);
       }
     });
-
-    return () => {
-      unsubAuth();
-      if (unsubscribe) unsubscribe();
-    };
+    return () => { unsubAuth(); if (interval) clearInterval(interval); };
   }, []);
 
-  // Real-time replies listener (ADMIN LOGIC STYLE)
+  // Replies: backend polling per selected ticket
   useEffect(() => {
-    if (!selectedTicket || !db) {
-      setReplies([]);
-      return;
-    }
-
-    // Initial fetch
-    getTicketMessages(selectedTicket.id).then(setReplies);
-
-    const repliesRef = collection(db, 'tickets', selectedTicket.id, 'messages');
-    // Use orderBy for server-side sorting as requested in implementation update
-    const q = query(repliesRef, orderBy('createdAt', 'asc'));
-
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const messages = snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setReplies(messages);
-      
-      const unreadAdminMessages = snap.docs.filter(d => d.data().sender === 'admin' && !d.data().read);
-      unreadAdminMessages.forEach(d => {
-        updateDoc(d.ref, { read: true }).catch(err => console.error("Update read error:", err));
-      });
-    }, (error) => {
-      console.error("Replies listener error:", error);
-    });
-
-    return () => unsubscribe();
+    if (!selectedTicket) { setReplies([]); return; }
+    let cancelled = false;
+    let interval: any;
+    const load = async () => {
+      try {
+        const rows = await getTicketMessages(selectedTicket.id);
+        if (!cancelled) setReplies(rows);
+      } catch {}
+    };
+    load();
+    interval = setInterval(load, 3000);
+    return () => { cancelled = true; if (interval) clearInterval(interval); };
   }, [selectedTicket?.id]);
 
   const handleReply = async () => {

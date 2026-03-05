@@ -497,15 +497,17 @@ const getTickets = async (req, res) => {
       (email && allowed.includes(email))
     );
 
-    let query = db.collection('tickets').where('deleted', '==', false);
-    
-    // If not admin, only show own tickets
+    let baseQuery = db.collection('tickets').where('deleted', '==', false);
     if (!isAdmin) {
-      query = query.where('userId', '==', req.user.uid);
+      baseQuery = baseQuery.where('userId', '==', req.user.uid);
     }
-
-    const snap = await query.orderBy('lastMessageAt', 'desc').get();
-    const tickets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await baseQuery.get();
+    let tickets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    tickets.sort((a, b) => {
+      const ta = a.lastMessageAt && a.lastMessageAt.seconds ? a.lastMessageAt.seconds : 0;
+      const tb = b.lastMessageAt && b.lastMessageAt.seconds ? b.lastMessageAt.seconds : 0;
+      return tb - ta;
+    });
     res.json(tickets);
   } catch (error) {
     res.status(500).json({ error: error.message });
