@@ -75,7 +75,18 @@ app.get('/api/services', async (_req, res) => {
   try {
     if (!db) return res.json([]);
     const snap = await db.collection('services').get();
-    const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const defaults = [
+      { id: 'airtime', name: 'Airtime', category: 'Airtime & Data', enabled: true, active: true },
+      { id: 'data', name: 'Data', category: 'Data Plans', enabled: true, active: true },
+      { id: 'cable', name: 'Cable TV', category: 'Cable TV', enabled: true, active: true },
+      { id: 'electricity', name: 'Electricity', category: 'Electricity', enabled: true, active: true },
+      { id: 'exam-pins', name: 'Exam PINs', category: 'Exam PINs', enabled: true, active: true },
+    ];
+    const existing = new Set(rows.map(r => String(r.id || '').toLowerCase()));
+    for (const d of defaults) {
+      if (!existing.has(d.id)) rows.push(d);
+    }
     res.json(rows);
   } catch (e) {
     res.json([]);
