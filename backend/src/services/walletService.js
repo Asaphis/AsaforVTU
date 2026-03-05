@@ -11,91 +11,38 @@ class WalletService {
   }
 
   /**
-   * Get wallet by UID or Email
-   * This allows looking up wallets using either the document ID (UID) or email
-   */
-  async getWalletByIdentifier(identifier) {
-    if (!identifier) return null;
-    
-    const normalizedId = String(identifier).toLowerCase().trim();
-    
-    // 1. Try direct document ID lookup (by UID)
-    try {
-      const doc = await db.collection(WALLET_COLLECTION).doc(identifier).get();
-      if (doc.exists) {
-        return { id: doc.id, data: doc.data() };
-      }
-    } catch {}
-    
-    // 2. If identifier looks like email, search by email field
-    if (normalizedId.includes('@')) {
-      try {
-        const snapshot = await db.collection(WALLET_COLLECTION)
-          .where('email', '==', normalizedId)
-          .limit(1)
-          .get();
-        
-        if (!snapshot.empty) {
-          const doc = snapshot.docs[0];
-          return { id: doc.id, data: doc.data() };
-        }
-      } catch {}
-    }
-    
-    return null;
-  }
-
-  /**
    * Initialize wallet for a new user
    */
-  async createWallet(userId, email = null) {
+  async createWallet(userId) {
     const walletRef = db.collection(WALLET_COLLECTION).doc(userId);
     const doc = await walletRef.get();
     
     if (!doc.exists) {
-      const walletData = {
+      await walletRef.set({
         mainBalance: 0,
         cashbackBalance: 0,
         referralBalance: 0,
         createdAt: new Date(),
         updatedAt: new Date()
-      };
-      
-      // Store email if provided for future lookups
-      if (email) {
-        walletData.email = email.toLowerCase();
-      }
-      
-      await walletRef.set(walletData);
+      });
     }
     return walletRef.get(); // Return the wallet data
   }
 
   /**
-   * Get wallet balance - supports both UID and email
+   * Get wallet balance - now uses UID only (email lookup removed to avoid index issues)
    */
   async getBalance(userId) {
-    // First try direct UID lookup
+    if (!userId) {
+      return { mainBalance: 0, cashbackBalance: 0, referralBalance: 0 };
+    }
+    
+    // Direct UID lookup only
     const walletRef = db.collection(WALLET_COLLECTION).doc(userId);
     const doc = await walletRef.get();
     
     if (doc.exists) {
       return doc.data();
-    }
-    
-    // If not found and userId looks like email, try email lookup
-    const normalizedEmail = String(userId || '').toLowerCase().trim();
-    if (normalizedEmail.includes('@')) {
-      try {
-        const snapshot = await db.collection(WALLET_COLLECTION)
-          .where('email', '==', normalizedEmail)
-          .limit(1)
-          .get();
-        
-        if (!snapshot.empty) {
-          return snapshot.docs[0].data();
-        }
-      } catch {}
     }
     
     // Auto-create if not exists (lazy initialization)

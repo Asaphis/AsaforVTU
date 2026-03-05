@@ -118,9 +118,8 @@ const creditWallet = async (req, res) => {
     const finalId = targetUid;
     console.log(`[Admin Credit] Crediting user ${finalId} (from input '${raw}') with amount ${amt}`);
 
-    // Pass email to walletService for storage (to support future email lookups)
-    const userEmail = raw.includes('@') ? raw.toLowerCase() : null;
-    await walletService.createWallet(finalId, userEmail);
+    // Create wallet and credit
+    await walletService.createWallet(finalId);
     const newBalance = await walletService.creditWallet(finalId, amt, wtype, description || 'Admin Credit');
     
     // Return extra info for Admin
@@ -241,31 +240,12 @@ const listUsers = async (req, res) => {
       console.error('Error fetching wallet balances:', e.message);
     }
     
-    // Also fetch wallets by email (for wallets created with email as lookup key)
-    const emailWallets = {};
-    try {
-      const emailSnapshot = await db.collection('wallets').where('email', '!=', null).get();
-      for (const d of emailSnapshot.docs) {
-        const x = d.data() || {};
-        const emailKey = String(x.email || '').toLowerCase();
-        if (emailKey) {
-          emailWallets[emailKey] = {
-            main_balance: Number(x.mainBalance || x.main_balance || 0),
-            cashback_balance: Number(x.cashbackBalance || x.cashback_balance || 0),
-            referral_balance: Number(x.referralBalance || x.referral_balance || 0)
-          };
-        }
-      }
-    } catch (e) {
-      console.error('Error fetching email wallets:', e.message);
-    }
-    
     const users = baseUsers.map(u => {
       const uidKey = String(u.uid || u.id || '').toLowerCase();
       const emailKey = String(u.email || '').toLowerCase();
       const profile = profiles[uidKey] || profiles[emailKey];
-      // First check UID-based wallet, then fall back to email-based wallet
-      const bal = balances[uidKey] || emailWallets[emailKey];
+      // Get balance by UID
+      const bal = balances[uidKey];
       const phone = u.phone || (profile ? profile.phone : '');
       const displayName = u.displayName || (profile ? profile.displayName : '');
       return {
