@@ -7,14 +7,14 @@ cd "c:/Users/AsaphisPC/AsaforVTU"
 git add -A
 
 # Commit with a message
-git commit -m "Fix wallet sync issues and CORS
+git commit -m "Fix dashboard stats and add ghost wallet migration endpoint
 
-- Fixed creditWallet/debitWallet to properly resolve user IDs
-- Added support for both UID and email lookups
-- Fixed admin panel to show correct balances
-- Added vtu.ferixas.com to CORS allowed origins
-- Removed non-existent vtuRoutes that caused 404 errors
-- Updated walletService with email lookup support"
+- Fixed dashboard stats to get user count from Firebase Auth
+- Removed user_wallets queries causing 500 errors
+- Only query wallets collection for balance
+- Added /api/admin/migrate-ghost-wallets endpoint
+- Fixed usersCount variable reference error
+- Added vtu.ferixas.com to CORS origins"
 
 # Push to GitHub
 git push origin main

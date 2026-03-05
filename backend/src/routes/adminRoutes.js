@@ -112,15 +112,36 @@ router.get('/stats', async (_req, res) => {
       return res.status(503).json(result);
     }
     
+    // Get total users from Firebase Auth
+    try {
+      const authList = await auth.listUsers(1000);
+      result.totalUsers = authList.users.length;
+    } catch (e) {
+      console.log('[Stats] Could not get auth users:', e.message);
+      // Fallback: count users collection
+      try {
+        const usersSnap = await db.collection('users').limit(1000).get();
+        result.totalUsers = usersSnap.size;
+      } catch {}
+    }
+    
+    // Get transactions
     let txs = [];
-    const txNames = ['transactions', 'admin_transactions', 'wallet_transactions'];
+    const txNames = ['transactions', 'wallet_transactions'];
     for (const n of txNames) {
       try {
-        const snap = await db.collection(n).limit(500).get();
+        const snap = await db.collection(n).orderBy('createdAt', 'desc').limit(500).get();
         if (!snap.empty) {
           txs = snap.docs.map(d => {
             const x = d.data() || {};
-            return { id: d.id, user: x.user || x.user_email || x.userEmail || x.email || x.userId || '', amount: Number(x.amount || 0), status: x.status || 'success', type: x.type || 'transaction', createdAt: x.createdAt || x.timestamp || Date.now() };
+            return { 
+              id: d.id, 
+              user: x.user || x.user_email || x.userEmail || x.email || x.userId || '', 
+              amount: Number(x.amount || 0), 
+              status: x.status || 'success', 
+              type: x.type || 'transaction', 
+              createdAt: x.createdAt || x.timestamp || Date.now() 
+            };
           });
           break;
         }
@@ -129,15 +150,8 @@ router.get('/stats', async (_req, res) => {
       }
     }
     result.totalTransactions = txs.length;
-    if (!usersCount) {
-      const distinct = new Set();
-      for (const t of txs) {
-        const e = String(t.user || '').toLowerCase();
-        if (e) distinct.add(e);
-      }
-      usersCount = distinct.size;
-    }
-    result.totalUsers = usersCount;
+    
+    // Today's sales
     const now = new Date();
     result.todaySales = txs.filter(t => {
       try {
@@ -146,31 +160,25 @@ router.get('/stats', async (_req, res) => {
       } catch { return false; }
     }).reduce((sum, t) => sum + Number(t.amount || 0), 0);
     
-    // Fix: Properly dedupe wallet balances across collections
+    // Wallet balance - ONLY from 'wallets' collection
     let walletSum = 0;
-    const walletSeen = new Map();
-    const walletNames = ['wallets', 'user_wallets'];
-    for (const n of walletNames) {
-      try {
-        const snap = await db.collection(n).limit(5000).get();
-        if (!snap.empty) {
-          for (const d of snap.docs) {
-            const x = d.data() || {};
-            const key = String(x.uid || x.userId || d.id || '').toLowerCase();
-            const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
-            if (!walletSeen.has(key)) {
-              walletSeen.set(key, mb);
-            } else {
-              walletSeen.set(key, Math.max(walletSeen.get(key), mb));
-            }
-          }
+    try {
+      const snap = await db.collection('wallets').limit(5000).get();
+      if (!snap.empty) {
+        for (const d of snap.docs) {
+          const x = d.data() || {};
+          // Skip ghost wallets (email as ID - they should use UID)
+          if (d.id.includes('@')) continue;
+          const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
+          walletSum += mb;
         }
-      } catch (e) {
-        console.log('[Stats] Could not get', n, ':', e.message);
       }
+    } catch (e) {
+      console.log('[Stats] Could not get wallets:', e.message);
     }
-    walletSum = Array.from(walletSeen.values()).reduce((s, v) => s + v, 0);
     result.walletBalance = walletSum;
+    
+    // Daily totals for last 7 days
     const days = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
@@ -185,7 +193,9 @@ router.get('/stats', async (_req, res) => {
     result.dailyTotals = days;
     result.recentTransactions = txs.slice(0, 5);
     res.json(result);
-  } catch {
+  } catch (e) {
+    console.error('[Stats] Error:', e);
+    result.error = e.message;
     res.json(result);
   }
 });
@@ -972,6 +982,129 @@ router.get('/providers', async (_req, res) => {
     const result = await providerService.getProviders();
     res.json(result);
   } catch (error) {
+    console.error('[Admin] Get providers error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Migration endpoint - Run ghost wallet migration
+router.post('/migrate-ghost-wallets', async (_req, res) => {
+  try {
+    const { db, auth } = require('../config/firebase');
+    
+    console.log('🔍 Starting ghost wallet migration...');
+    
+    // Get all wallets
+    const walletsSnapshot = await db.collection('wallets').get();
+    console.log(`📊 Found ${walletsSnapshot.size} wallets total`);
+    
+    let migrated = 0;
+    let skipped = 0;
+    let errors = 0;
+    const results = [];
+    
+    for (const walletDoc of walletsSnapshot.docs) {
+      const docId = walletDoc.id;
+      const data = walletDoc.data();
+      
+      // Check if document ID looks like an email (contains @)
+      if (docId.includes('@')) {
+        console.log(`\n📧 Found wallet with email ID: ${docId}`);
+        
+        try {
+          // Try to resolve email to UID
+          let targetUid = null;
+          
+          // 1. Try Firebase Auth
+          try {
+            const user = await auth.getUserByEmail(docId);
+            targetUid = user.uid;
+            console.log(`   ✅ Resolved via Auth: ${targetUid}`);
+          } catch (e) {
+            console.log(`   ❌ Not in Auth: ${e.message}`);
+          }
+          
+          // 2. If not in Auth, try users collection
+          if (!targetUid) {
+            const usersSnapshot = await db.collection('users')
+              .where('email', '==', docId.toLowerCase())
+              .limit(1)
+              .get();
+            
+            if (!usersSnapshot.empty) {
+              targetUid = usersSnapshot.docs[0].id;
+              console.log(`   ✅ Resolved via users collection: ${targetUid}`);
+            }
+          }
+          
+          if (targetUid) {
+            // Check if target wallet already exists
+            const targetDoc = await db.collection('wallets').doc(targetUid).get();
+            
+            if (targetDoc.exists) {
+              // Merge balances (add to existing)
+              const targetData = targetDoc.data();
+              const newMainBalance = (targetData.mainBalance || 0) + (data.mainBalance || 0);
+              const newCashbackBalance = (targetData.cashbackBalance || 0) + (data.cashbackBalance || 0);
+              const newReferralBalance = (targetData.referralBalance || 0) + (data.referralBalance || 0);
+              
+              await db.collection('wallets').doc(targetUid).update({
+                mainBalance: newMainBalance,
+                cashbackBalance: newCashbackBalance,
+                referralBalance: newReferralBalance,
+                migratedFrom: docId,
+                migratedAt: new Date()
+              });
+              
+              console.log(`   🔄 Merged: old(${data.mainBalance || 0}) + new(${targetData.mainBalance || 0}) = ${newMainBalance}`);
+              results.push({ email: docId, action: 'merged', newBalance: newMainBalance, targetUid });
+            } else {
+              // Create new wallet with correct UID
+              await db.collection('wallets').doc(targetUid).set({
+                ...data,
+                migratedFrom: docId,
+                migratedAt: new Date()
+              });
+              
+              console.log(`   ✅ Created new wallet for UID: ${targetUid}`);
+              results.push({ email: docId, action: 'created', balance: data.mainBalance || 0, targetUid });
+            }
+            
+            // Delete old wallet
+            await db.collection('wallets').doc(docId).delete();
+            console.log(`   🗑️ Deleted old wallet: ${docId}`);
+            
+            migrated++;
+          } else {
+            console.log(`   ⚠️ Could not resolve UID for ${docId} - skipping`);
+            results.push({ email: docId, action: 'skipped', reason: 'Could not resolve UID' });
+            skipped++;
+          }
+        } catch (err) {
+          console.error(`   ❌ Error processing ${docId}:`, err.message);
+          results.push({ email: docId, action: 'error', message: err.message });
+          errors++;
+        }
+      } else {
+        // Document ID doesn't look like email - skip
+        skipped++;
+      }
+    }
+    
+    console.log(`\n✅ Migration complete!`);
+    console.log(`   Migrated: ${migrated}`);
+    console.log(`   Skipped: ${skipped}`);
+    console.log(`   Errors: ${errors}`);
+    
+    res.json({
+      success: true,
+      migrated,
+      skipped,
+      errors,
+      results
+    });
+  } catch (error) {
+    console.error('❌ Migration failed:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
