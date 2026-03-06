@@ -295,5 +295,9 @@ export async function getFinanceUser(input: { uid?: string; email?: string }): P
   return await request("GET", `/api/admin/finance/user?${qs}`);
 }
 
+export async function reconcilePaymentAdmin(input: { ref?: string; tx_ref?: string; transaction_id?: string; force?: boolean }): Promise<any> {
+  return await request<any>("POST", "/api/admin/payments/reconcile", input);
+}
+
 export { db };
 

@@ -5,13 +5,15 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Save, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getAdminSettings, updateAdminSettings } from "@/lib/backend";
+import { getAdminSettings, updateAdminSettings, reconcilePaymentAdmin } from "@/lib/backend";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ApiSettingsPage() {
   const [showKey, setShowKey] = useState(false);
   const { toast } = useToast();
   const [form, setForm] = useState<any>({ providerBaseUrl: '', apiKey: '', secretKey: '', cashbackEnabled: false, dailyReferralBudget: 0 });
+  const [reconRef, setReconRef] = useState('');
+  const [reconForce, setReconForce] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -114,6 +116,41 @@ export default function ApiSettingsPage() {
                     Establishing this connection ensures millisecond status propagation across the entire service node architecture.
                   </p>
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-slate-200 bg-white rounded-2xl shadow-sm overflow-hidden lg:col-span-2">
+          <CardHeader className="p-6 pb-3">
+            <CardTitle className="text-xl font-bold text-slate-900">Payment Reconciliation</CardTitle>
+            <CardDescription className="text-slate-500 uppercase tracking-widest text-[10px] font-bold mt-2">Credit wallets for successful Flutterwave payments</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="md:col-span-2 space-y-3">
+                <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest ml-2">Reference or Transaction ID</Label>
+                <Input value={reconRef} onChange={e => setReconRef(e.target.value)} placeholder="DEP-XXXXX or numeric transaction_id" className="h-12 rounded-xl bg-white border border-slate-200" />
+              </div>
+              <div className="flex items-end">
+                <Button className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl uppercase tracking-widest text-[11px]" onClick={async () => {
+                  if (!reconRef.trim()) {
+                    toast({ title: 'Enter a reference', description: 'Provide tx_ref or transaction_id', variant: 'destructive' });
+                    return;
+                  }
+                  try {
+                    const res = await reconcilePaymentAdmin({ ref: reconRef.trim(), force: reconForce });
+                    if (res && res.success) {
+                      toast({ title: 'Reconciled', description: res.message || 'Wallet credited' });
+                    } else {
+                      toast({ title: 'Not credited', description: res && res.message ? res.message : 'Reconciliation failed', variant: 'destructive' });
+                    }
+                  } catch (e: any) {
+                    toast({ title: 'Error', description: e.message || String(e), variant: 'destructive' });
+                  }
+                }}>
+                  Reconcile
+                </Button>
               </div>
             </div>
           </CardContent>
