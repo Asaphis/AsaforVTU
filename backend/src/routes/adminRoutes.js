@@ -81,6 +81,8 @@ router.get('/support/tickets', adminController.getTickets);
 router.get('/support/tickets/:id/messages', adminController.getTicketMessages);
 router.post('/support/tickets/create', adminController.createTicket);
 router.post('/support/tickets/:id/reply', adminController.replyTicket);
+router.post('/support/tickets/:id/status', adminController.updateTicketStatus);
+router.post('/support/tickets/:id/delete', adminController.deleteTicketAdmin);
 router.get('/announcements', adminController.getAnnouncements);
 router.post('/announcements', adminController.createAnnouncement);
 router.delete('/announcements/:id', adminController.deleteAnnouncement);

@@ -681,6 +681,34 @@ module.exports.getAnnouncements = getAnnouncements;
 module.exports.createAnnouncement = createAnnouncement;
 module.exports.deleteAnnouncement = deleteAnnouncement;
 
+const updateTicketStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body || {};
+    if (!id || !status) return res.status(400).json({ error: 'id and status required' });
+    const ref = db.collection('tickets').doc(id);
+    await ref.set({ status, lastMessageAt: new Date() }, { merge: true });
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteTicketAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'id required' });
+    const ref = db.collection('tickets').doc(id);
+    await ref.set({ deleted: true, lastMessageAt: new Date() }, { merge: true });
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports.updateTicketStatus = updateTicketStatus;
+module.exports.deleteTicketAdmin = deleteTicketAdmin;
+
 const fixGhostWallets = async (req, res) => {
   try {
     const dryRun = req.body.dryRun === true;

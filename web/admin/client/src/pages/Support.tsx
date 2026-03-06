@@ -1,4 +1,5 @@
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import { getAnnouncements, getTickets, replyTicket, getTicketMessages, updateTicketStatus, deleteTicketAdmin } from "@/lib/backend";
 import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,59 +47,38 @@ export default function SupportPage() {
   };
 
   useEffect(() => {
-    if (!db) {
-      console.error("Firebase DB is not initialized");
-      return;
-    }
-    
-    try {
-      const ticketsRef = collection(db, 'tickets');
-      const q = query(ticketsRef, orderBy('lastMessageAt', 'desc'));
-      
-      const unsubscribe = onSnapshot(q, (snap: any) => {
-        const ticketList = snap.docs.filter((d: any) => !d.data().deleted).map((d: any) => ({ id: d.id, ...d.data() }));
-        setTickets(ticketList);
-        
+    let interval: any;
+    const load = async () => {
+      try {
+        const data = await getTickets();
+        setTickets(Array.isArray(data) ? data : []);
         if (selectedTicket) {
-          const updated = ticketList.find((t: any) => t.id === selectedTicket.id);
+          const updated = data.find((t: any) => t.id === selectedTicket.id);
           if (updated) setSelectedTicket(updated);
         }
-      }, (err: any) => {
-        console.error("Tickets listener error:", err);
-      });
-
-      return () => unsubscribe();
-    } catch (e) {
-      console.error("Failed to setup tickets listener:", e);
-    }
+      } catch (e) {
+        console.error("Tickets load error:", e);
+      }
+    };
+    load();
+    interval = setInterval(load, 5000);
+    return () => { if (interval) clearInterval(interval); };
   }, [selectedTicket?.id]);
 
   useEffect(() => {
-    if (!selectedTicket || !db) {
-      setReplies([]);
-      return;
-    }
-
-    try {
-      const repliesRef = collection(db, 'tickets', selectedTicket.id, 'messages');
-      const q = query(repliesRef, orderBy('createdAt', 'asc'));
-      
-      const unsubscribe = onSnapshot(q, (snap: any) => {
-        const replyList = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-        setReplies(replyList);
-        
-        const unreadReplies = snap.docs.filter((d: any) => d.data().sender === 'user' && !d.data().read);
-        unreadReplies.forEach((d: any) => {
-          updateDoc(d.ref, { read: true }).catch((e: any) => console.error("Update read status error:", e));
-        });
-      }, (err: any) => {
-        console.error("Replies listener error:", err);
-      });
-
-      return () => unsubscribe();
-    } catch (e) {
-      console.error("Failed to setup replies listener:", e);
-    }
+    if (!selectedTicket) { setReplies([]); return; }
+    let interval: any;
+    const load = async () => {
+      try {
+        const msgs = await getTicketMessages(selectedTicket.id);
+        setReplies(Array.isArray(msgs) ? msgs : []);
+      } catch (e) {
+        console.error("Replies load error:", e);
+      }
+    };
+    load();
+    interval = setInterval(load, 3000);
+    return () => { if (interval) clearInterval(interval); };
   }, [selectedTicket?.id]);
 
   useEffect(() => {
@@ -139,11 +119,7 @@ export default function SupportPage() {
 
   const markAsSolved = async (id: string) => {
     try {
-      const ticketRef = doc(db, 'tickets', id);
-      await updateDoc(ticketRef, { 
-        status: 'solved', 
-        lastMessageAt: serverTimestamp()
-      });
+      await updateTicketStatus(id, 'solved');
       toast({ title: "Ticket Marked as Solved" });
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -153,8 +129,7 @@ export default function SupportPage() {
   const deleteTicket = async (id: string) => {
     if (!confirm("Are you sure you want to delete this ticket?")) return;
     try {
-      const ticketRef = doc(db, 'tickets', id);
-      await updateDoc(ticketRef, { deleted: true });
+      await deleteTicketAdmin(id);
       setSelectedTicket(null);
       toast({ title: "Ticket Deleted" });
     } catch (e: any) {

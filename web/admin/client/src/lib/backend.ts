@@ -187,6 +187,18 @@ export async function replyTicket(id: string, message: string): Promise<any> {
   return await request<any>("POST", `/api/admin/support/tickets/${encodeURIComponent(id)}/reply`, { message });
 }
 
+export async function getTicketMessages(id: string): Promise<any[]> {
+  return await request<any[]>("GET", `/api/admin/support/tickets/${encodeURIComponent(id)}/messages`);
+}
+
+export async function updateTicketStatus(id: string, status: string): Promise<any> {
+  return await request<any>("POST", `/api/admin/support/tickets/${encodeURIComponent(id)}/status`, { status });
+}
+
+export async function deleteTicketAdmin(id: string): Promise<any> {
+  return await request<any>("POST", `/api/admin/support/tickets/${encodeURIComponent(id)}/delete`);
+}
+
 export async function getAnnouncements(): Promise<any[]> {
   return await request<any[]>("GET", "/api/admin/announcements");
 }
