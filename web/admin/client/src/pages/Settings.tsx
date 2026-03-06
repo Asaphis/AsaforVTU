@@ -105,10 +105,10 @@ export default function ApiSettingsPage() {
               <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest ml-2">Ecosystem Webhook URL</Label>
               <div className="flex flex-col gap-4">
                 <div className="flex gap-3">
-                  <Input readOnly value="https://asaforvtu.onrender.com/api/webhook" className="h-12 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 font-mono text-xs px-4" />
+                  <Input readOnly value="https://asaforvtubackend.onrender.com/api/webhooks/flutterwave" className="h-12 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 font-mono text-xs px-4" />
                   <Button variant="outline" className="h-12 rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-bold text-[10px] px-6 uppercase tracking-widest" onClick={() => {
-                    navigator.clipboard.writeText("https://asaforvtu.onrender.com/api/webhook");
-                    toast({ title: "Vector Copied", description: "Webhook URL injected to clipboard" });
+                    navigator.clipboard.writeText("https://asaforvtubackend.onrender.com/api/webhooks/flutterwave");
+                    toast({ title: "Webhook URL Copied", description: "Use this URL in Flutterwave dashboard" });
                   }}>Copy</Button>
                 </div>
                 <div className="p-6 bg-primary/5 rounded-xl border border-primary/10">

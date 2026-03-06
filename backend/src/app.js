@@ -219,6 +219,8 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
+// Backward-compat alias (some dashboards use singular)
+app.use('/api/webhook', webhookRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/vtu', vtuRoutes);
 
