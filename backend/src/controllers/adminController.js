@@ -709,6 +709,21 @@ const deleteTicketAdmin = async (req, res) => {
 module.exports.updateTicketStatus = updateTicketStatus;
 module.exports.deleteTicketAdmin = deleteTicketAdmin;
 
+const reconcilePaymentAdmin = async (req, res) => {
+  try {
+    const flutterwaveService = require('../services/flutterwaveService');
+    const ref = String(req.body.ref || req.body.tx_ref || req.body.transaction_id || '').trim();
+    const force = req.body.force === true;
+    if (!ref) return res.status(400).json({ success: false, message: 'ref or transaction_id is required' });
+    const result = await flutterwaveService.reconcilePayment(ref, force);
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error && error.message ? error.message : String(error) });
+  }
+};
+
+module.exports.reconcilePaymentAdmin = reconcilePaymentAdmin;
+
 const fixGhostWallets = async (req, res) => {
   try {
     const dryRun = req.body.dryRun === true;

@@ -86,6 +86,7 @@ router.post('/support/tickets/:id/delete', adminController.deleteTicketAdmin);
 router.get('/announcements', adminController.getAnnouncements);
 router.post('/announcements', adminController.createAnnouncement);
 router.delete('/announcements/:id', adminController.deleteAnnouncement);
+router.post('/payments/reconcile', adminController.reconcilePaymentAdmin);
 
 // Service Categories
 router.get('/services', adminController.getServices);

@@ -34,13 +34,32 @@ const initiate = async (req, res) => {
 const verify = async (req, res) => {
   try {
     const { uid } = req.user;
-    const { tx_ref } = req.body;
-    if (!tx_ref) return res.status(400).json({ error: 'tx_ref required' });
-    const doc = await db.collection('payments').doc(tx_ref).get();
-    if (!doc.exists) return res.status(404).json({ error: 'Payment not found' });
-    const pay = doc.data();
-    if (pay.status === 'success') return res.json({ success: true, message: 'Already credited' });
-    const result = await flutterwaveService.creditIfValid(tx_ref, pay.amount, uid);
+    const ref = String(req.body.tx_ref || req.body.transaction_id || '').trim();
+    if (!ref) return res.status(400).json({ error: 'tx_ref or transaction_id required' });
+    
+    // Try direct doc by provided ref
+    let doc = await db.collection('payments').doc(ref).get();
+    let pay = doc.exists ? doc.data() : null;
+    
+    // If not found, try lookup by tx_ref field (in case ref is numeric transaction_id)
+    if (!pay) {
+      try {
+        const q = await db.collection('payments').where('tx_ref', '==', ref).limit(1).get();
+        if (!q.empty) {
+          doc = q.docs[0];
+          pay = doc.data();
+        }
+      } catch {}
+    }
+    
+    // Already credited
+    if (pay && (pay.status === 'success' || pay.status === 'completed')) {
+      return res.json({ success: true, message: 'Already credited' });
+    }
+    
+    // Proceed to verify and credit. Pass expected amount if we have it, else allow service to use provider amount.
+    const expectedAmount = pay ? Number(pay.amount || 0) : 0;
+    const result = await flutterwaveService.creditIfValid(ref, expectedAmount, uid);
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });

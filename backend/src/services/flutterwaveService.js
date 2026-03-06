@@ -92,11 +92,15 @@ class FlutterwaveService {
 
     const status = verify?.status;
     const vdata = verify?.data || {};
+    const resolvedRef = String(vdata.tx_ref || referenceOrId);
     const successful = status === 'success' && (vdata.status === 'successful' || vdata.processor_response === 'Approved');
-    const amountOk = Number(vdata.amount) >= Number(expectedAmount);
+    // If we don't have an expected amount (e.g., user returned with transaction_id),
+    // fall back to Flutterwave's amount
+    const expected = Number(expectedAmount || vdata.amount || 0);
+    const amountOk = Number(vdata.amount) >= expected;
 
     if (successful && amountOk) {
-      const paymentRef = db.collection('payments').doc(String(referenceOrId));
+      const paymentRef = db.collection('payments').doc(resolvedRef);
       
       // 1. Acquire Lock via Transaction
       try {
@@ -108,7 +112,7 @@ class FlutterwaveService {
                    status: 'processing_credit', 
                    createdAt: new Date(),
                    userId: userId, 
-                   tx_ref: referenceOrId 
+                   tx_ref: resolvedRef 
                });
            } else {
                const pData = doc.data();
@@ -130,7 +134,7 @@ class FlutterwaveService {
       // 2. Perform Wallet Credit (Lock is held)
       try {
           await walletService.createWallet(userId);
-          await walletService.creditWallet(userId, Number(expectedAmount), 'main', 'Flutterwave Wallet Funding', referenceOrId);
+          await walletService.creditWallet(userId, Number(expected), 'main', 'Flutterwave Wallet Funding', resolvedRef);
           
           // 3. Mark as Success
           await paymentRef.set({
@@ -143,7 +147,7 @@ class FlutterwaveService {
 
           return { success: true };
       } catch (creditError) {
-          console.error(`[Flutterwave] Credit failed for ${referenceOrId}:`, creditError);
+          console.error(`[Flutterwave] Credit failed for ${resolvedRef}:`, creditError);
           // Release lock on failure so it can be retried
           await paymentRef.update({ 
               status: 'pending', 
@@ -153,23 +157,30 @@ class FlutterwaveService {
       }
     } else {
       console.warn(`[Payment Verification Failed] Ref: ${referenceOrId}, User: ${userId}, Status: ${status}, AmountOk: ${amountOk} (Exp: ${expectedAmount}, Act: ${vdata.amount})`);
-      await db.collection('payments').doc(vdata.tx_ref || referenceOrId).update({
+      await db.collection('payments').doc(resolvedRef).set({
         status: 'failed',
         verifiedAt: new Date(),
         providerResponse: vdata,
-      });
+      }, { merge: true });
       return { success: false, data: vdata };
     }
   }
-  async reconcilePayment(tx_ref, force = false) {
-    const paymentRef = db.collection('payments').doc(String(tx_ref));
-    const paymentDoc = await paymentRef.get();
+  async reconcilePayment(refOrId, force = false) {
+    const input = String(refOrId);
+    let resolvedRef = input;
+    let paymentRef = db.collection('payments').doc(resolvedRef);
+    let paymentDoc = await paymentRef.get();
     
     // 1. Verify with Flutterwave
     let fwData;
     try {
-        const res = await this.verifyByReference(tx_ref);
-        fwData = res.data;
+        if (input.match(/^\d+$/)) {
+          const res = await this.verifyById(input);
+          fwData = res.data;
+        } else {
+          const res = await this.verifyByReference(input);
+          fwData = res.data;
+        }
     } catch (e) {
         if (e.response && e.response.status === 404) {
              return { success: false, message: 'Transaction not found on Flutterwave' };
@@ -181,11 +192,15 @@ class FlutterwaveService {
         return { success: false, message: `Payment not successful on Flutterwave (Status: ${fwData?.status})` };
     }
 
+    resolvedRef = String(fwData.tx_ref || input);
+    paymentRef = db.collection('payments').doc(resolvedRef);
+    paymentDoc = await paymentRef.get();
+
     // 2. Check if already credited in Wallet Transactions (via externalReference)
     // Note: Older transactions might not have externalReference set, so this check might miss them.
     // That's why we have 'force'.
     const existingTx = await db.collection('wallet_transactions')
-        .where('externalReference', '==', String(tx_ref))
+        .where('externalReference', '==', String(resolvedRef))
         .limit(1)
         .get();
         
@@ -211,7 +226,7 @@ class FlutterwaveService {
     try {
         await walletService.createWallet(userId);
         // We pass tx_ref as externalReference so future checks catch it
-        await walletService.creditWallet(userId, Number(fwData.amount), 'main', 'Flutterwave Funding (Reconciled)', String(tx_ref));
+        await walletService.creditWallet(userId, Number(fwData.amount), 'main', 'Flutterwave Funding (Reconciled)', String(resolvedRef));
         
         await paymentRef.set({
             status: 'success',
