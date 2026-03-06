@@ -13,6 +13,13 @@ function PaymentCompleteContent() {
 
   useEffect(() => {
     const run = async () => {
+      const rawStatus = (params.get('status') || '').toLowerCase();
+      if (rawStatus && (rawStatus === 'cancelled' || rawStatus === 'failed' || rawStatus === 'error' || rawStatus === 'abandoned')) {
+        setStatus('failed');
+        setMessage(rawStatus === 'cancelled' ? 'Payment cancelled by user' : 'Payment not completed');
+        setTimeout(() => router.replace('/dashboard/wallet'), 1500);
+        return;
+      }
       const tx_ref = params.get('tx_ref') || params.get('transaction_id') || '';
       if (!tx_ref) {
         setStatus('failed');
