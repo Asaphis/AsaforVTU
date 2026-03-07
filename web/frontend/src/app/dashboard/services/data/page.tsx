@@ -20,8 +20,8 @@ export interface DataPlan {
 const NETWORKS = [
   { label: 'MTN', value: 'MTN', id: 1 },
   { label: 'Glo', value: 'GLO', id: 2 },
-  { label: 'Airtel', value: 'AIRTEL', id: 3 },
-  { label: '9mobile', value: '9MOBILE', id: 4 },
+  { label: 'Airtel', value: 'AIRTEL', id: 4 },
+  { label: '9mobile', value: '9MOBILE', id: 3 },
 ];
 
 export default function DataPage() {
