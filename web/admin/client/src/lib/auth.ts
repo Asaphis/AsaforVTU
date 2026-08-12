@@ -212,8 +212,27 @@ export const getCurrentUser = async (): Promise<User | null> => {
 };
 
 // Check if user is authenticated
-export const isAuthenticated = (): boolean => {
-  return !!getAccessToken();
+export const isAuthenticated = async (): Promise<boolean> => {
+  const token = getAccessToken();
+  if (!token) return false;
+  
+  // Check if we have a valid user in localStorage
+  const user = getUser();
+  if (user) return true;
+  
+  // If no user data, try to fetch it
+  try {
+    const response = await apiRequest('/api/auth/me');
+    if (response.ok) {
+      const userData = await response.json();
+      setUser(userData);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('[Auth] Token validation failed:', error);
+    return false;
+  }
 };
 
 // Check if user is admin

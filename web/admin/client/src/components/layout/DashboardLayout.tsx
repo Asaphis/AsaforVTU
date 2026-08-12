@@ -16,13 +16,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const authenticated = await isAuthenticated();
-      console.log("Auth state:", authenticated ? "authenticated" : "not authenticated");
-      setIsAuthenticated(authenticated);
-      if (authenticated && (location === "/login" || location === "/forgot-password")) {
-        setLocation("/");
+      try {
+        const authenticated = await isAuthenticated();
+        console.log("Auth state:", authenticated ? "authenticated" : "not authenticated");
+        setIsAuthenticated(authenticated);
+        if (authenticated && (location === "/login" || location === "/forgot-password")) {
+          setLocation("/");
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
     checkAuth();
   }, [location, setLocation]);
@@ -36,7 +42,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   if (!isAuthenticated) {
-    setLocation("/login");
+    if (location !== "/login") {
+      setLocation("/login");
+    }
     return null;
   }
 

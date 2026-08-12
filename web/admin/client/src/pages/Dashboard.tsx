@@ -27,10 +27,18 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
-  const { data: stats, isLoading, isError } = useQuery<any>({
+  const { data: stats, isLoading, isError, error } = useQuery<any>({
     queryKey: ["admin-stats"],
-    queryFn: async () => await getAdminStats(),
+    queryFn: async () => {
+      try {
+        return await getAdminStats();
+      } catch (e: any) {
+        console.error("Dashboard stats error:", e);
+        throw e;
+      }
+    },
     refetchInterval: 10000,
+    retry: 3,
   });
 
   const chartData = useMemo(() => {
@@ -40,6 +48,29 @@ export default function Dashboard() {
 
   const recent = ((stats && stats.recentTransactions) || []).slice(0, 6);
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6 pb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="bg-white rounded-[2.5rem] border-0 shadow-sm">
+              <CardContent className="p-6">
+                <Skeleton className="h-12 w-12 mb-4 rounded-full" />
+                <Skeleton className="h-8 w-24 mb-2" />
+                <Skeleton className="h-6 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card className="bg-white rounded-[2.5rem] border-0 shadow-sm">
+          <CardContent className="p-6">
+            <Skeleton className="h-64 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (isError) {
     return (
       <div className="p-8 text-center bg-white rounded-[2.5rem] border border-red-50 shadow-sm">
@@ -47,7 +78,9 @@ export default function Dashboard() {
           <ShieldCheck className="text-red-500" size={32} />
         </div>
         <h2 className="text-xl font-bold text-slate-900 mb-2">Connection Issues</h2>
-        <p className="text-slate-500 mb-6 max-w-md mx-auto">We're having trouble reaching the administration services. Please check your network or server status.</p>
+        <p className="text-slate-500 mb-4 max-w-md mx-auto">
+          {error?.message || "We're having trouble reaching the administration services. Please check your network or server status."}
+        </p>
         <button onClick={() => window.location.reload()} className="px-6 py-3 bg-primary text-white rounded-2xl font-bold hover:shadow-lg transition-all">Retry Connection</button>
       </div>
     );
