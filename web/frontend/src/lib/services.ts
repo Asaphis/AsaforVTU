@@ -334,3 +334,85 @@ export const transferToMain = async (amount: number, fromWalletType: 'cashback' 
     throw error;
   }
 };
+
+// Additional exports for compatibility
+export const getAdminSettings = async (): Promise<any> => {
+  const backendUrl = resolveBackendUrl();
+  try {
+    const res = await fetch(`${backendUrl}/api/admin/settings`, { method: 'GET' });
+    if (!res.ok) throw new Error('Failed to fetch admin settings');
+    return await res.json();
+  } catch (error) {
+    console.error('Get Admin Settings Error:', error);
+    return {};
+  }
+};
+
+export const purchaseAirtime = async (data: any): Promise<TransactionResult> => {
+  const backendUrl = resolveBackendUrl();
+  const token = localStorage.getItem('access_token');
+  
+  try {
+    const res = await fetch(`${backendUrl}/api/vtu/airtime`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Airtime purchase failed');
+    }
+    
+    return await res.json();
+  } catch (error: any) {
+    console.error('Purchase Airtime Error:', error);
+    throw error;
+  }
+};
+
+export const purchaseData = async (data: any): Promise<TransactionResult> => {
+  const backendUrl = resolveBackendUrl();
+  const token = localStorage.getItem('access_token');
+  
+  try {
+    const res = await fetch(`${backendUrl}/api/vtu/data`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Data purchase failed');
+    }
+    
+    return await res.json();
+  } catch (error: any) {
+    console.error('Purchase Data Error:', error);
+    throw error;
+  }
+};
+
+export const initiateFunding = initiatePayment;
+export const transferWallet = transferToMain;
+export const verifyFunding = verifyPayment;
+
+export const getServiceBySlug = async (slug: string): Promise<ServiceDoc | null> => {
+  const backendUrl = resolveBackendUrl();
+  try {
+    const res = await fetch(`${backendUrl}/api/services/${slug}`, { method: 'GET' });
+    if (!res.ok) throw new Error('Failed to fetch service');
+    const data = await res.json();
+    return data || null;
+  } catch (error) {
+    console.error('Get Service By Slug Error:', error);
+    return null;
+  }
+};
