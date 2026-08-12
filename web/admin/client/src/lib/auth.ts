@@ -42,7 +42,7 @@ interface User {
 }
 
 // Store tokens in localStorage
-const getAccessToken = (): string | null => {
+export const getAccessToken = (): string | null => {
   return localStorage.getItem('access_token');
 };
 
@@ -62,7 +62,7 @@ const clearTokens = (): void => {
 };
 
 // Store user data
-const getUser = (): User | null => {
+export const getUser = (): User | null => {
   const userStr = localStorage.getItem('user');
   return userStr ? JSON.parse(userStr) : null;
 };
@@ -264,6 +264,4 @@ export default {
   updateProfile,
   changePassword,
   apiRequest,
-  getAccessToken,
-  getUser,
 };
