@@ -50,8 +50,6 @@
     "embla-carousel-react": "^8.6.0",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
-    "firebase": "^12.6.0",
-    "firebase-admin": "^12.5.0",
     "framer-motion": "^12.23.24",
     "html2canvas": "^1.4.1",
     "input-otp": "^1.4.2",
