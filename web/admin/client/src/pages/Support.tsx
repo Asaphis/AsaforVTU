@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageSquare, Megaphone, Trash2, Send, History, CheckCheck, Check, User, ShieldCheck, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { getAnnouncements, createAnnouncement, deleteAnnouncement, db } from "@/lib/backend";
+import { createAnnouncement, deleteAnnouncement } from "@/lib/backend";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,85 +25,49 @@ export default function SupportPage() {
   const [replyMsg, setReplyMsg] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [replies]);
-
   const loadData = async () => {
-    setLoading(true);
     try {
-      const anns = await getAnnouncements();
-      setAnnouncements(anns || []);
-    } catch (e: any) {
-      console.error("Load announcements error:", e);
+      const [ticketsData, annsData] = await Promise.all([
+        getTickets(),
+        getAnnouncements()
+      ]);
+      setTickets(Array.isArray(ticketsData) ? ticketsData : []);
+      setAnnouncements(Array.isArray(annsData) ? annsData : []);
+    } catch (e) {
+      console.error("Load error:", e);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    let interval: any;
-    const load = async () => {
-      try {
-        const data = await getTickets();
-        setTickets(Array.isArray(data) ? data : []);
-        if (selectedTicket) {
-          const updated = data.find((t: any) => t.id === selectedTicket.id);
-          if (updated) setSelectedTicket(updated);
-        }
-      } catch (e) {
-        console.error("Tickets load error:", e);
-      }
-    };
-    load();
-    interval = setInterval(load, 5000);
-    return () => { if (interval) clearInterval(interval); };
-  }, [selectedTicket?.id]);
-
-  useEffect(() => {
-    if (!selectedTicket) { setReplies([]); return; }
-    let interval: any;
-    const load = async () => {
-      try {
-        const msgs = await getTicketMessages(selectedTicket.id);
-        setReplies(Array.isArray(msgs) ? msgs : []);
-      } catch (e) {
-        console.error("Replies load error:", e);
-      }
-    };
-    load();
-    interval = setInterval(load, 3000);
-    return () => { if (interval) clearInterval(interval); };
-  }, [selectedTicket?.id]);
-
-  useEffect(() => {
-    if (!db) {
-      console.error("Firebase DB is not initialized");
-      return;
-    }
-    
-    try {
-      const annRef = collection(db, 'announcements');
-      const q = query(annRef, orderBy('createdAt', 'desc'));
-      
-      const unsubscribe = onSnapshot(q, (snap: any) => {
-        const annList = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-        setAnnouncements(annList);
-      }, (err: any) => {
-        console.error("Announcements listener error:", err);
-      });
-
-      return () => unsubscribe();
-    } catch (e) {
-      console.error("Failed to setup announcements listener:", e);
-    }
+    loadData();
+    // Refresh data every 30 seconds
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    if (selectedTicket?.id) {
+      const load = async () => {
+        try {
+          const msgs = await getTicketMessages(selectedTicket.id);
+          setReplies(Array.isArray(msgs) ? msgs : []);
+        } catch (e) {
+          console.error("Replies load error:", e);
+        }
+      };
+      load();
+      const interval = setInterval(load, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedTicket?.id]);
+
+  useEffect(() => {
+    if (replies.length > 0) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [replies]);
 
   const handleReply = async (id: string) => {
     if (!replyMsg.trim()) return;
@@ -118,8 +82,9 @@ export default function SupportPage() {
 
   const markAsSolved = async (id: string) => {
     try {
-      await updateTicketStatus(id, 'solved');
-      toast({ title: "Ticket Marked as Solved" });
+      await updateTicketStatus(id, 'resolved');
+      toast({ title: "Success", description: "Ticket marked as resolved" });
+      loadData();
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
@@ -129,28 +94,31 @@ export default function SupportPage() {
     if (!confirm("Are you sure you want to delete this ticket?")) return;
     try {
       await deleteTicketAdmin(id);
-      setSelectedTicket(null);
-      toast({ title: "Ticket Deleted" });
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
-    }
-  };
-
-  const handleCreateAnn = async () => {
-    if (!newAnn.title || !newAnn.content) return;
-    try {
-      await createAnnouncement(newAnn);
-      toast({ title: "Success", description: "Announcement posted" });
-      setOpenAnnouncement(false);
-      setNewAnn({ title: '', content: '', type: 'info' });
+      toast({ title: "Success", description: "Ticket deleted" });
       loadData();
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
   };
 
-  const handleDeleteAnn = async (id: string) => {
-    if (!confirm("Delete this announcement?")) return;
+  const handleCreateAnnouncement = async () => {
+    if (!newAnn.title || !newAnn.content) {
+      toast({ title: "Error", description: "Title and content are required", variant: "destructive" });
+      return;
+    }
+    try {
+      await createAnnouncement(newAnn);
+      toast({ title: "Success", description: "Announcement created" });
+      setNewAnn({ title: '', content: '', type: 'info' });
+      setOpenAnnouncement(false);
+      loadData();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteAnnouncement = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this announcement?")) return;
     try {
       await deleteAnnouncement(id);
       toast({ title: "Success", description: "Announcement deleted" });
@@ -160,216 +128,207 @@ export default function SupportPage() {
     }
   };
 
-  return (
-    <div className="space-y-8 pb-12 animate-in fade-in duration-500">
-      <Card className="border border-slate-200 bg-white rounded-2xl shadow-sm">
-        <CardContent className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
-              <ShieldCheck className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Support Center</h1>
-              <p className="text-slate-500 font-medium text-sm">Real-time communication and broadcasts</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge className="bg-slate-50 text-slate-600 border border-slate-200 px-3 py-1 text-[10px] font-bold uppercase tracking-wider">
-              {tickets.filter(t => t.status === 'open').length} Active
-            </Badge>
-            <Badge className="bg-slate-50 text-slate-600 border border-slate-200 px-3 py-1 text-[10px] font-bold uppercase tracking-wider">
-              {announcements.length} Broadcasts
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
-      <Tabs defaultValue="tickets" className="space-y-6">
-        <TabsList className="bg-white border border-slate-200 p-2 rounded-xl">
-          <TabsTrigger value="tickets" className="rounded-lg px-6 h-10 text-[10px] font-bold uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-white">Tickets</TabsTrigger>
-          <TabsTrigger value="announcements" className="rounded-lg px-6 h-10 text-[10px] font-bold uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-white">Announcements</TabsTrigger>
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Support Center</h1>
+        <Dialog open={openAnnouncement} onOpenChange={setOpenAnnouncement}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              New Announcement
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Announcement</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label>Title</Label>
+                <Input 
+                  value={newAnn.title}
+                  onChange={(e) => setNewAnn({ ...newAnn, title: e.target.value })}
+                  placeholder="Announcement title"
+                />
+              </div>
+              <div>
+                <Label>Content</Label>
+                <Textarea 
+                  value={newAnn.content}
+                  onChange={(e) => setNewAnn({ ...newAnn, content: e.target.value })}
+                  placeholder="Announcement content"
+                  rows={4}
+                />
+              </div>
+              <Button onClick={handleCreateAnnouncement}>Create</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Tabs defaultValue="tickets">
+        <TabsList>
+          <TabsTrigger value="tickets">
+            <MessageSquare className="mr-2 h-4 w-4" />
+            Tickets
+          </TabsTrigger>
+          <TabsTrigger value="announcements">
+            <Megaphone className="mr-2 h-4 w-4" />
+            Announcements
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="tickets">
-          <div className="grid gap-6 md:grid-cols-3">
-            <Card className="md:col-span-1 border border-slate-200 bg-white rounded-2xl overflow-hidden">
-              <CardHeader className="p-6 pb-2">
-                <CardTitle className="text-lg font-bold text-slate-900">Communication Archives</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3">
-                {tickets.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setSelectedTicket(t)}
-                    className={`w-full text-left p-4 rounded-xl border transition-colors ${selectedTicket?.id === t.id ? 'border-primary bg-primary/5' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="text-sm font-bold text-slate-900 truncate">{t.subject || "Ticket"}</div>
-                        <div className="text-[10px] text-slate-500 uppercase tracking-wider">{t.userEmail}</div>
-                      </div>
-                      <Badge className={cn(
-                        "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border",
-                        t.status === 'open' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                        t.status === 'replied' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                        'bg-emerald-50 text-emerald-600 border-emerald-100'
-                      )}>
-                        {t.status}
+          <div className="space-y-4">
+            {tickets.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  No tickets yet
+                </CardContent>
+              </Card>
+            ) : (
+              tickets.map((ticket) => (
+                <Card key={ticket.id} className={selectedTicket?.id === ticket.id ? "border-primary" : ""}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{ticket.subject}</CardTitle>
+                      <Badge variant={ticket.status === 'resolved' ? 'default' : 'secondary'}>
+                        {ticket.status}
                       </Badge>
                     </div>
-                    <div className="mt-2 text-xs text-slate-500 line-clamp-2">{t.lastMessage}</div>
-                  </button>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card className="md:col-span-2 border border-slate-200 bg-white rounded-2xl overflow-hidden">
-              {selectedTicket ? (
-                <>
-                  <CardHeader className="p-6 pb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Button variant="ghost" size="icon" className="md:hidden rounded-lg text-slate-600 hover:bg-slate-100" onClick={() => setSelectedTicket(null)}>
-                        <X className="w-5 h-5" />
+                    <CardDescription className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      {ticket.email || 'Unknown'}
+                      <span>•</span>
+                      {new Date(ticket.created_at).toLocaleString()}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setSelectedTicket(ticket)}
+                      >
+                        <History className="mr-2 h-4 w-4" />
+                        View Messages
                       </Button>
-                      <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center">
-                        <User className="w-5 h-5 text-slate-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-bold text-slate-900 leading-tight">{selectedTicket.subject}</h3>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">{selectedTicket.userEmail}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {selectedTicket.status !== 'solved' && (
-                        <Button variant="outline" size="sm" onClick={() => markAsSolved(selectedTicket.id)} className="h-9 border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-[10px] px-4">
+                      {ticket.status !== 'resolved' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => markAsSolved(ticket.id)}
+                        >
+                          <CheckCheck className="mr-2 h-4 w-4" />
                           Mark Solved
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" onClick={() => deleteTicket(selectedTicket.id)} className="text-red-600 hover:bg-red-50 rounded-lg h-9 w-9">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="p-6 space-y-6 max-h-[48rem] overflow-y-auto">
-                    {replies.map((r, i) => (
-                      <div key={r.id || i} className={`flex ${r.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`p-4 rounded-xl max-w-[80%] ${r.sender === 'admin' ? 'bg-primary text-white' : 'bg-slate-50 border border-slate-200 text-slate-700'}`}>
-                          <p className="text-sm font-medium">{r.text}</p>
-                          <div className={`mt-2 text-[10px] ${r.sender === 'admin' ? 'text-white/80' : 'text-slate-500'}`}>
-                            {r.createdAt?.seconds ? new Date(r.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    <div ref={chatEndRef} />
-                  </CardContent>
-
-                  <div className="p-6 border-t border-slate-100">
-                    <div className="relative group max-w-5xl">
-                      <Textarea 
-                        placeholder="Type a reply..." 
-                        value={replyMsg}
-                        onChange={(e) => setReplyMsg(e.target.value)}
-                        className="min-h-[100px] bg-white border border-slate-200 rounded-xl text-sm text-slate-900 p-4 pr-14 resize-none placeholder:text-slate-400"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleReply(selectedTicket.id);
-                          }
-                        }}
-                      />
                       <Button 
-                        size="icon" 
-                        onClick={() => handleReply(selectedTicket.id)} 
-                        disabled={!replyMsg.trim()} 
-                        className="absolute bottom-3 right-3 h-10 w-10 rounded-lg bg-primary hover:bg-primary/90 text-white"
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => deleteTicket(ticket.id)}
                       >
-                        <Send className="h-4 w-4" />
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
                       </Button>
                     </div>
-                  </div>
-                </>
-              ) : (
-                <div className="p-12 text-center">
-                  <div className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto mb-4">
-                    <MessageSquare className="h-8 w-8 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">Select a ticket</h3>
-                  <p className="text-sm text-slate-500">Choose a conversation to view and reply.</p>
-                </div>
-              )}
-            </Card>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </TabsContent>
 
         <TabsContent value="announcements">
-          <Card className="border border-slate-200 bg-white rounded-2xl shadow-sm">
-            <CardHeader className="p-6 pb-3 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Broadcast Hub</h2>
-                <p className="text-slate-500 font-medium text-sm">Post announcements to all users</p>
-              </div>
-              <Dialog open={openAnnouncement} onOpenChange={setOpenAnnouncement}>
-                <DialogTrigger asChild>
-                  <Button className="bg-primary hover:bg-primary/90 text-white font-bold rounded-xl px-6 h-10">
-                    <Plus className="w-4 h-4 mr-2" /> New Announcement
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="rounded-xl bg-white border border-slate-200 p-6">
-                  <DialogHeader><DialogTitle className="text-lg font-bold">Create Announcement</DialogTitle></DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Title</Label>
-                      <Input value={newAnn.title} onChange={e => setNewAnn({...newAnn, title: e.target.value})} placeholder="Maintenance notice" />
+          <div className="space-y-4">
+            {announcements.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  No announcements yet
+                </CardContent>
+              </Card>
+            ) : (
+              announcements.map((ann) => (
+                <Card key={ann.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{ann.title}</CardTitle>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => handleDeleteAnnouncement(ann.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Content</Label>
-                      <Textarea className="min-h-[140px]" value={newAnn.content} onChange={e => setNewAnn({...newAnn, content: e.target.value})} placeholder="Details..." />
-                    </div>
-                    <div className="flex justify-end">
-                      <Button onClick={handleCreateAnn}>Publish</Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {announcements.map((ann) => (
-                  <Card key={ann.id} className="border border-slate-200 bg-white rounded-xl">
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center">
-                            <Megaphone className="w-5 h-5 text-orange-500" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-bold text-slate-900">{ann.title}</div>
-                            <div className="text-[10px] text-slate-500 uppercase tracking-wider">
-                              {ann.createdAt?.seconds ? new Date(ann.createdAt.seconds * 1000).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
-                            </div>
-                          </div>
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteAnn(ann.id)} className="text-red-600 hover:bg-red-50 rounded-lg h-9 w-9">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      <p className="mt-4 text-sm text-slate-700 leading-relaxed">{ann.content}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-                {announcements.length === 0 && (
-                  <div className="md:col-span-2 p-12 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50">
-                    <Megaphone className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-                    <p className="text-sm text-slate-500">No announcements yet</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                    <CardDescription>
+                      {new Date(ann.created_at).toLocaleString()}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p>{ann.content}</p>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </TabsContent>
       </Tabs>
+
+      {selectedTicket && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Messages: {selectedTicket.subject}</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedTicket(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
+              {replies.map((reply) => (
+                <div 
+                  key={reply.id} 
+                  className={`p-3 rounded-lg ${reply.is_admin ? 'bg-blue-50 ml-8' : 'bg-gray-50'}`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <ShieldCheck className={reply.is_admin ? "text-blue-600" : "text-gray-500"} />
+                    <span className="font-medium">
+                      {reply.is_admin ? 'Admin' : 'User'}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(reply.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <p>{reply.message}</p>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+            <div className="flex gap-2">
+              <Textarea
+                value={replyMsg}
+                onChange={(e) => setReplyMsg(e.target.value)}
+                placeholder="Type your reply..."
+                rows={2}
+              />
+              <Button onClick={() => handleReply(selectedTicket.id)}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
