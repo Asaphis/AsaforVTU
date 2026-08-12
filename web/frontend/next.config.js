@@ -6,16 +6,6 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   images: {
     unoptimized: true,
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
-      },
-    ],
   },
   typescript: {
     ignoreBuildErrors: true,
@@ -38,17 +28,15 @@ const nextConfig = {
     const isProd = process.env.NODE_ENV === 'production';
     const csp = [
       "default-src 'self'",
-      "img-src 'self' data: https://firebasestorage.googleapis.com https://lh3.googleusercontent.com",
+      "img-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
       isProd ? "script-src 'self' 'unsafe-inline' blob:" : "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
       "font-src 'self' data:",
       [
         "connect-src",
         "'self'",
-        "https://firestore.googleapis.com",
-        "https://identitytoolkit.googleapis.com",
-        "https://securetoken.googleapis.com",
         "http://localhost:5000",
+        "https://vtuapi.ferixas.com",
         "https://asaforvtubackend.onrender.com",
       ].join(' '),
       "frame-ancestors 'self'",
