@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const paymentService = require('../services/paymentService');
+const flutterwaveService = require('../services/flutterwaveService');
 
 const router = express.Router();
 
@@ -26,7 +27,6 @@ router.post('/initiate', async (req, res) => {
     });
 
     // Generate Flutterwave payment link
-    const flutterwaveService = require('../services/flutterwaveService');
     const redirectUrl = process.env.FLW_REDIRECT_URL || 'https://vtu.ferixas.com/payment-complete';
     
     const flutterwaveResult = await flutterwaveService.initiatePayment(
@@ -74,16 +74,11 @@ router.post('/verify', async (req, res) => {
     }
 
     // Verify with Flutterwave
-    const flutterwaveService = require('../services/flutterwaveService');
-    const verifyResult = await flutterwaveService.verifyPayment(tx_ref);
+    const verifyResult = await flutterwaveService.creditIfValid(tx_ref, payment.amount, req.user.id);
 
-    if (verifyResult.status === 'successful') {
-      await paymentService.processSuccessfulPayment(payment.id, {
-        flw_ref: verifyResult.flw_ref
-      });
+    if (verifyResult.success) {
       res.json({ success: true, message: 'Payment verified and processed' });
     } else {
-      await paymentService.processFailedPayment(payment.id, 'Payment verification failed');
       res.status(400).json({ success: false, message: 'Payment verification failed' });
     }
   } catch (error) {
