@@ -3,25 +3,41 @@
 import { useState } from 'react';
 import { Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useService } from '@/hooks/useServices';
-import { processTransaction } from '@/lib/services';
+import { getServices, processTransaction } from '@/lib/services';
 import TransactionPinModal from '@/components/dashboard/TransactionPinModal';
 
 export default function ElectricityPage() {
   const { user, refreshUser } = useAuth();
-  const { service, loading, error } = useService('electricity');
-  
+  const [services, setServices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [provider, setProvider] = useState('ikedc');
   const [meterNumber, setMeterNumber] = useState('');
   const [amount, setAmount] = useState('');
   const [showPinModal, setShowPinModal] = useState(false);
   const [processing, setProcessing] = useState(false);
 
+  useEffect(() => {
+    const loadServices = async () => {
+      try {
+        const allServices = await getServices();
+        // Find electricity service
+        const electricityService = allServices.find(s => s.slug === 'electricity' || s.category?.toLowerCase().includes('electricity'));
+        setServices(electricityService ? [electricityService] : allServices);
+      } catch (e) {
+        console.error('Failed to load services:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadServices();
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     
-    if (user.walletBalance < Number(amount)) {
+    const balance = user.walletBalance || 0;
+    if (balance < Number(amount)) {
       alert('Insufficient wallet balance');
       return;
     }
@@ -30,14 +46,20 @@ export default function ElectricityPage() {
   };
 
   const onPinSuccess = async () => {
-    if (!user || !service) return;
+    if (!user) return;
     setProcessing(true);
     try {
       const result = await processTransaction(
         user.uid,
         Number(amount),
         'electricity',
-        { provider, meterNumber, serviceName: service.name }
+        { 
+          customerId: meterNumber,
+          serviceId: provider,
+          variationId: 'electricity', // This would come from API
+          meterNumber,
+          requestId: `ELEC_${Date.now()}`
+        }
       );
       
       if (result.success) {
@@ -56,8 +78,9 @@ export default function ElectricityPage() {
   };
 
   if (loading) return <div className="p-8 text-center">Loading service...</div>;
-  if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
-  if (!service) return <div className="p-8 text-center">Service not available</div>;
+  if (services.length === 0) return <div className="p-8 text-center text-red-500">Electricity service not available</div>;
+
+  const service = services[0];
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -66,7 +89,7 @@ export default function ElectricityPage() {
           <Zap size={40} />
         </div>
         <h1 className="text-4xl font-black text-[#0A1F44] tracking-tight uppercase">
-          {service.name}
+          {service.name || 'Electricity'}
         </h1>
         <p className="text-gray-400 font-medium mt-2">{service.description || 'Pay electricity bills across all networks instantly.'}</p>
       </div>
@@ -82,15 +105,15 @@ export default function ElectricityPage() {
               onChange={(e) => setProvider(e.target.value)}
               className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0A1F44]/20 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44] appearance-none"
             >
-              <option value="ikedc">Ikeja Electric (IKEDC)</option>
-              <option value="ekedc">Eko Electric (EKEDC)</option>
-              <option value="aedc">Abuja Electric (AEDC)</option>
-              <option value="ibedc">Ibadan Electric (IBEDC)</option>
-              <option value="kano">Kano Electric (KEDCO)</option>
-              <option value="ph">Port Harcourt Electric (PHED)</option>
-              <option value="jos">Jos Electric (JED)</option>
-              <option value="kaduna">Kaduna Electric (KAEDCO)</option>
-              <option value="enugu">Enugu Electric (EEDC)</option>
+              <option value="ikeja-electric">Ikeja Electric (IKEDC)</option>
+              <option value="eko-electric">Eko Electric (EKEDC)</option>
+              <option value="abuja-electric">Abuja Electric (AEDC)</option>
+              <option value="ibadan-electric">Ibadan Electric (IBEDC)</option>
+              <option value="kano-electric">Kano Electric (KEDCO)</option>
+              <option value="portharcourt-electric">Port Harcourt Electric (PHED)</option>
+              <option value="jos-electric">Jos Electric (JED)</option>
+              <option value="kaduna-electric">Kaduna Electric (KAEDCO)</option>
+              <option value="enugu-electric">Enugu Electric (EEDC)</option>
             </select>
           </div>
 
@@ -121,13 +144,13 @@ export default function ElectricityPage() {
 
           <div className="p-5 rounded-2xl bg-[#0A1F44]/5 border border-[#0A1F44]/5 flex justify-between items-center">
             <span className="text-[10px] font-black text-[#0A1F44]/60 uppercase tracking-widest">Available Balance</span>
-            <span className="text-lg font-black text-[#0A1F44]">₦{user?.walletBalance?.toLocaleString() ?? '0.00'}</span>
+            <span className="text-lg font-black text-[#0A1F44]">₦{(user?.walletBalance || 0).toLocaleString()}</span>
           </div>
         </div>
 
         <button 
           type="submit" 
-          disabled={!service.enabled || processing}
+          disabled={!service.is_active || processing}
           className="w-full py-5 rounded-2xl bg-[#0A1F44] text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-[#0A1F44]/90 transition-all shadow-xl shadow-blue-900/20 disabled:opacity-30 relative z-10"
         >
           {processing ? 'PROCESSING...' : 'PAY BILL NOW'}

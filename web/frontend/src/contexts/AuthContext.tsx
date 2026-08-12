@@ -1,25 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { 
-  User as FirebaseUser, 
-  onAuthStateChanged, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut as firebaseSignOut,
-  sendEmailVerification as firebaseSendEmailVerification,
-  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
-  updateProfile as firebaseUpdateProfile,
-  updateEmail as firebaseUpdateEmail,
-  updatePassword as firebaseUpdatePassword,
-  reauthenticateWithCredential,
-  EmailAuthProvider
-} from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
-import { generateHash } from '@/lib/crypto';
-import { getWalletBalance } from '@/lib/services';
 import { UserProfile, SignUpData, LoginCredentials, AuthState, AuthContextType } from '@/types/auth';
+import { signIn, signUp, signOut, getCurrentUser, isAuthenticated } from '@/lib/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -39,127 +22,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initialized: false,
   });
 
-  const loadUserData = useCallback(async (firebaseUser: FirebaseUser | null) => {
-    console.log('[Auth] loadUserData triggered. User:', firebaseUser?.uid || 'null');
+  const loadUserData = useCallback(async () => {
+    console.log('[Auth] Loading user data...');
     
-    if (!firebaseUser) {
-      setState(prev => ({ ...prev, user: null, loading: false, initialized: true }));
-      return;
-    }
-
     try {
-      if (!db) {
-        console.error('[Auth] Firestore (db) is null. Firebase failed to initialize.');
-        throw new Error('Database connection failed. Please check your configuration.');
-      }
-
-      console.log('[Auth] Attempting to fetch user doc from Firestore for UID:', firebaseUser.uid);
-      const userRef = doc(db, 'users', firebaseUser.uid);
+      const token = localStorage.getItem('access_token');
       
-      let userDoc;
-      try {
-        userDoc = await getDoc(userRef);
-      } catch (getDocError: any) {
-        console.error('[Auth] Firestore getDoc failed:', getDocError);
-        // If it's a permission error, it might be due to rules or key issues
-        if (getDocError.code === 'permission-denied') {
-          throw new Error('Permission denied. Please ensure your Firestore rules are published and your API key is valid.');
-        }
-        throw getDocError;
+      if (!token) {
+        setState(prev => ({ ...prev, user: null, loading: false, initialized: true }));
+        return;
       }
 
-      if (userDoc.exists()) {
-        const userData = userDoc.data() as Omit<UserProfile, 'uid'>;
-        console.log('[Auth] Firestore user data loaded successfully');
-        
-        // Always use Firebase Auth's emailVerified status, not the Firestore value
-        // This ensures verified users can access the dashboard even if Firestore is outdated
-        const isEmailVerified = firebaseUser.emailVerified;
-        
-        let finalUserData = { ...userData, isVerified: isEmailVerified, emailVerified: isEmailVerified };
-        
+      const user = await getCurrentUser();
+      
+      if (user) {
+        // Fetch wallet balance from backend
         try {
-          console.log('[Auth] Fetching fresh wallet balance from backend...');
-          const token = await firebaseUser.getIdToken();
+          const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://vtuapi.ferixas.com';
+          const walletRes = await fetch(`${backendUrl}/api/wallet`, {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          });
           
-          const backendBalances = await Promise.race([
-            getWalletBalance(token),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Backend Timeout')), 5000))
-          ]) as any;
-
-          if (backendBalances) {
-            console.log('[Auth] Backend sync successful');
-            finalUserData = {
-              ...finalUserData,
-              walletBalance: backendBalances.mainBalance,
-              cashbackBalance: backendBalances.cashbackBalance,
-              referralBalance: backendBalances.referralBalance,
-            };
+          if (walletRes.ok) {
+            const walletData = await walletRes.json();
+            user.walletBalance = walletData.main_balance;
+            user.cashbackBalance = walletData.cashback_balance;
+            user.referralBalance = walletData.referral_balance;
           }
-
-          // Sync email verified status to Firestore if needed
-          if (isEmailVerified && !finalUserData.isVerified) {
-            await updateDoc(userRef, { isVerified: true, emailVerified: true });
-            console.log('[Auth] Synced verified status to Firestore');
-          }
-        } catch (e: any) {
-          console.warn('[Auth] Backend sync failed or timed out:', e.message);
+        } catch (e) {
+          console.warn('[Auth] Failed to fetch wallet balance:', e);
         }
 
         setState(prev => ({
           ...prev,
-          user: { uid: firebaseUser.uid, ...finalUserData },
+          user,
           loading: false,
           initialized: true,
           error: null
         }));
       } else {
-        // AUTO-HEAL: If user exists in Auth but not in Firestore, create the profile automatically
-        console.warn('[Auth] User exists in Auth but missing Firestore doc. Creating one now...');
-        
-        const newUser: Omit<UserProfile, 'uid'> = {
-          email: firebaseUser.email || '',
-          displayName: firebaseUser.displayName || '',
-          fullName: firebaseUser.displayName || '',
-          username: firebaseUser.email?.split('@')[0] || 'user_' + firebaseUser.uid.substring(0, 5),
-          phone: firebaseUser.phoneNumber || '',
-          pinHash: '',
-          walletBalance: 0,
-          referralBalance: 0,
-          cashbackBalance: 0,
-          accountStatus: 'active',
-          isVerified: firebaseUser.emailVerified,
-          emailVerified: firebaseUser.emailVerified,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          metadata: {
-            creationTime: firebaseUser.metadata.creationTime || new Date().toISOString(),
-            lastSignInTime: firebaseUser.metadata.lastSignInTime || new Date().toISOString(),
-          }
-        };
-
-        try {
-          await setDoc(userRef, newUser);
-          console.log('[Auth] Firestore document created automatically');
-        } catch (setDocError: any) {
-          console.error('[Auth] Failed to auto-create user document:', setDocError);
-          throw new Error('Account exists but could not initialize profile. Check Firestore permissions.');
-        }
-
-        setState(prev => ({
-          ...prev,
-          user: { uid: firebaseUser.uid, ...newUser },
-          loading: false,
-          initialized: true,
-          error: null
-        }));
+        // Token invalid, clear it
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        setState(prev => ({ ...prev, user: null, loading: false, initialized: true }));
       }
     } catch (error: any) {
       console.error('[Auth] Critical loading error:', error);
-      
       setState(prev => ({
         ...prev,
-        error: error.message || 'Synchronization failed',
+        error: error.message || 'Authentication failed',
         loading: false,
         initialized: true
       }));
@@ -167,89 +82,110 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!auth) {
-      console.warn('[Auth] Firebase Auth is not initialized. Check environment variables.');
-      setState(prev => ({ ...prev, loading: false, initialized: true }));
-      return;
-    }
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      loadUserData(firebaseUser);
-    });
-    return () => unsubscribe();
+    loadUserData();
   }, [loadUserData]);
 
-  const signIn = async ({ email, password }: LoginCredentials) => {
+  const login = async ({ email, password }: LoginCredentials) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      await userCredential.user.reload();
-      if (!userCredential.user.emailVerified) throw new Error('Please verify your email.');
-      await loadUserData(userCredential.user);
-      return userCredential.user;
+      const user = await signIn(email, password);
+      
+      // Fetch wallet balance
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://vtuapi.ferixas.com';
+        const walletRes = await fetch(`${backendUrl}/api/wallet`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          }
+        });
+        
+        if (walletRes.ok) {
+          const walletData = await walletRes.json();
+          user.walletBalance = walletData.main_balance;
+          user.cashbackBalance = walletData.cashback_balance;
+          user.referralBalance = walletData.referral_balance;
+        }
+      } catch (e) {
+        console.warn('[Auth] Failed to fetch wallet balance after login:', e);
+      }
+
+      setState(prev => ({
+        ...prev,
+        user,
+        loading: false,
+        error: null
+      }));
+      
+      return user;
     } catch (error: any) {
       setState(prev => ({ ...prev, error: error.message, loading: false }));
       throw error;
     }
   };
 
-  const signUp = async (data: SignUpData) => {
+  const signUpFn = async (data: SignUpData) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      const pinHash = await generateHash(data.transactionPin);
-      const userDoc: Omit<UserProfile, 'uid'> = {
-        email: data.email,
-        displayName: data.fullName,
-        fullName: data.fullName,
-        username: data.username,
-        phone: data.phone,
-        pinHash,
+      const result = await signUp(data);
+      
+      // Create user object from response
+      const user: UserProfile = {
+        uid: result.user.id,
+        email: result.user.email,
+        displayName: result.user.full_name,
+        fullName: result.user.full_name,
+        username: result.user.username,
+        phone: result.user.phone,
         walletBalance: 0,
         referralBalance: 0,
         cashbackBalance: 0,
         accountStatus: 'active',
-        isVerified: false,
-        emailVerified: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        metadata: {
-          creationTime: userCredential.user.metadata.creationTime || new Date().toISOString(),
-          lastSignInTime: userCredential.user.metadata.lastSignInTime || new Date().toISOString(),
-        }
+        isVerified: result.user.email_verified,
+        emailVerified: result.user.email_verified,
+        createdAt: result.user.created_at,
+        updatedAt: result.user.created_at,
+        metadata: {}
       };
-      await setDoc(doc(db, 'users', userCredential.user.uid), userDoc);
-      await firebaseSendEmailVerification(userCredential.user);
-      setState(prev => ({ ...prev, user: { uid: userCredential.user.uid, ...userDoc }, loading: false }));
-      return userCredential.user;
+
+      setState(prev => ({
+        ...prev,
+        user,
+        loading: false,
+        error: null
+      }));
+      
+      return result;
     } catch (error: any) {
       setState(prev => ({ ...prev, error: error.message, loading: false }));
       throw error;
     }
   };
 
-  const signOut = async () => {
-    await firebaseSignOut(auth);
-    setState(prev => ({ ...prev, user: null, error: null }));
+  const logoutFn = async () => {
+    try {
+      await signOut();
+      setState(prev => ({ ...prev, user: null, loading: false, initialized: true }));
+    } catch (error: any) {
+      console.error('[Auth] Logout error:', error);
+      // Still clear state even if logout fails
+      setState(prev => ({ ...prev, user: null, loading: false, initialized: true }));
+    }
   };
+
+  const refreshUser = useCallback(async () => {
+    await loadUserData();
+  }, [loadUserData]);
 
   const value: AuthContextType = {
     user: state.user,
     loading: state.loading,
     error: state.error,
     initialized: state.initialized,
-    signUp,
-    signIn,
-    signOut,
-    resetPassword: async (email: string) => { await firebaseSendPasswordResetEmail(auth, email); },
-    verifyEmail: async () => { if (auth.currentUser) await firebaseSendEmailVerification(auth.currentUser); },
-    verifyTransactionPin: async (pin: string) => state.user ? (await generateHash(pin)) === state.user.pinHash : false,
-    updateProfile: async (data: any) => {
-      if (!auth.currentUser) return;
-      const updates = { ...data, updatedAt: new Date().toISOString() };
-      await updateDoc(doc(db, 'users', auth.currentUser.uid), updates);
-      setState(prev => ({ ...prev, user: prev.user ? { ...prev.user, ...updates } : null }));
-    },
-    refreshUser: async () => { if (auth.currentUser) await loadUserData(auth.currentUser); },
+    signIn: login,
+    signUp: signUpFn,
+    signOut: logoutFn,
+    refreshUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

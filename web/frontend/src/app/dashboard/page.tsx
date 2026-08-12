@@ -5,28 +5,23 @@ import { useRouter } from 'next/navigation';
 import { Smartphone, Wifi, Tv, Zap, CreditCard, GraduationCap, Eye, EyeOff, ChevronLeft, ChevronRight, Pause, Play, Megaphone } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { doc, runTransaction } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { getWalletHistory, getWalletBalance, getAnnouncements } from '@/lib/services';
+import { getWalletHistory, getWalletBalance, getAnnouncements, transferToMain } from '@/lib/services';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { useWalletListener } from '@/hooks/useWalletListener';
 
 export default function Dashboard() {
   const router = useRouter();
   const { user, loading, initialized, refreshUser } = useAuth();
-  const [showMain, setShowMain] = useState(true); // Show by default
-  const [showCashback, setShowCashback] = useState(true); // Show by default
-  const [showReferral, setShowReferral] = useState(true); // Show by default
+  const [showMain, setShowMain] = useState(true);
+  const [showCashback, setShowCashback] = useState(true);
+  const [showReferral, setShowReferral] = useState(true);
   const [processingWithdrawal, setProcessingWithdrawal] = useState(false);
   const { addNotification } = useNotifications();
   const [recent, setRecent] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [currentAnnIndex, setCurrentAnnIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<any>(null);
   
-  // Use real-time wallet listener for live balance updates (polls every 10 seconds)
-  const { balance: walletBalance, refresh: refreshBalance } = useWalletListener(!!user);
-
   const nextAnnouncement = useCallback(() => {
     setAnnouncements((prev: any[]) => {
       if (prev.length <= 1) return prev;
@@ -54,17 +49,15 @@ export default function Dashboard() {
       try {
         const data = await getAnnouncements();
         const filtered = data
-          .filter((a: any) => a.active !== false)
+          .filter((a: any) => a.is_active !== false)
           .sort((a: any, b: any) => {
             const getTime = (val: any) => {
               if (!val) return 0;
               if (typeof val === 'number') return val;
               if (typeof val === 'string') return new Date(val).getTime();
-              if (val.toDate) return val.toDate().getTime();
-              if (val.seconds) return val.seconds * 1000;
               return new Date(val).getTime() || 0;
             };
-            return getTime(b.createdAt) - getTime(a.createdAt);
+            return getTime(b.created_at) - getTime(a.created_at);
           })
           .slice(0, 3);
         setAnnouncements(filtered);
@@ -74,7 +67,6 @@ export default function Dashboard() {
     };
     if (user) {
       loadAnnouncements();
-      // Refresh announcements every 30 seconds
       const interval = setInterval(loadAnnouncements, 30000);
       return () => clearInterval(interval);
     }
@@ -82,7 +74,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!initialized || loading) return;
-    if (user && !user.isVerified) {
+    if (user && !user.emailVerified) {
       router.push('/verify');
     }
     const sm = sessionStorage.getItem('showMainBalance') === 'true';
@@ -93,14 +85,14 @@ export default function Dashboard() {
     setShowReferral(sr);
   }, [initialized, user, loading, router]);
 
-  // Fetch wallet balance from backend (single source of truth)
+  // Fetch wallet balance from backend
   useEffect(() => {
     const fetchBalance = async () => {
       if (!user) return;
       try {
         const balance = await getWalletBalance();
         if (balance) {
-          // Note: Real-time listener from useWalletListener will keep this updated
+          setWalletBalance(balance);
         }
       } catch (e) {
         console.error('Failed to fetch wallet balance:', e);
@@ -109,6 +101,9 @@ export default function Dashboard() {
     
     if (user) {
       fetchBalance();
+      // Refresh balance every 10 seconds
+      const interval = setInterval(fetchBalance, 10000);
+      return () => clearInterval(interval);
     }
   }, [user]);
 
@@ -128,43 +123,27 @@ export default function Dashboard() {
   const handleWithdraw = async (type: 'referral' | 'cashback') => {
     if (!user || processingWithdrawal) return;
     
-    const amount = type === 'referral' ? (walletBalance?.referralBalance ?? 0) : (walletBalance?.cashbackBalance ?? 0);
+    const amount = type === 'referral' ? (walletBalance?.referral_balance ?? 0) : (walletBalance?.cashback_balance ?? 0);
     if (amount <= 0) {
       addNotification('warning', 'Insufficient balance', 'No funds available to withdraw');
       return;
     }
 
     if (!confirm(`Are you sure you want to withdraw ₦${amount.toLocaleString()} to your main wallet?`)) {
-        return;
+      return;
     }
 
     setProcessingWithdrawal(true);
     try {
-      await runTransaction(db, async (transaction: any) => {
-        const userRef = doc(db, 'users', user.uid);
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists()) throw new Error("User does not exist!");
-
-        const userData: any = userDoc.data();
-        const currentBalance = type === 'referral' ? (userData.referralBalance || 0) : (userData.cashbackBalance || 0);
-        
-        if (currentBalance < amount) {
-            throw new Error("Insufficient balance during transaction");
-        }
-
-        const newMainBalance = (userData.walletBalance || 0) + amount;
-        
-        transaction.update(userRef, {
-            [type === 'referral' ? 'referralBalance' : 'cashbackBalance']: 0,
-            walletBalance: newMainBalance
-        });
-      });
+      await transferToMain(amount, type);
       addNotification('success', 'Withdrawal successful', `₦${amount.toLocaleString()} moved to main wallet`);
-      await refreshBalance?.();
       await refreshUser();
-    } catch (error) {
+      // Refresh wallet balance
+      const balance = await getWalletBalance();
+      if (balance) setWalletBalance(balance);
+    } catch (error: any) {
       console.error("Withdrawal failed: ", error);
-      addNotification('error', 'Withdrawal failed', 'Please try again');
+      addNotification('error', 'Withdrawal failed', error.message || 'Please try again');
     } finally {
       setProcessingWithdrawal(false);
     }
@@ -212,232 +191,163 @@ export default function Dashboard() {
                   <div 
                     key={ann.id}
                     className={`absolute inset-0 flex flex-col justify-center transition-all duration-700 ease-in-out ${
-                      index === currentAnnIndex 
-                        ? 'opacity-100 translate-y-0' 
-                        : index < currentAnnIndex 
-                          ? 'opacity-0 -translate-y-full' 
-                          : 'opacity-0 translate-y-full'
+                      index === currentAnnIndex ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
                     }`}
                   >
-                    <h5 className="font-bold text-xs text-[#C58A17] uppercase tracking-[0.2em] mb-0.5">{ann.title}</h5>
-                    <p className="text-base text-blue-50/90 line-clamp-1 leading-tight font-medium">{ann.content}</p>
+                    <h3 className="font-bold text-sm">{ann.title}</h3>
+                    <p className="text-xs text-white/80 mt-1 line-clamp-2">{ann.content}</p>
                   </div>
                 ))}
               </div>
-
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <div className="flex gap-1">
-                  {announcements.map((_: any, i: number) => (
-                    <div 
-                      key={i} 
-                      className={`h-1.5 rounded-full transition-all duration-300 ${i === currentAnnIndex ? 'w-6 bg-[#C58A17]' : 'w-1.5 bg-white/20'}`} 
-                    />
-                  ))}
+              
+              {announcements.length > 1 && (
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => prevAnnouncement()}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button 
+                    onClick={() => setIsPaused(!isPaused)}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    {isPaused ? <Play size={16} /> : <Pause size={16} />}
+                  </button>
+                  <button 
+                    onClick={() => nextAnnouncement()}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
-                {announcements.length > 1 && (
-                  <div className="flex items-center gap-2 ml-3">
-                    <button onClick={prevAnnouncement} className="p-1 hover:bg-white/10 rounded-full transition-colors"><ChevronLeft size={14} /></button>
-                    <button onClick={nextAnnouncement} className="p-1 hover:bg-white/10 rounded-full transition-colors"><ChevronRight size={14} /></button>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-6xl">
-          <div className="lg:col-span-7 bg-[#0B4F6C] text-white rounded-[1.5rem] p-8 shadow-lg relative overflow-hidden group">
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-4">
-                <p className="text-blue-100/60 font-bold uppercase tracking-widest text-[9px]">Primary Balance</p>
-              </div>
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl lg:text-3xl font-black tracking-tight">
-                  {showMain ? <span className="flex items-baseline gap-1.5"><span className="text-lg font-medium text-blue-200/50">₦</span>{(user.walletBalance || 0).toLocaleString()}</span> : '••••••'}
-                </h2>
-                <button 
-                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all active:scale-90" 
-                  onClick={() => { setShowMain(s => !s); sessionStorage.setItem('showMainBalance', String(!showMain)); }}
-                >
-                  {showMain ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="dashboard-card border-none shadow-brand p-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-[#0A1F44]/5 rounded-full -mr-24 -mt-24 blur-3xl" />
               
-              <div className="mt-8 flex gap-3">
-                <Link href="/dashboard/wallet" className="bg-[#C58A17] hover:bg-[#A67513] text-white py-3 px-6 rounded-xl text-[10px] uppercase tracking-widest font-bold transition-all flex items-center gap-2 shadow-lg shadow-[#C58A17]/20">
-                  Add Money <ChevronRight size={14} />
-                </Link>
-                <Link href="/dashboard/transactions" className="bg-white/10 hover:bg-white/15 px-6 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border border-white/10">
-                  History
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-5 bg-white rounded-[1.5rem] p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-[#0B4F6C]">
-                <CreditCard size={20} />
-              </div>
-              <div>
-                <h3 className="font-bold text-[#0B4F6C] text-sm">Security ID</h3>
-                <p className="text-[10px] text-[#C58A17] font-bold">@{user.username}</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
-                <span className="block text-[8px] text-gray-400 font-bold uppercase mb-1">Status</span>
-                <span className="text-[9px] font-black text-[#4CAF50] uppercase">{user.accountStatus}</span>
-              </div>
-              <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
-                <span className="block text-[8px] text-gray-400 font-bold uppercase mb-1">Identity</span>
-                <span className={`text-[9px] font-black uppercase ${user.isVerified ? 'text-[#0B4F6C]' : 'text-[#C58A17]'}`}>
-                  {user.isVerified ? 'Verified' : 'Unverified'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl">
-          <div className="bg-white rounded-[1.5rem] p-6 border border-gray-100 shadow-sm group">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="font-bold text-[#0B4F6C] text-lg">Savings</h3>
-                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Rewards</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-gray-50 text-[#4CAF50] flex items-center justify-center">
-                <Play size={20} />
-              </div>
-            </div>
-            <div className="flex items-center justify-between mb-6">
-              <p className="text-xl font-bold text-[#0B4F6C]">
-                {showCashback ? <span className="text-base text-gray-300 mr-1">₦</span> : ''}
-                {showCashback ? (walletBalance?.cashbackBalance || 0).toLocaleString() : '••••••'}
-              </p>
-              <button className="p-2 text-gray-400 hover:text-[#0B4F6C]" onClick={() => { setShowCashback(s => !s); sessionStorage.setItem('showCashbackBalance', String(!showCashback)); }}>
-                {showCashback ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            <button 
-              onClick={() => handleWithdraw('cashback')}
-              className="w-full py-3.5 rounded-xl bg-[#0B4F6C] text-white font-bold text-[10px] uppercase tracking-widest hover:bg-[#0D2B5D] transition-all disabled:opacity-30"
-              disabled={processingWithdrawal || (walletBalance?.cashbackBalance || 0) <= 0}
-            >
-              MOVE TO PRIMARY
-            </button>
-          </div>
-
-          <div className="bg-white rounded-[1.5rem] p-6 border border-gray-100 shadow-sm group">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="font-bold text-[#0B4F6C] text-lg">Earning</h3>
-                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Revenue</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-gray-50 text-[#C58A17] flex items-center justify-center">
-                <GraduationCap size={20} />
-              </div>
-            </div>
-            <div className="flex items-center justify-between mb-6">
-              <p className="text-xl font-bold text-[#0B4F6C]">
-                {showReferral ? <span className="text-base text-gray-300 mr-1">₦</span> : ''}
-                {showReferral ? (walletBalance?.referralBalance || 0).toLocaleString() : '••••••'}
-              </p>
-              <button className="p-2 text-gray-400 hover:text-[#0B4F6C]" onClick={() => { setShowReferral(s => !s); sessionStorage.setItem('showReferralBalance', String(!showReferral)); }}>
-                {showReferral ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            <button 
-              onClick={() => handleWithdraw('referral')}
-              className="w-full py-3.5 rounded-xl bg-[#C58A17] text-white font-bold text-[10px] uppercase tracking-widest hover:bg-[#A67513] transition-all disabled:opacity-30"
-              disabled={processingWithdrawal || (walletBalance?.referralBalance || 0) <= 0}
-            >
-              MOVE TO PRIMARY
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-end justify-between mb-10">
-            <div>
-              <h3 className="text-4xl font-black text-[#0B4F6C] tracking-tighter">Quick Services</h3>
-              <div className="h-1.5 w-12 bg-[#C58A17] rounded-full mt-2" />
-            </div>
-            <Link href="/dashboard/services" className="text-xs font-black text-[#0B4F6C] hover:text-[#C58A17] transition-colors uppercase tracking-[0.2em] border-b-2 border-transparent hover:border-[#C58A17] pb-1">
-              All Services
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-            {actions.map(({ icon: Icon, label, href }) => (
-              <Link key={label} href={href} className="service-card group py-10">
-                <div className="service-icon group-hover:shadow-2xl group-hover:shadow-[#C58A17]/20 group-hover:-translate-y-2 transition-all duration-500">
-                  <Icon size={36} />
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-black text-[#0A1F44]">Wallet Balance</h2>
+                  <button 
+                    onClick={() => {
+                      setShowMain(!showMain);
+                      sessionStorage.setItem('showMainBalance', String(!showMain));
+                    }}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    {showMain ? <Eye size={20} className="text-[#0A1F44]" /> : <EyeOff size={20} className="text-gray-400" />}
+                  </button>
                 </div>
-                <p className="font-black text-[#0B4F6C] uppercase tracking-widest text-[10px] mt-2">{label}</p>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div className="dashboard-card border-none shadow-brand relative overflow-hidden">
-          <div className="tech-pattern absolute inset-0 pointer-events-none" />
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-10">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#0B4F6C]/5 flex items-center justify-center text-[#0B4F6C]">
-                  <Zap size={28} />
+                
+                <div className="text-5xl font-black text-[#0A1F44] mb-2">
+                  {showMain ? `₦${(walletBalance?.main_balance || user?.walletBalance || 0).toLocaleString()}` : '•••••••••'}
                 </div>
-                <div>
-                  <h3 className="text-3xl font-black text-[#0B4F6C] tracking-tighter">Recent Logs</h3>
-                  <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1">Activity Tracking</p>
-                </div>
+                <p className="text-sm text-gray-400 font-medium">Main Balance</p>
               </div>
-              <Link href="/dashboard/transactions" className="w-12 h-12 flex items-center justify-center hover:bg-gray-50 rounded-2xl transition-colors border border-gray-100">
-                <ChevronRight size={24} className="text-gray-400" />
-              </Link>
             </div>
 
-            {recent.length === 0 ? (
-              <div className="text-center py-24 bg-gray-50/50 rounded-[2.5rem] border-2 border-dashed border-gray-100 relative group overflow-hidden">
-                <div className="tech-pattern absolute inset-0 opacity-[0.02]" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="dashboard-card border-none shadow-brand p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#C58A17]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+                
                 <div className="relative z-10">
-                  <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm group-hover:scale-110 transition-transform duration-500">
-                    <Pause size={40} className="text-gray-200" />
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">Cashback</h3>
+                    <button 
+                      onClick={() => {
+                        setShowCashback(!showCashback);
+                        sessionStorage.setItem('showCashbackBalance', String(!showCashback));
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      {showCashback ? <Eye size={16} className="text-[#C58A17]" /> : <EyeOff size={16} className="text-gray-400" />}
+                    </button>
                   </div>
-                  <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-[10px]">Encryption Secure • No Data</p>
+                  
+                  <div className="text-2xl font-black text-[#C58A17] mb-1">
+                    {showCashback ? `₦${(walletBalance?.cashback_balance || user?.cashbackBalance || 0).toLocaleString()}` : '••••'}
+                  </div>
+                  
+                  <button 
+                    onClick={() => handleWithdraw('cashback')}
+                    disabled={processingWithdrawal || (walletBalance?.cashback_balance || user?.cashbackBalance || 0) <= 0}
+                    className="mt-3 w-full py-2 rounded-xl bg-[#C58A17]/10 text-[#C58A17] font-black text-xs uppercase tracking-widest hover:bg-[#C58A17]/20 transition-all disabled:opacity-30"
+                  >
+                    {processingWithdrawal ? 'Withdrawing...' : 'Withdraw to Main'}
+                  </button>
                 </div>
               </div>
+
+              <div className="dashboard-card border-none shadow-brand p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#0A1F44]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+                
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">Referral</h3>
+                    <button 
+                      onClick={() => {
+                        setShowReferral(!showReferral);
+                        sessionStorage.setItem('showReferralBalance', String(!showReferral));
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      {showReferral ? <Eye size={16} className="text-[#0A1F44]" /> : <EyeOff size={16} className="text-gray-400" />}
+                    </button>
+                  </div>
+                  
+                  <div className="text-2xl font-black text-[#0A1F44] mb-1">
+                    {showReferral ? `₦${(walletBalance?.referral_balance || user?.referralBalance || 0).toLocaleString()}` : '••••'}
+                  </div>
+                  
+                  <button 
+                    onClick={() => handleWithdraw('referral')}
+                    disabled={processingWithdrawal || (walletBalance?.referral_balance || user?.referralBalance || 0) <= 0}
+                    className="mt-3 w-full py-2 rounded-xl bg-[#0A1F44]/10 text-[#0A1F44] font-black text-xs uppercase tracking-widest hover:bg-[#0A1F44]/20 transition-all disabled:opacity-30"
+                  >
+                    {processingWithdrawal ? 'Withdrawing...' : 'Withdraw to Main'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="dashboard-card border-none shadow-brand p-6">
+              <h3 className="text-lg font-black text-[#0A1F44] mb-4">Quick Actions</h3>
+              <div className="grid grid-cols-5 gap-4">
+                {actions.map((action) => (
+                  <Link key={action.href} href={action.href} className="group">
+                    <div className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-gray-50 border-2 border-transparent group-hover:border-[#0A1F44]/20 group-hover:bg-white transition-all">
+                      <div className="w-12 h-12 rounded-xl bg-[#0A1F44] flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+                        <action.icon size={20} />
+                      </div>
+                      <span className="text-xs font-black text-[#0A1F44] text-center">{action.label}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="dashboard-card border-none shadow-brand p-6">
+            <h3 className="text-lg font-black text-[#0A1F44] mb-4">Recent Transactions</h3>
+            {recent.length === 0 ? (
+              <p className="text-gray-400 text-sm">No recent transactions</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {recent.map((tx: any) => (
-                  <div key={tx.id} className="flex items-center justify-between p-5 rounded-[2rem] hover:bg-gray-50 transition-all duration-300 border border-transparent hover:border-gray-100 group">
-                    <div className="flex items-center gap-5">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-inner ${
-                        tx.type === 'credit' 
-                          ? 'bg-[#4CAF50]/5 text-[#4CAF50] group-hover:bg-[#4CAF50]/10' 
-                          : 'bg-red-50 text-red-500 group-hover:bg-red-100'
-                      }`}>
-                        {tx.type === 'credit' ? <ChevronRight size={24} className="-rotate-90" /> : <ChevronRight size={24} className="rotate-90" />}
-                      </div>
-                      <div>
-                        <p className="text-lg font-black text-[#0B4F6C] leading-none mb-2 tracking-tight">
-                          {tx.description || tx.walletType ? `${tx.type} ${tx.walletType ? `(${tx.walletType})` : ''}` : tx.type}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-gray-200" />
-                          <p className="text-[10px] text-gray-400 font-black tracking-[0.1em] uppercase">{tx.reference}</p>
-                        </div>
-                      </div>
+                  <div key={tx.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+                    <div>
+                      <p className="text-sm font-bold text-[#0A1F44]">{tx.description || tx.type}</p>
+                      <p className="text-xs text-gray-400">{new Date(tx.created_at).toLocaleDateString()}</p>
                     </div>
-                    <div className="text-right">
-                      <p className={`text-2xl font-black tracking-tighter ${tx.type === 'credit' ? 'text-[#4CAF50]' : 'text-red-500'}`}>
-                        {tx.type === 'credit' ? '+' : '-'}₦{(tx.amount || 0).toLocaleString()}
-                      </p>
-                      <p className="text-[9px] text-gray-300 font-black uppercase tracking-[0.2em] mt-1.5">
-                        {tx.createdAt ? new Date(tx.createdAt._seconds ? tx.createdAt._seconds * 1000 : tx.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                      </p>
-                    </div>
+                    <span className={`text-sm font-black ${tx.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
+                      {tx.type === 'credit' ? '+' : '-'}₦{Number(tx.amount).toLocaleString()}
+                    </span>
                   </div>
                 ))}
               </div>
