@@ -18,7 +18,7 @@ function getBaseUrl(): string {
     return localUrl || "http://localhost:3001";
   }
   
-  return prodUrl || "https://asaforvtubackend.onrender.com";
+  return prodUrl || "https://vtuapi.ferixas.com";
 }
 
 async function getToken(): Promise<string> {

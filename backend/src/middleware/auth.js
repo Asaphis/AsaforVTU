@@ -14,10 +14,12 @@ const verifyToken = async (req, res, next) => {
 
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('[Auth Middleware] No token provided in Authorization header');
       return res.status(401).json({ error: 'Unauthorized: No token provided' });
     }
 
     const token = authHeader.split('Bearer ')[1];
+    console.log('[Auth Middleware] Verifying token for request:', req.path);
 
     // TEMPORARY: Test Token for E2E Testing
     if (token === 'TEST_TOKEN_B1Xb1wb13tNNUpG7nbai7GeSwyR2') {
@@ -26,12 +28,14 @@ const verifyToken = async (req, res, next) => {
         email: 'test_user@Asafor.com',
         email_verified: true
       };
+      console.log('[Auth Middleware] Using test token');
       return next();
     }
 
     try {
       const decodedToken = await auth.verifyIdToken(token);
       req.user = decodedToken;
+      console.log('[Auth Middleware] Token verified successfully for user:', decodedToken.email || decodedToken.uid);
       next();
     } catch (verifyError) {
       console.error('[Auth Middleware] Token verification failed:', {

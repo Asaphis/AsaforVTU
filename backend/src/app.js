@@ -20,6 +20,8 @@ const defaultOrigins = [
   'https://asaforvtuadminpanel.onrender.com',
   'https://asaforvtubackend.onrender.com',
   'https://vtu.ferixas.com',
+  'https://vtuportal.ferixas.com',
+  'https://vtuapi.ferixas.com',
   'http://localhost:3000',
   'http://localhost:5000',
   'http://localhost:3001',
