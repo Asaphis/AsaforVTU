@@ -23,24 +23,26 @@ import FinancePage from "@/pages/Finance";
 
 function Router() {
   return (
-    <DashboardLayout>
-      <Switch>
-        <Route path="/login" component={Login} />
-        <Route path="/" component={Dashboard} />
-        <Route path="/users" component={UsersPage} />
-        <Route path="/users/:uid" component={UserProfilePage} />
-        <Route path="/wallet" component={WalletPage} />
-        <Route path="/transactions" component={TransactionsPage} />
-        <Route path="/transactions/:id" component={TransactionDetailsPage} />
-        <Route path="/services" component={ServicesPage} />
-        <Route path="/finance" component={FinancePage} />
-        <Route path="/settings/api" component={ApiSettingsPage} />
-        <Route path="/profile" component={ProfilePage} />
-        <Route path="/support" component={SupportPage} />
-        <Route path="/logs" component={LogsPage} />
-        <Route component={NotFound} />
-      </Switch>
-    </DashboardLayout>
+    <Switch>
+      <Route path="/login" component={Login} />
+      <DashboardLayout>
+        <Switch>
+          <Route path="/" component={Dashboard} />
+          <Route path="/users" component={UsersPage} />
+          <Route path="/users/:uid" component={UserProfilePage} />
+          <Route path="/wallet" component={WalletPage} />
+          <Route path="/transactions" component={TransactionsPage} />
+          <Route path="/transactions/:id" component={TransactionDetailsPage} />
+          <Route path="/services" component={ServicesPage} />
+          <Route path="/finance" component={FinancePage} />
+          <Route path="/settings/api" component={ApiSettingsPage} />
+          <Route path="/profile" component={ProfilePage} />
+          <Route path="/support" component={SupportPage} />
+          <Route path="/logs" component={LogsPage} />
+          <Route component={NotFound} />
+        </Switch>
+      </DashboardLayout>
+    </Switch>
   );
 }
 
