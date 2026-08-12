@@ -1,62 +1,68 @@
-const { db, auth } = require('../config/firebase');
-
-const SETTINGS_DOC = 'settings/global';
+const pool = require('../config/database');
+const walletService = require('../services/walletService');
+const flutterwaveService = require('../services/flutterwaveService');
+const transactionService = require('../services/transactionService');
+const paymentService = require('../services/paymentService');
 
 const updateSettings = async (req, res) => {
   try {
     const body = req.body || {};
-    const clean = (v) => {
-      if (Array.isArray(v)) {
-        const arr = v.map((x) => clean(x)).filter((x) => x !== undefined);
-        return arr;
+    
+    // Process each setting key
+    for (const [key, value] of Object.entries(body)) {
+      const existing = await pool.query(
+        'SELECT id FROM settings WHERE key = $1',
+        [key]
+      );
+      
+      if (existing.rows.length > 0) {
+        await pool.query(
+          'UPDATE settings SET value = $1, updated_at = CURRENT_TIMESTAMP WHERE key = $2',
+          [JSON.stringify(value), key]
+        );
+      } else {
+        await pool.query(
+          'INSERT INTO settings (key, value, description, updated_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)',
+          [key, JSON.stringify(value), `Setting: ${key}`]
+        );
       }
-      if (v && typeof v === 'object') {
-        const out = {};
-        for (const [k, val] of Object.entries(v)) {
-          const c = clean(val);
-          if (c !== undefined) {
-            out[k] = c;
-          }
-        }
-        return out;
-      }
-      if (v === undefined) return undefined;
-      return v;
-    };
-    const data = clean(body);
-    data.updatedAt = new Date();
-    await db.doc(SETTINGS_DOC).set(data, { merge: true });
+    }
+    
     res.json({ message: 'Settings updated' });
   } catch (error) {
+    console.error('[Admin Controller] Update settings error:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
 const getSettings = async (req, res) => {
   try {
-    const doc = await db.doc(SETTINGS_DOC).get();
-    res.json(doc.exists ? doc.data() : {});
+    const result = await pool.query('SELECT key, value FROM settings');
+    const settings = {};
+    result.rows.forEach(row => {
+      settings[row.key] = row.value;
+    });
+    res.json(settings);
   } catch (error) {
+    console.error('[Admin Controller] Get settings error:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
 const getAllTransactions = async (req, res) => {
   try {
-    const snapshot = await db.collection('transactions')
-      .orderBy('createdAt', 'desc')
-      .limit(100)
-      .get();
+    const limit = Math.min(Number(req.query.limit || 100), 500);
+    const offset = Number(req.query.offset || 0);
+    const status = req.query.status;
+    const type = req.query.type;
     
-    const transactions = snapshot.docs.map(doc => doc.data());
+    const transactions = await transactionService.getAllTransactions(limit, offset, status, type);
     res.json(transactions);
   } catch (error) {
+    console.error('[Admin Controller] Get transactions error:', error);
     res.status(500).json({ error: error.message });
   }
 };
-
-const walletService = require('../services/walletService');
-const flutterwaveService = require('../services/flutterwaveService');
 
 const creditWallet = async (req, res) => {
   try {
@@ -66,88 +72,140 @@ const creditWallet = async (req, res) => {
     if (!amt || amt <= 0) return res.status(400).json({ error: 'Valid amount is required' });
     const wtype = ['main', 'cashback', 'referral'].includes(walletType) ? walletType : 'main';
     const raw = String(userId || '').trim();
-    let targetUid = '';
+    let targetUserId = '';
     
-    // 1. Resolve to UID
-    let resolutionError = null;
+    // Resolve user - can be email or UUID
     try {
       if (raw.includes('@')) {
         // It's an email
-        try {
-            const u = await auth.getUserByEmail(raw);
-            targetUid = u.uid;
-            console.log(`[Admin Credit] Resolved email ${raw} to UID ${targetUid}`);
-        } catch (e) {
-            // Fallback: Check if we have a user doc with this email
-            const q = await db.collection('users').where('email', '==', raw.toLowerCase()).limit(1).get();
-            if (!q.empty) {
-              targetUid = q.docs[0].id;
-              console.log(`[Admin Credit] Resolved email ${raw} to UID from users collection: ${targetUid}`);
-            } else {
-              resolutionError = `User with email '${raw}' not found in system`;
-            }
+        const userResult = await pool.query(
+          'SELECT id FROM users WHERE email = $1 LIMIT 1',
+          [raw.toLowerCase()]
+        );
+        if (userResult.rows.length > 0) {
+          targetUserId = userResult.rows[0].id;
+        } else {
+          return res.status(400).json({ error: `User with email '${raw}' not found` });
         }
       } else {
-        // It's likely a UID
-        targetUid = raw;
-        // Verify it exists if possible
-        try {
-            const u = await auth.getUser(targetUid);
-            console.log(`[Admin Credit] Verified UID ${targetUid} exists in Auth`);
-        } catch (e) {
-            // If not in Auth, maybe in Users collection?
-            const d = await db.collection('users').doc(targetUid).get();
-            if (d.exists) {
-              console.log(`[Admin Credit] UID ${targetUid} found in users collection`);
-            } else {
-              resolutionError = `User ID '${raw}' not found in system`;
-            }
+        // It's likely a UUID
+        const userResult = await pool.query(
+          'SELECT id FROM users WHERE id = $1 LIMIT 1',
+          [raw]
+        );
+        if (userResult.rows.length > 0) {
+          targetUserId = userResult.rows[0].id;
+        } else {
+          return res.status(400).json({ error: `User ID '${raw}' not found` });
         }
       }
     } catch (e) {
-      console.error('[Admin Credit] Resolution error:', e.message);
-      resolutionError = e.message;
+      console.error('[Admin Controller] User resolution error:', e);
+      return res.status(400).json({ error: 'Failed to resolve user' });
     }
 
-    // If resolution failed, return error instead of using fallback
-    if (resolutionError || !targetUid) {
-      console.error(`[Admin Credit] FAILED - Could not resolve '${raw}': ${resolutionError}`);
-      return res.status(400).json({ error: resolutionError || `Could not resolve user '${raw}'. Please enter a valid email or UID.` });
-    }
-
-    const finalId = targetUid;
-    console.log(`[Admin Credit] Crediting user ${finalId} (from input '${raw}') with amount ${amt}`);
+    console.log(`[Admin Credit] Crediting user ${targetUserId} with amount ${amt}`);
 
     // Create wallet and credit
-    await walletService.createWallet(finalId);
-    const newBalance = await walletService.creditWallet(finalId, amt, wtype, description || 'Admin Credit');
+    await walletService.createWallet(targetUserId);
+    const newBalance = await walletService.creditWallet(targetUserId, amt, wtype, description || 'Admin Credit');
     
-    // Return extra info for Admin
-    // We already log to wallet_transactions in walletService.creditWallet
-    // Log to admin_audit for tracking WHO performed the action
+    // Log to admin_audit for tracking
     try {
-      await db.collection('admin_audit').add({
-        type: 'credit',
-        adminUid: req.user.uid,
-        adminEmail: req.user.email,
-        targetUserId: finalId,
-        amount: amt,
-        walletType: wtype,
-        description: description || 'Admin Credit',
-        createdAt: new Date()
-      });
+      await pool.query(
+        `INSERT INTO admin_audit_log (admin_id, admin_email, action, target_type, target_id, details)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          req.user.id,
+          req.user.email,
+          'credit_wallet',
+          'user',
+          targetUserId,
+          JSON.stringify({ amount: amt, walletType: wtype, description })
+        ]
+      );
     } catch (e) {
-      console.error('Failed to log admin audit:', e);
+      console.error('[Admin Controller] Failed to log admin audit:', e);
     }
 
     res.json({ 
-        success: true, 
-        userId: finalId, 
-        newBalance, 
-        walletType: wtype,
-        note: (finalId !== raw) ? `Resolved '${raw}' to UID '${finalId}'` : undefined
+      success: true, 
+      userId: targetUserId, 
+      newBalance, 
+      walletType: wtype
     });
   } catch (error) {
+    console.error('[Admin Controller] Credit wallet error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const debitWallet = async (req, res) => {
+  try {
+    const { userId, amount, walletType, description } = req.body || {};
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    const amt = Number(amount);
+    if (!amt || amt <= 0) return res.status(400).json({ error: 'Valid amount is required' });
+    const wtype = ['main', 'cashback', 'referral'].includes(walletType) ? walletType : 'main';
+    const raw = String(userId || '').trim();
+    let targetUserId = '';
+    
+    // Resolve user
+    try {
+      if (raw.includes('@')) {
+        const userResult = await pool.query(
+          'SELECT id FROM users WHERE email = $1 LIMIT 1',
+          [raw.toLowerCase()]
+        );
+        if (userResult.rows.length > 0) {
+          targetUserId = userResult.rows[0].id;
+        } else {
+          return res.status(400).json({ error: `User with email '${raw}' not found` });
+        }
+      } else {
+        const userResult = await pool.query(
+          'SELECT id FROM users WHERE id = $1 LIMIT 1',
+          [raw]
+        );
+        if (userResult.rows.length > 0) {
+          targetUserId = userResult.rows[0].id;
+        } else {
+          return res.status(400).json({ error: `User ID '${raw}' not found` });
+        }
+      }
+    } catch (e) {
+      return res.status(400).json({ error: 'Failed to resolve user' });
+    }
+
+    // Debit wallet
+    const newBalance = await walletService.debitWallet(targetUserId, amt, wtype, description || 'Admin Debit');
+    
+    // Log to admin_audit
+    try {
+      await pool.query(
+        `INSERT INTO admin_audit_log (admin_id, admin_email, action, target_type, target_id, details)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          req.user.id,
+          req.user.email,
+          'debit_wallet',
+          'user',
+          targetUserId,
+          JSON.stringify({ amount: amt, walletType: wtype, description })
+        ]
+      );
+    } catch (e) {
+      console.error('[Admin Controller] Failed to log admin audit:', e);
+    }
+
+    res.json({ 
+      success: true, 
+      userId: targetUserId, 
+      newBalance, 
+      walletType: wtype
+    });
+  } catch (error) {
+    console.error('[Admin Controller] Debit wallet error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -160,6 +218,502 @@ const reverifyPayment = async (req, res) => {
     const result = await flutterwaveService.reconcilePayment(tx_ref, force === true || force === 'true');
     res.json(result);
   } catch (error) {
+    console.error('[Admin Controller] Reverify payment error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const listUsers = async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit || 100), 500);
+    const offset = Number(req.query.offset || 0);
+    const search = req.query.search;
+    
+    let query = `
+      SELECT id, email, full_name, username, phone, 
+             is_active, is_admin, role, email_verified,
+             created_at, last_login_at
+      FROM users
+    `;
+    const params = [];
+    let paramIndex = 1;
+    
+    if (search) {
+      query += ` WHERE (email ILIKE $${paramIndex} OR full_name ILIKE $${paramIndex} OR username ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+    
+    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(limit, offset);
+    
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('[Admin Controller] List users error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const createUser = async (req, res) => {
+  try {
+    const { email, password, full_name, username, phone, is_admin } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+    
+    const { registerUser } = require('../services/authService');
+    const user = await registerUser({
+      email,
+      password,
+      full_name: full_name || '',
+      username: username || email.split('@')[0],
+      phone: phone || ''
+    });
+    
+    // Set admin if requested
+    if (is_admin) {
+      await pool.query(
+        'UPDATE users SET is_admin = true, role = $1 WHERE id = $2',
+        ['admin', user.id]
+      );
+    }
+    
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error('[Admin Controller] Create user error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const promoteToAdmin = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+    
+    await pool.query(
+      'UPDATE users SET is_admin = true, role = $1 WHERE id = $2',
+      ['admin', userId]
+    );
+    
+    res.json({ success: true, message: 'User promoted to admin' });
+  } catch (error) {
+    console.error('[Admin Controller] Promote to admin error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const suspendUser = async (req, res) => {
+  try {
+    const { userId, suspend } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+    
+    await pool.query(
+      'UPDATE users SET is_active = $1 WHERE id = $2',
+      [!suspend, userId]
+    );
+    
+    res.json({ success: true, message: suspend ? 'User suspended' : 'User activated' });
+  } catch (error) {
+    console.error('[Admin Controller] Suspend user error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getTickets = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT st.*, u.email, u.full_name
+       FROM support_tickets st
+       LEFT JOIN users u ON st.user_id = u.id
+       ORDER BY st.created_at DESC
+       LIMIT 100`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('[Admin Controller] Get tickets error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const createTicket = async (req, res) => {
+  try {
+    const { subject, category, priority } = req.body;
+    
+    if (!subject) {
+      return res.status(400).json({ error: 'Subject is required' });
+    }
+    
+    const result = await pool.query(
+      `INSERT INTO support_tickets (user_id, subject, category, priority)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [req.user.id, subject, category || 'general', priority || 'normal']
+    );
+    
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('[Admin Controller] Create ticket error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getTicketMessages = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT sm.*, u.email, u.full_name
+       FROM support_messages sm
+       LEFT JOIN users u ON sm.user_id = u.id
+       WHERE sm.ticket_id = $1
+       ORDER BY sm.created_at ASC`,
+      [req.params.id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('[Admin Controller] Get ticket messages error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const replyTicket = async (req, res) => {
+  try {
+    const { message } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    
+    const result = await pool.query(
+      `INSERT INTO support_messages (ticket_id, user_id, is_admin, message)
+       VALUES ($1, $2, true, $3)
+       RETURNING *`,
+      [req.params.id, req.user.id, message]
+    );
+    
+    // Update ticket status
+    await pool.query(
+      `UPDATE support_tickets 
+       SET status = 'in_progress', updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $1 AND status = 'open'`,
+      [req.params.id]
+    );
+    
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('[Admin Controller] Reply ticket error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const updateTicketStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+    
+    await pool.query(
+      'UPDATE support_tickets SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [status, req.params.id]
+    );
+    
+    res.json({ success: true, message: 'Ticket status updated' });
+  } catch (error) {
+    console.error('[Admin Controller] Update ticket status error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteTicketAdmin = async (req, res) => {
+  try {
+    await pool.query('DELETE FROM support_tickets WHERE id = $1', [req.params.id]);
+    res.json({ success: true, message: 'Ticket deleted' });
+  } catch (error) {
+    console.error('[Admin Controller] Delete ticket error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getAnnouncements = async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM announcements ORDER BY created_at DESC LIMIT 50'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('[Admin Controller] Get announcements error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const createAnnouncement = async (req, res) => {
+  try {
+    const { title, content, priority, target_audience, expires_at } = req.body;
+    
+    if (!title || !content) {
+      return res.status(400).json({ error: 'Title and content are required' });
+    }
+    
+    const result = await pool.query(
+      `INSERT INTO announcements (title, content, priority, target_audience, expires_at)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [title, content, priority || 'normal', target_audience || 'all', expires_at || null]
+    );
+    
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('[Admin Controller] Create announcement error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteAnnouncement = async (req, res) => {
+  try {
+    await pool.query('DELETE FROM announcements WHERE id = $1', [req.params.id]);
+    res.json({ success: true, message: 'Announcement deleted' });
+  } catch (error) {
+    console.error('[Admin Controller] Delete announcement error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const reconcilePaymentAdmin = async (req, res) => {
+  try {
+    const { tx_ref, force } = req.body;
+    if (!tx_ref) return res.status(400).json({ error: 'tx_ref is required' });
+    
+    const result = await flutterwaveService.reconcilePayment(tx_ref, force === true || force === 'true');
+    res.json(result);
+  } catch (error) {
+    console.error('[Admin Controller] Reconcile payment error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getServices = async (req, res) => {
+  try {
+    const { getServicePlans } = require('../services/serviceService');
+    const services = await getServicePlans();
+    res.json(services);
+  } catch (error) {
+    console.error('[Admin Controller] Get services error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const createService = async (req, res) => {
+  try {
+    const { name, slug, category, description, icon, is_active } = req.body;
+    
+    if (!name || !slug || !category) {
+      return res.status(400).json({ error: 'Name, slug, and category are required' });
+    }
+    
+    const result = await pool.query(
+      `INSERT INTO services (name, slug, icon, category, description, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [name, slug, icon, category, description, is_active !== false]
+    );
+    
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('[Admin Controller] Create service error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const updateService = async (req, res) => {
+  try {
+    const { name, slug, category, description, icon, is_active } = req.body;
+    
+    const result = await pool.query(
+      `UPDATE services 
+       SET name = $1, slug = $2, icon = $3, category = $4, description = $5, is_active = $6, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $7
+       RETURNING *`,
+      [name, slug, icon, category, description, is_active !== false, req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('[Admin Controller] Update service error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteService = async (req, res) => {
+  try {
+    await pool.query('DELETE FROM services WHERE id = $1', [req.params.id]);
+    res.json({ success: true, message: 'Service deleted' });
+  } catch (error) {
+    console.error('[Admin Controller] Delete service error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const listAdmins = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, email, full_name, username, created_at
+       FROM users
+       WHERE is_admin = true
+       ORDER BY created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('[Admin Controller] List admins error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const createAdmin = async (req, res) => {
+  try {
+    const { email, password, full_name } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+    
+    const { registerUser } = require('../services/authService');
+    const user = await registerUser({
+      email,
+      password,
+      full_name: full_name || '',
+      username: email.split('@')[0]
+    });
+    
+    await pool.query(
+      'UPDATE users SET is_admin = true, role = $1, email_verified = true WHERE id = $2',
+      ['admin', user.id]
+    );
+    
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error('[Admin Controller] Create admin error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getAdminProfile = async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, email, full_name, username, phone, is_admin, role, created_at FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('[Admin Controller] Get admin profile error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const updateAdminProfile = async (req, res) => {
+  try {
+    const { full_name, username, phone } = req.body;
+    
+    const result = await pool.query(
+      `UPDATE users 
+       SET full_name = $1, username = $2, phone = $3, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4
+       RETURNING id, email, full_name, username, phone`,
+      [full_name, username, phone, req.user.id]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('[Admin Controller] Update admin profile error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const changeAdminPassword = async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+    
+    if (!current_password || !new_password) {
+      return res.status(400).json({ error: 'Current and new password are required' });
+    }
+    
+    const { changePassword } = require('../services/authService');
+    await changePassword(req.user.id, current_password, new_password);
+    
+    res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('[Admin Controller] Change admin password error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const generateVerificationLink = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    const { requestPasswordReset } = require('../services/authService');
+    const result = await requestPasswordReset(email);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('[Admin Controller] Generate verification link error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const fixGhostWallets = async (req, res) => {
+  try {
+    // Find wallets with user_id that looks like email instead of UUID
+    const result = await pool.query(
+      `SELECT w.id, w.user_id, u.email
+       FROM wallets w
+       LEFT JOIN users u ON w.user_id = u.id
+       WHERE w.user_id LIKE '%@%'`
+    );
+    
+    let fixed = 0;
+    for (const wallet of result.rows) {
+      if (wallet.email) {
+        // Get the actual user UUID
+        const userResult = await pool.query(
+          'SELECT id FROM users WHERE email = $1 LIMIT 1',
+          [wallet.email]
+        );
+        
+        if (userResult.rows.length > 0) {
+          // Update wallet with correct UUID
+          await pool.query(
+            'UPDATE wallets SET user_id = $1 WHERE id = $2',
+            [userResult.rows[0].id, wallet.id]
+          );
+          fixed++;
+        }
+      }
+    }
+    
+    res.json({ success: true, fixed, total: result.rows.length });
+  } catch (error) {
+    console.error('[Admin Controller] Fix ghost wallets error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -169,749 +723,31 @@ module.exports = {
   getSettings,
   getAllTransactions,
   creditWallet,
-  reverifyPayment
+  debitWallet,
+  reverifyPayment,
+  listUsers,
+  createUser,
+  promoteToAdmin,
+  suspendUser,
+  getTickets,
+  createTicket,
+  getTicketMessages,
+  replyTicket,
+  updateTicketStatus,
+  deleteTicketAdmin,
+  getAnnouncements,
+  createAnnouncement,
+  deleteAnnouncement,
+  reconcilePaymentAdmin,
+  getServices,
+  createService,
+  updateService,
+  deleteService,
+  listAdmins,
+  createAdmin,
+  getAdminProfile,
+  updateAdminProfile,
+  changeAdminPassword,
+  generateVerificationLink,
+  fixGhostWallets
 };
-
-const listUsers = async (req, res) => {
-  try {
-    const limit = Math.min(Number(req.query.limit || 100), 500);
-    let baseUsers = [];
-    try {
-      const authList = await auth.listUsers(limit);
-      baseUsers = authList.users.map(u => ({
-        id: u.uid,
-        uid: u.uid,
-        displayName: u.displayName || '',
-        email: u.email || '',
-        phone: u.phoneNumber || '',
-        joinedAt: u.metadata?.creationTime || '',
-        status: u.disabled ? 'inactive' : 'active',
-      }));
-    } catch {
-      const snap = await db.collection('users').orderBy('createdAt', 'desc').limit(limit).get();
-      baseUsers = snap.docs.map((d) => {
-        const x = d.data() || {};
-        return {
-          id: d.id,
-          uid: d.id,
-          displayName: x.displayName || x.name || '',
-          email: x.email || '',
-          phone: x.phone || x.phoneNumber || '',
-          joinedAt: x.createdAt || '',
-          status: x.disabled ? 'inactive' : 'active',
-        };
-      });
-    }
-    const profiles = {};
-    try {
-      const snap = await db.collection('users').limit(1000).get();
-      for (const d of snap.docs) {
-        const x = d.data() || {};
-        const uidKey = String(x.uid || d.id || '').toLowerCase();
-        const emailKey = String(x.email || '').toLowerCase();
-        const phone = String(x.phone || x.phoneNumber || '');
-        const displayName = String(x.displayName || x.name || '');
-        if (uidKey) {
-          profiles[uidKey] = { phone, displayName };
-        }
-        if (emailKey && !profiles[emailKey]) {
-          profiles[emailKey] = { phone, displayName };
-        }
-      }
-    } catch {}
-    const balances = {};
-    try {
-      // IMPORTANT: Only use 'wallets' collection - that's where walletService writes to
-      // The 'user_wallets' collection is deprecated/legacy and should not be used
-      const snap = await db.collection('wallets').limit(1000).get();
-      for (const d of snap.docs) {
-        const x = d.data() || {};
-        // Document ID should be the UID
-        const uidKey = String(d.id || '').toLowerCase();
-        const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
-        const cb = Number(x.cashbackBalance || x.cashback_balance || 0);
-        const rb = Number(x.referralBalance || x.referral_balance || 0);
-        const value = { main_balance: mb, cashback_balance: cb, referral_balance: rb };
-        if (uidKey) {
-          balances[uidKey] = value;
-        }
-      }
-    } catch (e) {
-      console.error('Error fetching wallet balances:', e.message);
-    }
-    
-    const users = baseUsers.map(u => {
-      const uidKey = String(u.uid || u.id || '').toLowerCase();
-      const emailKey = String(u.email || '').toLowerCase();
-      const profile = profiles[uidKey] || profiles[emailKey];
-      // Get balance by UID
-      const bal = balances[uidKey];
-      const phone = u.phone || (profile ? profile.phone : '');
-      const displayName = u.displayName || (profile ? profile.displayName : '');
-      return {
-        ...u,
-        displayName,
-        phone,
-        walletBalance: bal ? Number(bal.main_balance || 0) : 0,
-        cashbackBalance: bal ? Number(bal.cashback_balance || 0) : 0,
-        referralBalance: bal ? Number(bal.referral_balance || 0) : 0,
-      };
-    });
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const promoteToAdmin = async (req, res) => {
-  try {
-    const { uid, email } = req.body || {};
-    let userRecord;
-    if (uid) {
-      userRecord = await auth.getUser(uid);
-    } else if (email) {
-      userRecord = await auth.getUserByEmail(email);
-    } else {
-      return res.status(400).json({ error: 'uid or email is required' });
-    }
-
-    const targetUid = userRecord.uid;
-
-    const existingClaims = userRecord.customClaims || {};
-    const newClaims = { ...existingClaims, admin: true };
-    await auth.setCustomUserClaims(targetUid, newClaims);
-
-    const userRef = db.collection('users').doc(targetUid);
-    await userRef.set(
-      {
-        role: 'admin',
-        updatedAt: new Date(),
-      },
-      { merge: true }
-    );
-
-    res.json({ success: true, uid: targetUid, email: userRecord.email });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-module.exports.listUsers = listUsers;
-module.exports.promoteToAdmin = promoteToAdmin;
-
-const debitWallet = async (req, res) => {
-  try {
-    const { userId, amount, walletType, description } = req.body || {};
-    if (!userId) return res.status(400).json({ error: 'userId is required' });
-    const amt = Number(amount);
-    if (!amt || amt <= 0) return res.status(400).json({ error: 'Valid amount is required' });
-    const wtype = ['main', 'cashback', 'referral'].includes(walletType) ? walletType : 'main';
-    const raw = String(userId || '').trim();
-    let targetUid = '';
-    
-    // 1. Resolve to UID - same logic as creditWallet
-    let resolutionError = null;
-    try {
-      if (raw.includes('@')) {
-        try {
-            const u = await auth.getUserByEmail(raw);
-            targetUid = u.uid;
-            console.log(`[Admin Debit] Resolved email ${raw} to UID ${targetUid}`);
-        } catch (e) {
-            const q = await db.collection('users').where('email', '==', raw.toLowerCase()).limit(1).get();
-            if (!q.empty) {
-              targetUid = q.docs[0].id;
-              console.log(`[Admin Debit] Resolved email ${raw} to UID from users collection: ${targetUid}`);
-            } else {
-              resolutionError = `User with email '${raw}' not found in system`;
-            }
-        }
-      } else {
-        targetUid = raw;
-        try { 
-            const u = await auth.getUser(targetUid);
-            console.log(`[Admin Debit] Verified UID ${targetUid} exists in Auth`);
-        } catch (e) {
-            const d = await db.collection('users').doc(targetUid).get();
-            if (d.exists) {
-              console.log(`[Admin Debit] UID ${targetUid} found in users collection`);
-            } else {
-              resolutionError = `User ID '${raw}' not found in system`;
-            }
-        }
-      }
-    } catch (e) {
-      console.error('[Admin Debit] Resolution error:', e.message);
-      resolutionError = e.message;
-    }
-
-    // If resolution failed, return error instead of using fallback
-    if (resolutionError || !targetUid) {
-      console.error(`[Admin Debit] FAILED - Could not resolve '${raw}': ${resolutionError}`);
-      return res.status(400).json({ error: resolutionError || `Could not resolve user '${raw}'. Please enter a valid email or UID.` });
-    }
-
-    const finalId = targetUid;
-    console.log(`[Admin Debit] Debiting user ${finalId} (from input '${raw}') with amount ${amt}`);
-
-    await walletService.createWallet(finalId);
-    const newBalance = await walletService.debitWallet(finalId, amt, wtype, description || 'Admin Debit');
-    res.json({ success: true, userId: finalId, newBalance, walletType: wtype });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const createUser = async (req, res) => {
-  try {
-    const { email, password, displayName, phoneNumber, requireVerification, redirectUrl } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: 'email and password required' });
-    const user = await auth.createUser({
-      email,
-      password,
-      displayName: displayName || undefined,
-      phoneNumber: phoneNumber || undefined,
-      emailVerified: !requireVerification
-    });
-    const profileRef = db.collection('users').doc(user.uid);
-    await profileRef.set(
-      {
-        email: user.email,
-        displayName: user.displayName || displayName || '',
-        phone: phoneNumber || '',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      { merge: true }
-    );
-    await walletService.createWallet(user.uid);
-    
-    // Send welcome email/notification
-    const notificationService = require('../services/notificationService');
-    await notificationService.sendWelcomeEmail(email, displayName || 'User', password);
-    
-    let verificationLink;
-    if (requireVerification) {
-      try {
-        const url = redirectUrl || 'https://asaforvtu.onrender.com/login';
-        verificationLink = await auth.generateEmailVerificationLink(email, { url });
-      } catch (e) {}
-    }
-    res.json({ success: true, uid: user.uid, email: user.email, verificationLink });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const createAdmin = async (req, res) => {
-  try {
-    const { email, password, displayName } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: 'email and password required' });
-    const user = await auth.createUser({
-      email,
-      password,
-      displayName: displayName || undefined
-    });
-    await auth.setCustomUserClaims(user.uid, { admin: true });
-    await db.collection('admin_accounts').doc(email.toLowerCase()).set({
-      email: email.toLowerCase(),
-      uid: user.uid,
-      createdAt: new Date()
-    }, { merge: true });
-    await walletService.createWallet(user.uid);
-    res.json({ success: true, uid: user.uid, email: user.email });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const listAdmins = async (req, res) => {
-  try {
-    const snap = await db.collection('admin_accounts').get();
-    const admins = snap.docs.map(d => d.data());
-    res.json(admins);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const getAdminProfile = async (req, res) => {
-  try {
-    const uid = req.user.uid;
-    const user = await auth.getUser(uid);
-    const profileSnap = await db.collection('users').doc(uid).get();
-    const profile = profileSnap.exists ? profileSnap.data() : {};
-    res.json({
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName || profile.displayName || '',
-      phoneNumber: user.phoneNumber || profile.phone || '',
-      role: 'admin',
-      status: user.disabled ? 'inactive' : 'active'
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const updateAdminProfile = async (req, res) => {
-  try {
-    const uid = req.user.uid;
-    const { displayName, phoneNumber } = req.body;
-    await auth.updateUser(uid, {
-      displayName: displayName || undefined,
-      phoneNumber: phoneNumber || undefined
-    });
-    await db.collection('users').doc(uid).set({
-      displayName,
-      phone: phoneNumber,
-      updatedAt: new Date()
-    }, { merge: true });
-    res.json({ success: true, message: 'Profile updated' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const changeAdminPassword = async (req, res) => {
-  try {
-    const uid = req.user.uid;
-    const { newPassword } = req.body;
-    await auth.updateUser(uid, { password: newPassword });
-    res.json({ success: true, message: 'Password changed' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const getTickets = async (req, res) => {
-  try {
-    const email = (req.user && req.user.email || '').toLowerCase();
-    const allowed = (process.env.ADMIN_EMAILS || 'asaphis.org@gmail.com')
-      .split(',')
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
-    const isAdmin = req.user && (
-      req.user.admin === true || 
-      (req.user.customClaims && req.user.customClaims.admin === true) ||
-      (email && allowed.includes(email))
-    );
-
-    let baseQuery = db.collection('tickets').where('deleted', '==', false);
-    if (!isAdmin) {
-      baseQuery = baseQuery.where('userId', '==', req.user.uid);
-    }
-    const snap = await baseQuery.get();
-    let tickets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    tickets.sort((a, b) => {
-      const ta = a.lastMessageAt && a.lastMessageAt.seconds ? a.lastMessageAt.seconds : 0;
-      const tb = b.lastMessageAt && b.lastMessageAt.seconds ? b.lastMessageAt.seconds : 0;
-      return tb - ta;
-    });
-    res.json(tickets);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const getTicketMessages = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const ticketRef = db.collection('tickets').doc(id);
-    const ticketDoc = await ticketRef.get();
-    
-    if (!ticketDoc.exists) return res.status(404).json({ error: 'Ticket not found' });
-    
-    const ticketData = ticketDoc.data();
-    const email = (req.user && req.user.email || '').toLowerCase();
-    const allowed = (process.env.ADMIN_EMAILS || 'asaphis.org@gmail.com')
-      .split(',')
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
-    const isAdmin = req.user && (
-      req.user.admin === true || 
-      (req.user.customClaims && req.user.customClaims.admin === true) ||
-      (email && allowed.includes(email))
-    );
-
-    // Security check: must be admin or ticket owner
-    if (!isAdmin && ticketData.userId !== req.user.uid) {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-
-    const snap = await ticketRef.collection('messages').orderBy('createdAt', 'asc').get();
-    const messages = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    res.json(messages);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const createTicket = async (req, res) => {
-  try {
-    const { subject, message, email } = req.body;
-    const ticketRef = await db.collection('tickets').add({
-      subject,
-      email: email || req.user?.email || 'unknown',
-      userEmail: email || req.user?.email || 'unknown',
-      userId: req.user?.uid || 'unknown',
-      status: 'open',
-      lastMessage: message,
-      lastMessageAt: new Date(),
-      createdAt: new Date(),
-      deleted: false
-    });
-    await ticketRef.collection('messages').add({
-      text: message,
-      sender: 'user',
-      senderId: req.user?.uid || 'unknown',
-      createdAt: new Date(),
-      read: false
-    });
-    
-    // Send notification to admin
-    try {
-      const adminEmails = (process.env.ADMIN_EMAILS || 'asaphis.org@gmail.com').split(',');
-      console.log(`[TICKET] New ticket created: ${subject} from ${email || req.user?.email} - Ticket ID: ${ticketRef.id}`);
-    } catch (notifyErr) {
-      console.error('[TICKET] Notification error:', notifyErr);
-    }
-    
-    res.json({ success: true, id: ticketRef.id });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const replyTicket = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { message } = req.body;
-    
-    // Determine if sender is admin
-    const allowed = (process.env.ADMIN_EMAILS || 'asaphis.org@gmail.com')
-      .split(',')
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
-    const email = (req.user && req.user.email || '').toLowerCase();
-    const isAdmin = req.user && (
-      req.user.admin === true || 
-      (req.user.customClaims && req.user.customClaims.admin === true) ||
-      (email && allowed.includes(email))
-    );
-
-    const ticketRef = db.collection('tickets').doc(id);
-    const ticketDoc = await ticketRef.get();
-    if (!ticketDoc.exists) return res.status(404).json({ error: 'Ticket not found' });
-
-    await ticketRef.collection('messages').add({
-      text: message,
-      sender: isAdmin ? 'admin' : 'user',
-      senderId: req.user?.uid || 'unknown',
-      senderEmail: req.user?.email || 'unknown',
-      createdAt: new Date(),
-      read: false
-    });
-
-    await ticketRef.update({
-      status: isAdmin ? 'replied' : 'open',
-      lastMessage: message,
-      lastMessageAt: new Date()
-    });
-
-    res.json({ success: true, message: 'Reply sent' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const getAnnouncements = async (req, res) => {
-  try {
-    const snap = await db.collection('announcements').orderBy('createdAt', 'desc').get();
-    const announcements = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    res.json(announcements);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const createAnnouncement = async (req, res) => {
-  try {
-    const { title, content, type } = req.body;
-    const docRef = await db.collection('announcements').add({
-      title,
-      content,
-      type: type || 'info',
-      active: true,
-      createdAt: new Date()
-    });
-    
-    // Log announcement creation for monitoring
-    console.log(`[ANNOUNCEMENT] New announcement created: ${title} - ID: ${docRef.id}`);
-    console.log(`[ANNOUNCEMENT] Content preview: ${content?.substring(0, 100)}...`);
-    
-    res.json({ success: true, id: docRef.id });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const deleteAnnouncement = async (req, res) => {
-  try {
-    const { id } = req.params;
-    await db.collection('announcements').doc(id).delete();
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-module.exports.debitWallet = debitWallet;
-module.exports.createUser = createUser;
-module.exports.createAdmin = createAdmin;
-module.exports.listAdmins = listAdmins;
-module.exports.getAdminProfile = getAdminProfile;
-module.exports.updateAdminProfile = updateAdminProfile;
-module.exports.changeAdminPassword = changeAdminPassword;
-module.exports.getTickets = getTickets;
-module.exports.getTicketMessages = getTicketMessages;
-module.exports.createTicket = createTicket;
-module.exports.replyTicket = replyTicket;
-module.exports.getAnnouncements = getAnnouncements;
-module.exports.createAnnouncement = createAnnouncement;
-module.exports.deleteAnnouncement = deleteAnnouncement;
-
-const updateTicketStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body || {};
-    if (!id || !status) return res.status(400).json({ error: 'id and status required' });
-    const ref = db.collection('tickets').doc(id);
-    await ref.set({ status, lastMessageAt: new Date() }, { merge: true });
-    return res.json({ success: true });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
-};
-
-const deleteTicketAdmin = async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!id) return res.status(400).json({ error: 'id required' });
-    const ref = db.collection('tickets').doc(id);
-    await ref.set({ deleted: true, lastMessageAt: new Date() }, { merge: true });
-    return res.json({ success: true });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
-};
-
-module.exports.updateTicketStatus = updateTicketStatus;
-module.exports.deleteTicketAdmin = deleteTicketAdmin;
-
-const reconcilePaymentAdmin = async (req, res) => {
-  try {
-    const flutterwaveService = require('../services/flutterwaveService');
-    const ref = String(req.body.ref || req.body.tx_ref || req.body.transaction_id || '').trim();
-    const force = req.body.force === true;
-    if (!ref) return res.status(400).json({ success: false, message: 'ref or transaction_id is required' });
-    const result = await flutterwaveService.reconcilePayment(ref, force);
-    return res.json(result);
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error && error.message ? error.message : String(error) });
-  }
-};
-
-module.exports.reconcilePaymentAdmin = reconcilePaymentAdmin;
-
-const fixGhostWallets = async (req, res) => {
-  try {
-    const dryRun = req.body.dryRun === true;
-    const snapshot = await db.collection('wallets').get();
-    let migrated = 0;
-    let skipped = 0;
-    let errors = 0;
-    let report = [];
-
-    console.log(`[Ghost Wallet Fix] Starting - found ${snapshot.size} wallets`);
-
-    for (const doc of snapshot.docs) {
-      // Check if document ID looks like an email (contains @)
-      if (doc.id.includes('@')) {
-        const ghostBalance = Number(doc.data().mainBalance || 0);
-        const ghostCashback = Number(doc.data().cashbackBalance || 0);
-        const ghostReferral = Number(doc.data().referralBalance || 0);
-        const totalGhost = ghostBalance + ghostCashback + ghostReferral;
-        
-        console.log(`[Ghost Wallet Fix] Found ghost wallet: ${doc.id} with balance ${totalGhost}`);
-        
-        let targetUid = null;
-        try {
-          // 1. Try Firebase Auth
-          const u = await auth.getUserByEmail(doc.id);
-          targetUid = u.uid;
-          console.log(`[Ghost Wallet Fix] Resolved via Auth: ${doc.id} -> ${targetUid}`);
-        } catch (e) {
-          // 2. Try users collection
-          const q = await db.collection('users').where('email', '==', doc.id.toLowerCase()).limit(1).get();
-          if (!q.empty) {
-            targetUid = q.docs[0].id;
-            console.log(`[Ghost Wallet Fix] Resolved via users: ${doc.id} -> ${targetUid}`);
-          }
-        }
-
-        if (targetUid) {
-          try {
-            if (!dryRun) {
-              // Check if target wallet already exists
-              const targetDoc = await db.collection('wallets').doc(targetUid).get();
-              
-              if (targetDoc.exists) {
-                // Merge balances
-                const targetData = targetDoc.data();
-                await db.collection('wallets').doc(targetUid).update({
-                  mainBalance: (targetData.mainBalance || 0) + ghostBalance,
-                  cashbackBalance: (targetData.cashbackBalance || 0) + ghostCashback,
-                  referralBalance: (targetData.referralBalance || 0) + ghostReferral,
-                  migratedFrom: doc.id,
-                  migratedAt: new Date()
-                });
-                console.log(`[Ghost Wallet Fix] Merged to existing wallet ${targetUid}`);
-              } else {
-                // Create new wallet
-                await db.collection('wallets').doc(targetUid).set({
-                  mainBalance: ghostBalance,
-                  cashbackBalance: ghostCashback,
-                  referralBalance: ghostReferral,
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                  migratedFrom: doc.id,
-                  migratedAt: new Date()
-                });
-                console.log(`[Ghost Wallet Fix] Created new wallet for ${targetUid}`);
-              }
-              
-              // Delete the ghost wallet
-              await db.collection('wallets').doc(doc.id).delete();
-              console.log(`[Ghost Wallet Fix] Deleted ghost wallet ${doc.id}`);
-            }
-            
-            report.push({ 
-              email: doc.id, 
-              targetUid, 
-              balance: ghostBalance,
-              cashback: ghostCashback,
-              referral: ghostReferral,
-              total: totalGhost,
-              status: dryRun ? 'Pending' : 'Migrated' 
-            });
-            migrated++;
-          } catch (err) {
-            console.error(`[Ghost Wallet Fix] Error processing ${doc.id}:`, err.message);
-            report.push({ email: doc.id, error: err.message, status: 'Error' });
-            errors++;
-          }
-        } else {
-          console.log(`[Ghost Wallet Fix] Could not resolve UID for ${doc.id} - skipping`);
-          report.push({ email: doc.id, error: 'Could not resolve UID', status: 'Skipped' });
-          skipped++;
-        }
-      } else {
-        // Not an email-based wallet - skip
-        skipped++;
-      }
-    }
-    
-    console.log(`[Ghost Wallet Fix] Complete - Migrated: ${migrated}, Skipped: ${skipped}, Errors: ${errors}`);
-    res.json({ success: true, migrated, skipped, errors, report });
-  } catch (error) {
-    console.error('[Ghost Wallet Fix] Fatal error:', error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const getServices = async (req, res) => {
-  try {
-    const snap = await db.collection('services').get();
-    const services = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    res.json(services);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const createService = async (req, res) => {
-  try {
-    const { id, name, icon, category, active, enabled } = req.body;
-    const docId = id || name.toLowerCase().replace(/\s+/g, '-');
-    const isActive = active !== undefined ? active : (enabled !== undefined ? enabled : true);
-    await db.collection('services').doc(docId).set({
-      name,
-      icon: icon || '',
-      category: category || 'Other',
-      active: isActive,
-      enabled: isActive,
-      createdAt: new Date()
-    });
-    res.json({ success: true, id: docId });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const deleteService = async (req, res) => {
-  try {
-    const { id } = req.params;
-    await db.collection('services').doc(id).delete();
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const updateService = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, icon, category, active, enabled } = req.body;
-    const isActive = active !== undefined ? active : (enabled !== undefined ? enabled : active);
-    
-    const updateData = {
-      ...(name && { name }),
-      ...(icon !== undefined && { icon }),
-      ...(category && { category }),
-      ...(isActive !== undefined && { active: isActive, enabled: isActive }),
-      updatedAt: new Date()
-    };
-    
-    await db.collection('services').doc(id).update(updateData);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-module.exports.fixGhostWallets = fixGhostWallets;
-module.exports.getServices = getServices;
-module.exports.createService = createService;
-module.exports.updateService = updateService;
-module.exports.deleteService = deleteService;
-
-const generateVerificationLink = async (req, res) => {
-  try {
-    const { email, uid, redirectUrl } = req.body || {};
-    let targetEmail = email;
-    if (!targetEmail && uid) {
-      const u = await auth.getUser(uid);
-      targetEmail = u.email;
-    }
-    if (!targetEmail) return res.status(400).json({ error: 'email or uid required' });
-    const url = redirectUrl || 'https://asaforvtu.onrender.com/login';
-    const link = await auth.generateEmailVerificationLink(targetEmail, { url });
-    res.json({ success: true, email: targetEmail, verificationLink: link });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-module.exports.generateVerificationLink = generateVerificationLink;
-

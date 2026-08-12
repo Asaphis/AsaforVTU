@@ -1,73 +1,36 @@
 const express = require('express');
-const { verifyToken, isAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 const adminController = require('../controllers/adminController');
-const { db, auth } = require('../config/firebase');
+const pool = require('../config/database');
+const walletService = require('../services/walletService');
+const transactionService = require('../services/transactionService');
+const paymentService = require('../services/paymentService');
 
 const router = express.Router();
 
-// Network mapping for IA Café provider
-const NETWORK_ID_MAP = {
-  mtn: 1,
-  glo: 2,
-  '9mobile': 3,
-  airtel: 4
-};
+router.use(authenticate);
+router.use(requireAdmin);
 
-router.use(verifyToken);
-router.use(isAdmin);
-
+// Settings
 router.post('/settings', adminController.updateSettings);
 router.get('/settings', adminController.getSettings);
+
+// Transactions
 router.get('/transactions', adminController.getAllTransactions);
+
+// Wallet Operations
 router.post('/wallet/credit', adminController.creditWallet);
-router.post('/wallet/reverify', adminController.reverifyPayment);
 router.post('/wallet/debit', adminController.debitWallet);
+router.post('/wallet/reverify', adminController.reverifyPayment);
 router.post('/wallet/fix-ghosts', adminController.fixGhostWallets);
+
+// User Management
 router.get('/users', adminController.listUsers);
-router.post('/users/promote', adminController.promoteToAdmin);
 router.post('/users/create', adminController.createUser);
-router.post('/users/suspend', async (req, res) => {
-  try {
-    const { uid, email, suspend } = req.body || {};
-    let userRecord;
-    if (uid) {
-      userRecord = await auth.getUser(String(uid));
-    } else if (email) {
-      userRecord = await auth.getUserByEmail(String(email));
-    } else {
-      return res.status(400).json({ success: false, message: 'uid or email required' });
-    }
-    const targetUid = userRecord.uid;
-    await auth.updateUser(targetUid, { disabled: !!suspend });
-    const updated = await auth.getUser(targetUid);
-    return res.json({
-      success: true,
-      uid: targetUid,
-      email: updated.email || userRecord.email || '',
-      disabled: !!updated.disabled,
-    });
-  } catch (error) {
-    return res.status(400).json({ success: false, message: error && error.message ? error.message : String(error) });
-  }
-});
-router.post('/users/delete', async (req, res) => {
-  try {
-    const { uid, email } = req.body || {};
-    let userRecord;
-    if (uid) {
-      userRecord = await auth.getUser(String(uid));
-    } else if (email) {
-      userRecord = await auth.getUserByEmail(String(email));
-    } else {
-      return res.status(400).json({ success: false, message: 'uid or email required' });
-    }
-    const targetUid = userRecord.uid;
-    await auth.deleteUser(targetUid);
-    return res.json({ success: true, uid: targetUid, email: userRecord.email || '' });
-  } catch (error) {
-    return res.status(400).json({ success: false, message: error && error.message ? error.message : String(error) });
-  }
-});
+router.post('/users/promote', adminController.promoteToAdmin);
+router.post('/users/suspend', adminController.suspendUser);
+
+// Admin Management
 router.get('/admins', adminController.listAdmins);
 router.post('/admins', adminController.createAdmin);
 
@@ -86,6 +49,8 @@ router.post('/support/tickets/:id/delete', adminController.deleteTicketAdmin);
 router.get('/announcements', adminController.getAnnouncements);
 router.post('/announcements', adminController.createAnnouncement);
 router.delete('/announcements/:id', adminController.deleteAnnouncement);
+
+// Payments
 router.post('/payments/reconcile', adminController.reconcilePaymentAdmin);
 
 // Service Categories
@@ -94,1021 +59,125 @@ router.post('/services', adminController.createService);
 router.put('/services/:id', adminController.updateService);
 router.delete('/services/:id', adminController.deleteService);
 
+// Verification
 router.post('/users/verification-link', adminController.generateVerificationLink);
 
-router.get('/stats', async (_req, res) => {
-  const result = {
-    totalUsers: 0,
-    walletBalance: 0,
-    totalTransactions: 0,
-    todaySales: 0,
-    dailyTotals: [],
-    recentTransactions: [],
-    error: null
-  };
-  
+// Financial Intelligence / Statistics
+router.get('/stats', async (req, res) => {
   try {
-    // Check if Firebase is initialized
-    const { db, auth, firebaseInitialized } = require('../config/firebase');
-    if (!firebaseInitialized || !db) {
-      result.error = 'Database not initialized. Check FIREBASE_* environment variables.';
-      return res.status(503).json(result);
-    }
+    const result = {
+      totalUsers: 0,
+      walletBalance: 0,
+      totalTransactions: 0,
+      todaySales: 0,
+      profit: 0,
+      spending: 0,
+      dailyTotals: [],
+      recentTransactions: [],
+      error: null
+    };
     
-    // Get total users from Firebase Auth
-    try {
-      const authList = await auth.listUsers(1000);
-      result.totalUsers = authList.users.length;
-    } catch (e) {
-      console.log('[Stats] Could not get auth users:', e.message);
-      // Fallback: count users collection
-      try {
-        const usersSnap = await db.collection('users').limit(1000).get();
-        result.totalUsers = usersSnap.size;
-      } catch {}
-    }
+    // Get total users
+    const usersResult = await pool.query('SELECT COUNT(*) as count FROM users');
+    result.totalUsers = Number(usersResult.rows[0].count);
+    
+    // Get wallet balance
+    const walletResult = await pool.query('SELECT SUM(main_balance) as total FROM wallets');
+    result.walletBalance = Number(walletResult.rows[0].total || 0);
     
     // Get transactions
-    let txs = [];
-    const txNames = ['transactions', 'wallet_transactions'];
-    for (const n of txNames) {
-      try {
-        const snap = await db.collection(n).orderBy('createdAt', 'desc').limit(500).get();
-        if (!snap.empty) {
-          txs = snap.docs.map(d => {
-            const x = d.data() || {};
-            return { 
-              id: d.id, 
-              user: x.user || x.user_email || x.userEmail || x.email || x.userId || '', 
-              amount: Number(x.amount || 0), 
-              status: x.status || 'success', 
-              type: x.type || 'transaction', 
-              createdAt: x.createdAt || x.timestamp || Date.now() 
-            };
-          });
-          break;
-        }
-      } catch (e) {
-        console.log('[Stats] Could not get', n, ':', e.message);
-      }
-    }
-    result.totalTransactions = txs.length;
+    const transactionsResult = await pool.query(
+      `SELECT COUNT(*) as count, SUM(amount) as total 
+       FROM transactions 
+       WHERE status = 'success'`
+    );
+    result.totalTransactions = Number(transactionsResult.rows[0].count);
+    result.todaySales = Number(transactionsResult.rows[0].total || 0);
     
-    // Today's sales
-    const now = new Date();
-    result.todaySales = txs.filter(t => {
-      try {
-        const d = new Date(t.createdAt);
-        return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      } catch { return false; }
-    }).reduce((sum, t) => sum + Number(t.amount || 0), 0);
-    
-    // Wallet balance - ONLY from 'wallets' collection
-    let walletSum = 0;
-    try {
-      const snap = await db.collection('wallets').limit(5000).get();
-      if (!snap.empty) {
-        for (const d of snap.docs) {
-          const x = d.data() || {};
-          // Skip ghost wallets (email as ID - they should use UID)
-          if (d.id.includes('@')) continue;
-          const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
-          walletSum += mb;
-        }
-      }
-    } catch (e) {
-      console.log('[Stats] Could not get wallets:', e.message);
-    }
-    result.walletBalance = walletSum;
+    // Calculate profit (revenue - cost)
+    const profitResult = await pool.query(
+      `SELECT 
+         SUM(CASE WHEN status = 'success' THEN amount ELSE 0 END) as revenue,
+         SUM(CASE WHEN status = 'success' THEN COALESCE(metadata->>'provider_cost', amount) ELSE 0 END) as cost
+       FROM transactions`
+    );
+    const revenue = Number(profitResult.rows[0].revenue || 0);
+    const cost = Number(profitResult.rows[0].cost || 0);
+    result.profit = revenue - cost;
+    result.spending = cost;
     
     // Daily totals for last 7 days
     const days = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
+      const dayStr = d.toISOString().split('T')[0];
       const key = d.toLocaleDateString(undefined, { weekday: 'short' });
-      const total = txs.filter(t => {
-        const td = new Date(t.createdAt);
-        return td.getDate() === d.getDate() && td.getMonth() === d.getMonth() && td.getFullYear() === d.getFullYear();
-      }).reduce((sum, t) => sum + Number(t.amount || 0), 0);
-      days.push({ day: key, total });
+      
+      const dayResult = await pool.query(
+        `SELECT COUNT(*) as count, SUM(amount) as total 
+         FROM transactions 
+         WHERE DATE(created_at) = $1 AND status = 'success'`,
+        [dayStr]
+      );
+      
+      days.push({ 
+        day: key, 
+        total: Number(dayResult.rows[0].total || 0),
+        count: Number(dayResult.rows[0].count || 0)
+      });
     }
     result.dailyTotals = days;
-    result.recentTransactions = txs.slice(0, 5);
-    res.json(result);
-  } catch (e) {
-    console.error('[Stats] Error:', e);
-    result.error = e.message;
-    res.json(result);
-  }
-});
-
-router.get('/wallet/logs', async (_req, res) => {
-  try {
-    const names = ['wallet_logs', 'wallet_transactions'];
-    for (const n of names) {
-      const snap = await db.collection(n).orderBy('createdAt', 'desc').limit(200).get();
-      if (!snap.empty) {
-        const rows = snap.docs.map(d => {
-          const x = d.data() || {};
-          return { id: d.id, user: x.user || x.user_email || x.userEmail || x.email || x.userId || '', type: x.type || '', amount: Number(x.amount || 0), description: x.description || '', createdAt: x.createdAt || Date.now() };
-        });
-        return res.json(rows);
-      }
-    }
-    return res.json([]);
-  } catch {
-    return res.json([]);
-  }
-});
-
-router.get('/wallet/deposits', async (_req, res) => {
-  try {
-    const snap = await db.collection('wallet_deposits').orderBy('createdAt', 'desc').limit(200).get();
-    const rows = snap.docs.map(d => {
-      const x = d.data() || {};
-      return { id: d.id, user: x.user || x.user_email || x.userEmail || x.email || x.userId || '', amount: Number(x.amount || 0), method: x.method || '', status: x.status || '', createdAt: x.createdAt || Date.now() };
-    });
-    return res.json(rows);
-  } catch {
-    return res.json([]);
-  }
-});
-
-// Unified Financial Intelligence: system or user scope
-router.get('/finance/analytics', async (req, res) => {
-  const rawEmail = String(req.query.email || '').trim();
-  const rawUid = String(req.query.uid || '').trim();
-  const email = rawEmail.toLowerCase();
-  const uid = rawUid.toLowerCase();
-  const scope = (rawEmail || rawUid) ? 'user' : 'system';
-  const startRaw = req.query.start;
-  const endRaw = req.query.end;
-  const parseTs = (val) => {
-    if (val === undefined || val === null || val === '') return undefined;
-    const s = String(val);
-    if (/^\d+$/.test(s)) return Number(s);
-    const t = Date.parse(s);
-    return isNaN(t) ? undefined : t;
-  };
-  const startTs = parseTs(startRaw);
-  const endTs = parseTs(endRaw);
-  const makePeriod = (days) => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0); // Start of today
-    d.setDate(d.getDate() - days);
-    return d.getTime();
-  };
-  const pickNumber = (obj, keys) => {
-    for (const k of keys) {
-      const v = obj?.[k];
-      if (v !== undefined && v !== null && v !== '') return Number(v);
-    }
-    return 0;
-  };
-  const readMainBalanceBest = async (uidRaw, emailRaw) => {
-    const targets = [String(uidRaw || '').toLowerCase(), String(emailRaw || '').toLowerCase()].filter(Boolean);
-    if (targets.length === 0) return 0;
-    let best = 0;
-    const pickMain = (x) => pickNumber(x, ['mainBalance', 'main_balance', 'balance']);
     
-    // Try UID first
-    try {
-      if (uidRaw) {
-        const snap = await db.collection('wallets').doc(uidRaw).get();
-        if (snap.exists) {
-          best = Math.max(best, pickMain(snap.data()));
-        }
-      }
-    } catch {}
+    // Recent transactions
+    const recentResult = await pool.query(
+      `SELECT t.*, u.email, u.full_name
+       FROM transactions t
+       LEFT JOIN users u ON t.user_id = u.id
+       ORDER BY t.created_at DESC
+       LIMIT 10`
+    );
+    result.recentTransactions = recentResult.rows;
     
-    // Try by email field if not found or email provided
-    if (emailRaw) {
-      try {
-        const snap = await db.collection('wallets')
-          .where('email', '==', emailRaw.toLowerCase())
-          .limit(1)
-          .get();
-        if (!snap.empty) {
-          best = Math.max(best, pickMain(snap.docs[0].data()));
-        }
-      } catch {}
-    }
-    
-    return best;
-  };
-  const getCreatedMs = (v) => {
-    if (!v) return 0;
-    if (typeof v === 'number') return v;
-    if (v instanceof Date) return v.getTime();
-    if (v._seconds) return Number(v._seconds) * 1000;
-    if (v.seconds) return Number(v.seconds) * 1000;
-    return 0;
-  };
-
-  try {
-    // 1. Fetch All Relevant Transactions (Service & Wallet)
-    // We fetch a large batch to ensure we have enough history for Ratio calculation and Reporting
-    const txNames = ['transactions', 'wallet_transactions'];
-    let allTransactions = [];
-    
-    // Helper to fetch and normalize
-    for (const n of txNames) {
-      const snap = await db.collection(n).orderBy('createdAt', 'desc').limit(5000).get();
-      if (!snap.empty) {
-        const rows = snap.docs.map(d => {
-          const x = d.data() || {};
-          const status = String(x.status || 'success').toLowerCase(); // Default to success if missing? No, safer to assume status field exists.
-          const type = String(x.type || '').toLowerCase();
-          const serviceType = String(x.serviceType || x.type || '');
-          const walletType = String(x.walletType || '').toLowerCase();
-          const description = String(x.description || '').toLowerCase();
-          
-          // Identify Service Transactions (STRICT)
-          // User Rule: "Use ONLY service transactions: airtime, data, electricity, exam"
-          const validServiceTypes = ['airtime', 'data', 'electricity', 'exam', 'cable', 'bill'];
-          
-          // Check if it's a known service type AND explicitly NOT a credit/refund/debit/wallet_credit/wallet_debit
-          const lowerType = type.toLowerCase();
-          const lowerSType = serviceType.toLowerCase();
-          const isInternal = lowerType === 'credit' || lowerType === 'refund' || lowerType === 'deposit' || lowerType === 'debit' || lowerType === 'wallet_credit' || lowerType === 'wallet_debit';
-          
-          const isService = !isInternal && (
-            validServiceTypes.includes(lowerType) ||
-            validServiceTypes.includes(lowerSType)
-          );
-
-          const userPrice = pickNumber(x, ['userPrice','priceUser','price_user','amount','user_amount','paid','userPaid']);
-          let providerCost = pickNumber(x, ['providerCost','priceApi','price_api','apiPrice','provider_price','providerPrice','cost','serviceCost']);
-          
-          // Fallback: if isService but no providerCost, we KEEP it as 0 for now.
-          // We will calculate the Ratio based only on valid transactions, 
-          // and then impute the missing costs using that global ratio.
-          // This prevents "0 cost" data from skewing the ratio to 1.0 (0% margin) or 0.0 (100% margin).
-          if (isService && providerCost <= 0) {
-             // Do not overwrite with userPrice yet. Leave as 0.
-             // providerCost = 0; 
-          }
-
-          const smsCost = Number(x.sms_cost ?? x.smsCost ?? 0);
-
-          return {
-            id: d.id,
-            userId: String(x.userId || x.uid || '').toLowerCase(),
-            user: String(x.user || x.user_email || x.userEmail || x.email || '').toLowerCase(),
-            userPrice,
-            providerCost,
-            smsCost,
-            serviceType,
-            status,
-            type,
-            walletType,
-            description,
-            createdAt: getCreatedMs(x.createdAt),
-            isService,
-            raw: x,
-          };
-        });
-        allTransactions = allTransactions.concat(rows);
-      }
-    }
-
-    // Deduplicate by ID (in case of overlaps between collections)
-    const seenIds = new Set();
-    const uniqueTransactions = [];
-    for (const t of allTransactions) {
-      if (!seenIds.has(t.id)) {
-        seenIds.add(t.id);
-        uniqueTransactions.push(t);
-      }
-    }
-    // Sort by Date Descending
-    uniqueTransactions.sort((a, b) => b.createdAt - a.createdAt);
-
-    // 2. Filter by Scope (User vs System)
-    const scopedTransactions = scope === 'user'
-      ? uniqueTransactions.filter(r => {
-          return (email && (r.user === email)) || (uid && (r.userId === uid));
-        })
-      : uniqueTransactions;
-
-    // 3. Calculate Wallet Balance (Current)
-    let walletBalance = 0;
-    if (scope === 'user') {
-      walletBalance = await readMainBalanceBest(rawUid, rawEmail);
-    } else {
-      const sources = ['wallets', 'user_wallets'];
-      const seen = new Map();
-      for (const src of sources) {
-        const snap = await db.collection(src).limit(5000).get(); // Limit might be an issue for system-wide
-        if (!snap.empty) {
-          for (const d of snap.docs) {
-            const x = d.data() || {};
-            const key = String(x.uid || x.userId || x.email || d.id || '').toLowerCase();
-            const main = pickNumber(x, ['mainBalance','main_balance','balance']);
-            if (!seen.has(key)) seen.set(key, main);
-            else seen.set(key, Math.max(seen.get(key), main));
-          }
-        }
-      }
-      walletBalance = Array.from(seen.values()).reduce((s, v) => s + Number(v || 0), 0);
-    }
-
-    // 4. Calculate Provider Balance Required (CAPACITY / BEST CASE)
-    // The user wants to see the minimum funds needed to fulfill services.
-    // We look for the BEST (lowest) ratio across all service types (Data, Airtime, Power, Exam).
-    
-    let bestRatio = 0.95; // Default fallback (5% margin)
-    let bestRatioSource = 'default';
-
-    try {
-      // A. Fetch Service Plans (Data, Power, Exam)
-      // These are often stored in 'service_plans' or similar collections
-      const plansSnap = await db.collection('service_plans').get();
-      if (!plansSnap.empty) {
-        plansSnap.docs.forEach(d => {
-           const p = d.data();
-           const cost = Number(p.priceApi || p.price_api || 0);
-           const price = Number(p.priceUser || p.price_user || 0);
-           // We look for the absolute lowest cost ratio available on the platform
-           if (cost > 0 && price > 0 && cost < price) {
-             const ratio = cost / price;
-             if (ratio < bestRatio) {
-               bestRatio = ratio;
-               bestRatioSource = `plan:${p.type || 'service'}:${d.id} (${cost}/${price})`;
-             }
-           }
-        });
-      }
-      
-      // B. Fetch Airtime Discounts/Settings
-      const settingsDoc = await db.collection('admin_settings').doc('settings').get();
-      const st = settingsDoc.exists ? settingsDoc.data() || {} : {};
-      
-      // Airtime Networks
-      const airtimeNetworks = st.airtimeNetworks || {};
-      Object.values(airtimeNetworks).forEach(net => {
-         const discount = Number(net.discount || 0);
-         if (discount > 0) {
-           const ratio = (100 - discount) / 100;
-           if (ratio < bestRatio) {
-             bestRatio = ratio;
-             bestRatioSource = `airtime:${net.name || 'network'} (${discount}%)`;
-           }
-         }
-       });
-
-      // Power/Electricity Profit Margin
-      // If power is handled via a fixed percentage commission (e.g. 2% profit)
-      const powerConfig = st.powerConfig || st.electricity || {};
-      const powerDiscount = Number(powerConfig.discount || powerConfig.commission || 0);
-      if (powerDiscount > 0) {
-        const ratio = (100 - powerDiscount) / 100;
-        if (ratio < bestRatio) {
-          bestRatio = ratio;
-          bestRatioSource = `power (${powerDiscount}%)`;
-        }
-      }
-
-      // Exam Pin Profit Margin
-      const examConfig = st.examConfig || st.exam || {};
-      const examDiscount = Number(examConfig.discount || examConfig.commission || 0);
-      if (examDiscount > 0) {
-        const ratio = (100 - examDiscount) / 100;
-        if (ratio < bestRatio) {
-          bestRatio = ratio;
-          bestRatioSource = `exam (${examDiscount}%)`;
-        }
-      }
-      
-    } catch (err) {
-      console.error("Error calculating best case ratio:", err);
-    }
-    
-    // Safety check: ensure bestRatio is always less than 1.0
-    if (bestRatio >= 1.0) {
-      bestRatio = 0.95; 
-    }
-    
-    // User Rule: provider_required = user_wallet_balance * best_ratio
-    const providerBalanceRequired = walletBalance * bestRatio;
-    
-    const costRatio = bestRatio;
-
-    // IMPUTE missing provider costs using the worstRatio (Conservative Estimate)
-    // This ensures that if historical data lacks cost info, we don't show 100% profit.
-    // We use the "Worst Case" ratio to avoid overstating profit.
-    const successfulServiceTxs = scopedTransactions.filter(t => t.isService && t.status === 'success');
-    for (const t of successfulServiceTxs) {
-      if (t.providerCost <= 0) {
-        t.providerCost = t.userPrice * costRatio;
-        t.imputed = true;
-      }
-    }
-
-
-    // 5. Compute Financials (Deposits, Cost, Profit) for Date Ranges
-    // Helper to filter by date
-    const filterByDate = (txs, start, end) => {
-      return txs.filter(t => {
-        if (start !== undefined && t.createdAt < start) return false;
-        // If end is specified, it should be the end of that day (23:59:59)
-        if (end !== undefined && t.createdAt > (end + 86399999)) return false;
-        return true;
-      });
-    };
-
-    // Identify Deposits
-    // Criteria: Type=credit, Wallet=main, Not internal (transfer/refund/etc)
-    const isDeposit = (t) => {
-      if (t.type !== 'credit') return false;
-      // If walletType is present, must be main. If missing, assume main?
-      if (t.walletType && t.walletType !== 'main') return false; 
-      
-      const d = t.description;
-      if (d.includes('transfer') || d.includes('cashback') || d.includes('referral') || d.includes('refund') || d.includes('bonus') || d.includes('reversal')) {
-        return false;
-      }
-      return true;
-    };
-
-    const computeBucket = (txs) => {
-      const deposits = txs.filter(isDeposit).reduce((s, t) => s + pickNumber(t.raw, ['amount']), 0);
-      
-      const services = txs.filter(t => t.isService && t.status === 'success');
-      const providerCost = services.reduce((s, t) => s + t.providerCost, 0);
-      const smsCost = services.reduce((s, t) => s + t.smsCost, 0);
-      const revenue = services.reduce((s, t) => s + t.userPrice, 0);
-      
-      const netProfit = revenue - providerCost - smsCost;
-      
-      return { deposits, providerCost, smsCost, netProfit };
-    };
-
-    const dailyStart = makePeriod(0);
-    const dailyEnd = dailyStart + 86399999;
-    const daily = computeBucket(filterByDate(scopedTransactions, dailyStart, dailyEnd));
-    
-    const weeklyStart = makePeriod(7);
-    const weekly = computeBucket(filterByDate(scopedTransactions, weeklyStart));
-    
-    const monthlyStart = makePeriod(30);
-    const monthly = computeBucket(filterByDate(scopedTransactions, monthlyStart));
-
-    // Totals (Filtered by User Selected Range)
-    const rangeFilteredTxs = filterByDate(scopedTransactions, startTs, endTs);
-    const totalsBucket = computeBucket(rangeFilteredTxs);
-
-    const totals = {
-      depositsTotal: totalsBucket.deposits,
-      providerCostTotal: totalsBucket.providerCost,
-      smsCostTotal: totalsBucket.smsCost,
-      netProfitTotal: totalsBucket.netProfit
-    };
-
-    // Audit log (non-blocking)
-    try {
-      // Security Check: Ensure NO deposits made it into the service calculation
-      const serviceTxs = rangeFilteredTxs.filter(t => t.isService && t.status === 'success');
-      const depositTxs = rangeFilteredTxs.filter(isDeposit);
-      const depositIds = new Set(depositTxs.map(t => t.id));
-      const leakedDeposits = serviceTxs.filter(t => depositIds.has(t.id));
-      
-      if (leakedDeposits.length > 0) {
-        console.error("CRITICAL AUDIT FAILURE: Deposits detected in profit calculation!", leakedDeposits.map(t => t.id));
-      }
-
-      const logDoc = {
-        id: `al_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        type: 'finance_analytics',
-        scope,
-        uid,
-        email,
-        start: startTs || null,
-        end: endTs || null,
-        providerBalanceRequired,
-        walletBalance,
-        costRatio,
-        worstRatio,
-        worstRatioSource,
-        totals,
-        audit: {
-          leakedDepositsCount: leakedDeposits.length,
-          leakedIds: leakedDeposits.map(t => t.id),
-          serviceTxCount: serviceTxs.length,
-          depositTxCount: depositTxs.length
-        },
-        txCount: rangeFilteredTxs.length,
-        createdAt: Date.now(),
-      };
-      await db.collection('admin_logs').doc(logDoc.id).set(logDoc, { merge: true });
-    } catch {}
-
-    return res.json({ 
-      scope, 
-      providerBalanceRequired, 
-      walletBalance, 
-      totalWalletBalance: walletBalance,
-      daily, 
-      weekly, 
-      monthly, 
-      totals, 
-      transactions: rangeFilteredTxs 
-    });
-
-  } catch (e) {
-    console.error('Finance Error:', e);
-    return res.json({ scope: (rawEmail || rawUid) ? 'user' : 'system', providerBalanceRequired: 0, walletBalance: 0, daily: { deposits: 0, providerCost: 0, smsCost: 0, netProfit: 0 }, weekly: { deposits: 0, providerCost: 0, smsCost: 0, netProfit: 0 }, monthly: { deposits: 0, providerCost: 0, smsCost: 0, netProfit: 0 }, totals: { depositsTotal: 0, providerCostTotal: 0, smsCostTotal: 0, netProfitTotal: 0 }, transactions: [] });
-  }
-});
-
-router.get('/users/transactions', async (req, res) => {
-  const email = String(req.query.email || '').trim();
-  const uid = String(req.query.uid || '').trim();
-  if (!email && !uid) return res.json([]);
-  try {
-    const names = ['admin_transactions', 'transactions', 'wallet_transactions'];
-    let rows = [];
-    for (const n of names) {
-      const col = db.collection(n);
-      try {
-        if (email) {
-          const queries = [
-            col.where('user_email', '==', email).limit(500).get(),
-            col.where('user', '==', email).limit(500).get(),
-            col.where('userEmail', '==', email).limit(500).get(),
-            col.where('email', '==', email).limit(500).get(),
-          ];
-          const snaps = await Promise.allSettled(queries);
-          for (const s of snaps) {
-            if (s.status === 'fulfilled') {
-              const snap = s.value;
-              if (!snap.empty) {
-                rows = rows.concat(
-                  snap.docs.map(d => {
-                    const x = d.data() || {};
-      const type = String(x.type || '').toLowerCase();
-       const sType = String(x.serviceType || x.type || '').toLowerCase();
-       const validServiceTypes = ['airtime', 'data', 'electricity', 'exam', 'cable', 'bill'];
-       const isService = validServiceTypes.includes(type) || (type === 'debit' && validServiceTypes.includes(sType));
-       
-       let userPrice = Number(x.amount || 0);
-       
-       return {
-         id: d.id,
-         user: x.user || x.user_email || x.userEmail || x.email || x.userId || '',
-         amount: userPrice,
-         status: x.status || 'success',
-         type,
-         providerStatus: x.providerStatus || x.provider_status || '',
-         providerErrorCode: x.providerErrorCode || x.provider_error_code || '',
-         providerErrorMessage: x.providerErrorMessage || x.provider_error_message || '',
-         providerRaw: x.providerRaw || x.provider_raw || null,
-         createdAt: x.createdAt || x.timestamp || Date.now(),
-         providerCost: Number(x.providerCost || x.provider_price || 0),
-         smsCost: Number(x.smsCost || x.sms_cost || 0),
-         netProfit: isService 
-           ? (userPrice - Number(x.providerCost || x.provider_price || 0) - Number(x.smsCost || x.sms_cost || 0)) 
-           : 0
-       };
-                  })
-                );
-              }
-            }
-          }
-        }
-        if (uid) {
-          const queries = [
-            col.where('userId', '==', uid).limit(500).get(),
-            col.where('uid', '==', uid).limit(500).get(),
-          ];
-          const snaps = await Promise.allSettled(queries);
-          for (const s of snaps) {
-            if (s.status === 'fulfilled') {
-              const snap = s.value;
-              if (!snap.empty) {
-                rows = rows.concat(
-                  snap.docs.map(d => {
-                    const x = d.data() || {};
-                    const type = String(x.type || '').toLowerCase();
-                    const sType = String(x.serviceType || x.type || '').toLowerCase();
-                    const validServiceTypes = ['airtime', 'data', 'electricity', 'exam', 'cable', 'bill'];
-                    const isService = validServiceTypes.includes(type) || (type === 'debit' && validServiceTypes.includes(sType));
-                    
-                    let userPrice = Number(x.amount || 0);
-                    return {
-                      id: d.id,
-                      user: x.user || x.user_email || x.userEmail || x.email || x.userId || '',
-                      amount: userPrice,
-                      status: x.status || 'success',
-                      type,
-                      providerStatus: x.providerStatus || x.provider_status || '',
-                      providerErrorCode: x.providerErrorCode || x.provider_error_code || '',
-                      providerErrorMessage: x.providerErrorMessage || x.provider_error_message || '',
-                      providerRaw: x.providerRaw || x.provider_raw || null,
-                      createdAt: x.createdAt || x.timestamp || Date.now(),
-                      providerCost: Number(x.providerCost || x.provider_price || 0),
-                      smsCost: Number(x.smsCost || x.sms_cost || 0),
-                      netProfit: isService 
-                        ? (userPrice - Number(x.providerCost || x.provider_price || 0) - Number(x.smsCost || x.sms_cost || 0)) 
-                        : 0
-                    };
-                  })
-                );
-              }
-            }
-          }
-        }
-      } catch {}
-    }
-    rows.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-    return res.json(rows);
-  } catch {
-    return res.json([]);
-  }
-});
-
-router.get('/transactions/:id', async (req, res) => {
-  const id = String(req.params.id || '');
-  if (!id) return res.status(400).json({ message: 'id required' });
-  try {
-    const doc = await db.collection('admin_transactions').doc(id).get();
-    if (doc.exists) {
-      const x = doc.data() || {};
-      return res.json({ id, user: x.user || x.user_email || x.userId || '', amount: Number(x.amount || 0), status: x.status || '', type: x.type || '', createdAt: x.createdAt || Date.now() });
-    }
-  } catch {}
-  return res.json({});
-});
-
-router.get('/plans', async (_req, res) => {
-  try {
-    const snap = await db.collection('service_plans').get();
-    const rows = snap.docs.map(d => {
-      const x = d.data() || {};
-      return { id: d.id, network: x.network || '', name: x.name || '', priceUser: Number(x.priceUser || x.price_user || 0), priceApi: Number(x.priceApi || x.price_api || 0), active: x.active !== false, metadata: x.metadata || null, createdAt: x.createdAt || Date.now() };
-    });
-    return res.json(rows);
-  } catch {
-    return res.json([]);
-  }
-});
-
-router.post('/plans', async (req, res) => {
-  const body = req.body || {};
-  const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const network = String(body.network || '');
-  const name = String(body.name || '');
-  const priceUser = Number(body.priceUser || 0);
-  const priceApi = Number(body.priceApi || 0);
-  const active = body.active === undefined ? true : Boolean(body.active);
-  if (!network || !name || !priceUser || !priceApi) {
-    return res.status(400).json({ message: 'network, name, priceUser, priceApi required' });
-  }
-  try {
-    await db.collection('service_plans').doc(id).set({ network, name, priceUser, priceApi, active, metadata: body.metadata || null, createdAt: Date.now() });
-  } catch {}
-  return res.json({ id, network, name, priceUser, priceApi, active, metadata: body.metadata || null });
-});
-
-router.put('/plans/:id', async (req, res) => {
-  const id = String(req.params.id || '');
-  const body = req.body || {};
-  if (!id) return res.status(400).json({ message: 'id and at least one field required' });
-  try {
-    const patch = {};
-    if (body.network !== undefined) patch.network = String(body.network || '');
-    if (body.name !== undefined) patch.name = String(body.name || '');
-    if (body.priceUser !== undefined) patch.priceUser = Number(body.priceUser || 0);
-    if (body.priceApi !== undefined) patch.priceApi = Number(body.priceApi || 0);
-    if (body.active !== undefined) patch.active = Boolean(body.active);
-    if (body.metadata !== undefined) patch.metadata = body.metadata ? body.metadata : null;
-    await db.collection('service_plans').doc(id).set(patch, { merge: true });
-  } catch {}
-  return res.json({ id, ...body });
-});
-
-router.delete('/plans/:id', async (req, res) => {
-  const id = String(req.params.id || '');
-  if (!id) return res.status(400).json({ message: 'id required' });
-  try {
-    await db.collection('service_plans').doc(id).delete();
-  } catch {}
-  return res.json({ success: true, id });
-});
-
-// Sync plans from IA Café provider
-router.post('/plans/sync', async (req, res) => {
-  try {
-    const { type, network } = req.body; // type: 'data', 'cable', 'budget'
-    const providerService = require('../services/providerService');
-    
-    const results = {
-      success: true,
-      imported: 0,
-      updated: 0,
-      errors: [],
-      plans: []
-    };
-
-    // Helper to calculate profit margin
-    const calculateUserPrice = (apiPrice, networkKey, type) => {
-      // Your profit calculation: +50 for 500MB, +100 for 1GB, +200 for 2GB, etc.
-      const gb = apiPrice / 1000; // approximate GB based on price
-      let profit = 0;
-      
-      if (apiPrice <= 100) profit = 20;
-      else if (apiPrice <= 200) profit = 30;
-      else if (apiPrice <= 300) profit = 40;
-      else if (apiPrice <= 500) profit = 50;
-      else if (apiPrice <= 700) profit = 70;
-      else if (apiPrice <= 1000) profit = 100;
-      else if (apiPrice <= 1500) profit = 150;
-      else if (apiPrice <= 2000) profit = 200;
-      else if (apiPrice <= 3000) profit = 250;
-      else if (apiPrice <= 5000) profit = 400;
-      else profit = Math.round(apiPrice * 0.15); // 15% for larger plans
-      
-      return Math.round(apiPrice + profit);
-    };
-
-    // Network mapping for IA Café
-    const networks = {
-      mtn: { id: 'mtn', name: 'MTN' },
-      glo: { id: 'glo', name: 'Glo' },
-      airtel: { id: 'airtel', name: 'Airtel' },
-      '9mobile': { id: '9mobile', name: '9mobile' }
-    };
-
-    // Fetch budget data plans
-    if (type === 'budget' || !type) {
-      for (const [netKey, netInfo] of Object.entries(networks)) {
-        try {
-          const planResult = await providerService.getBudgetDataPlans(NETWORK_ID_MAP[netKey]);
-          if (planResult.success && planResult.data) {
-            for (const plan of planResult.data) {
-              const variationId = plan.plan_id || plan.variation_id;
-              const apiPrice = Number(plan.price || plan.amount || 0);
-              const planName = plan.name || plan.plan_name || `${plan.size || 'Unknown'} - ${plan.validity || ''}`;
-              
-              if (!variationId) continue;
-              
-              const id = `budget_${netKey}_${variationId}`;
-              const priceUser = calculateUserPrice(apiPrice, netKey, 'budget');
-              
-              const planData = {
-                network: netInfo.name,
-                networkKey: netKey,
-                name: planName,
-                priceUser,
-                priceApi: apiPrice,
-                type: 'data',
-                subType: 'budget',
-                active: true,
-                metadata: {
-                  variation_id: String(variationId),
-                  network_id: NETWORK_ID_MAP[netKey],
-                  plan_id: variationId,
-                  validity: plan.validity,
-                  size: plan.size
-                },
-                createdAt: Date.now()
-              };
-              
-              await db.collection('service_plans').doc(id).set(planData, { merge: true });
-              results.imported++;
-              results.plans.push(planData);
-            }
-          }
-        } catch (e) {
-          results.errors.push(`Error fetching ${netKey} budget plans: ${e.message}`);
-        }
-      }
-    }
-
-    // Fetch standard data plans
-    if (type === 'data' || !type) {
-      for (const [netKey, netInfo] of Object.entries(networks)) {
-        try {
-          const planResult = await providerService.getVariations('data', netKey);
-          if (planResult.success && planResult.data) {
-            for (const plan of planResult.data) {
-              const variationId = plan.variation_id;
-              const apiPrice = Number(plan.price || 0);
-              const planName = plan.name;
-              
-              if (!variationId) continue;
-              
-              const id = `data_${netKey}_${variationId}`;
-              const priceUser = calculateUserPrice(apiPrice, netKey, 'data');
-              
-              const planData = {
-                network: netInfo.name,
-                networkKey: netKey,
-                name: planName,
-                priceUser,
-                priceApi: apiPrice,
-                type: 'data',
-                subType: 'standard',
-                active: true,
-                metadata: {
-                  variation_id: variationId
-                },
-                createdAt: Date.now()
-              };
-              
-              await db.collection('service_plans').doc(id).set(planData, { merge: true });
-              results.imported++;
-              results.plans.push(planData);
-            }
-          }
-        } catch (e) {
-          results.errors.push(`Error fetching ${netKey} data plans: ${e.message}`);
-        }
-      }
-    }
-
-    // Fetch cable TV plans
-    if (type === 'cable' || !type) {
-      const cableServices = ['dstv', 'gotv', 'startimes', 'showmax'];
-      for (const serviceId of cableServices) {
-        try {
-          const planResult = await providerService.getVariations('cable', serviceId);
-          if (planResult.success && planResult.data) {
-            for (const plan of planResult.data) {
-              const variationId = plan.variation_id;
-              const apiPrice = Number(plan.price || 0);
-              const planName = plan.name;
-              
-              if (!variationId) continue;
-              
-              const id = `cable_${serviceId}_${variationId}`;
-              const priceUser = calculateUserPrice(apiPrice, serviceId, 'cable');
-              
-              const planData = {
-                network: serviceId.toUpperCase(),
-                networkKey: serviceId,
-                name: planName,
-                priceUser,
-                priceApi: apiPrice,
-                type: 'cable',
-                active: true,
-                metadata: {
-                  variation_id: variationId,
-                  service_id: serviceId
-                },
-                createdAt: Date.now()
-              };
-              
-              await db.collection('service_plans').doc(id).set(planData, { merge: true });
-              results.imported++;
-              results.plans.push(planData);
-            }
-          }
-        } catch (e) {
-          results.errors.push(`Error fetching ${serviceId} cable plans: ${e.message}`);
-        }
-      }
-    }
-
-    return res.json(results);
-  } catch (error) {
-    console.error('[Admin] Plans sync error:', error);
-    return res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Get providers from IA Café
-router.get('/providers', async (_req, res) => {
-  try {
-    const providerService = require('../services/providerService');
-    const result = await providerService.getProviders();
     res.json(result);
   } catch (error) {
-    console.error('[Admin] Get providers error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('[Admin Routes] Stats error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Migration endpoint - Run ghost wallet migration
-router.post('/migrate-ghost-wallets', async (_req, res) => {
+// Wallet logs
+router.get('/wallet/logs', async (req, res) => {
   try {
-    const { db, auth } = require('../config/firebase');
-    
-    console.log('🔍 Starting ghost wallet migration...');
-    
-    // Get all wallets
-    const walletsSnapshot = await db.collection('wallets').get();
-    console.log(`📊 Found ${walletsSnapshot.size} wallets total`);
-    
-    let migrated = 0;
-    let skipped = 0;
-    let errors = 0;
-    const results = [];
-    
-    for (const walletDoc of walletsSnapshot.docs) {
-      const docId = walletDoc.id;
-      const data = walletDoc.data();
-      
-      // Check if document ID looks like an email (contains @)
-      if (docId.includes('@')) {
-        console.log(`\n📧 Found wallet with email ID: ${docId}`);
-        
-        try {
-          // Try to resolve email to UID
-          let targetUid = null;
-          
-          // 1. Try Firebase Auth
-          try {
-            const user = await auth.getUserByEmail(docId);
-            targetUid = user.uid;
-            console.log(`   ✅ Resolved via Auth: ${targetUid}`);
-          } catch (e) {
-            console.log(`   ❌ Not in Auth: ${e.message}`);
-          }
-          
-          // 2. If not in Auth, try users collection
-          if (!targetUid) {
-            const usersSnapshot = await db.collection('users')
-              .where('email', '==', docId.toLowerCase())
-              .limit(1)
-              .get();
-            
-            if (!usersSnapshot.empty) {
-              targetUid = usersSnapshot.docs[0].id;
-              console.log(`   ✅ Resolved via users collection: ${targetUid}`);
-            }
-          }
-          
-          if (targetUid) {
-            // Check if target wallet already exists
-            const targetDoc = await db.collection('wallets').doc(targetUid).get();
-            
-            if (targetDoc.exists) {
-              // Merge balances (add to existing)
-              const targetData = targetDoc.data();
-              const newMainBalance = (targetData.mainBalance || 0) + (data.mainBalance || 0);
-              const newCashbackBalance = (targetData.cashbackBalance || 0) + (data.cashbackBalance || 0);
-              const newReferralBalance = (targetData.referralBalance || 0) + (data.referralBalance || 0);
-              
-              await db.collection('wallets').doc(targetUid).update({
-                mainBalance: newMainBalance,
-                cashbackBalance: newCashbackBalance,
-                referralBalance: newReferralBalance,
-                migratedFrom: docId,
-                migratedAt: new Date()
-              });
-              
-              console.log(`   🔄 Merged: old(${data.mainBalance || 0}) + new(${targetData.mainBalance || 0}) = ${newMainBalance}`);
-              results.push({ email: docId, action: 'merged', newBalance: newMainBalance, targetUid });
-            } else {
-              // Create new wallet with correct UID
-              await db.collection('wallets').doc(targetUid).set({
-                ...data,
-                migratedFrom: docId,
-                migratedAt: new Date()
-              });
-              
-              console.log(`   ✅ Created new wallet for UID: ${targetUid}`);
-              results.push({ email: docId, action: 'created', balance: data.mainBalance || 0, targetUid });
-            }
-            
-            // Delete old wallet
-            await db.collection('wallets').doc(docId).delete();
-            console.log(`   🗑️ Deleted old wallet: ${docId}`);
-            
-            migrated++;
-          } else {
-            console.log(`   ⚠️ Could not resolve UID for ${docId} - skipping`);
-            results.push({ email: docId, action: 'skipped', reason: 'Could not resolve UID' });
-            skipped++;
-          }
-        } catch (err) {
-          console.error(`   ❌ Error processing ${docId}:`, err.message);
-          results.push({ email: docId, action: 'error', message: err.message });
-          errors++;
-        }
-      } else {
-        // Document ID doesn't look like email - skip
-        skipped++;
-      }
-    }
-    
-    console.log(`\n✅ Migration complete!`);
-    console.log(`   Migrated: ${migrated}`);
-    console.log(`   Skipped: ${skipped}`);
-    console.log(`   Errors: ${errors}`);
-    
-    res.json({
-      success: true,
-      migrated,
-      skipped,
-      errors,
-      results
-    });
+    const result = await pool.query(
+      `SELECT wt.*, u.email, u.full_name
+       FROM wallet_transactions wt
+       LEFT JOIN users u ON wt.user_id = u.id
+       ORDER BY wt.created_at DESC
+       LIMIT 200`
+    );
+    res.json(result.rows);
   } catch (error) {
-    console.error('❌ Migration failed:', error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('[Admin Routes] Wallet logs error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Wallet deposits
+router.get('/wallet/deposits', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT p.*, u.email, u.full_name
+       FROM payments p
+       LEFT JOIN users u ON p.user_id = u.id
+       WHERE p.payment_method = 'flutterwave'
+       ORDER BY p.created_at DESC
+       LIMIT 100`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('[Admin Routes] Wallet deposits error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

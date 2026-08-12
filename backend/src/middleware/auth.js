@@ -174,5 +174,6 @@ module.exports = {
   verifyToken,
   authenticate,
   authenticateAdmin,
+  requireAdmin: authenticateAdmin,
   optionalAuth
 };
