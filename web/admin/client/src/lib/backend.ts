@@ -1,4 +1,5 @@
-import { apiRequest, getAccessToken, getUser } from "./auth";
+import { apiRequest } from "./auth";
+import { getAccessToken, getUser } from "./auth";
 
 function getBaseUrl(): string {
   const prodUrlRaw = import.meta.env.VITE_VTU_BACKEND_URL as string | undefined;
