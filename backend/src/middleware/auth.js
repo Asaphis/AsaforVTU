@@ -170,7 +170,6 @@ const optionalAuth = async (req, res, next) => {
 
 module.exports = {
   generateToken,
-  generateToken,
   generateRefreshToken,
   verifyToken,
   authenticate,
