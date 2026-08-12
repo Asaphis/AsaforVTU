@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { db } = require('../config/firebase');
+const pool = require('../config/database');
 
 class ProviderService {
   constructor() {
@@ -110,7 +110,7 @@ class ProviderService {
 
   /**
    * Helper to map network to Provider ID dynamically
-   * Fetches from DB settings/global -> networkMappings
+   * Fetches from DB settings -> network_mappings
    */
   async _resolveNetworkId(network) {
     let netInput = network;
@@ -121,10 +121,12 @@ class ProviderService {
 
     // 1. Try fetching from DB
     try {
-      const doc = await db.doc('settings/global').get();
-      if (doc.exists) {
-        const data = doc.data();
-        const mappings = data.networkMappings || {};
+      const result = await pool.query(
+        "SELECT value FROM settings WHERE key = 'network_mappings'"
+      );
+      
+      if (result.rows.length > 0) {
+        const mappings = result.rows[0].value || {};
         
         // Check exact match or contained match
         // Mappings format: { "mtn": "1", "glo": "2", "airtel": "4", "9mobile": "3" }

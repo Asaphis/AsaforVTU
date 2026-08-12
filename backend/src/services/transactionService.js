@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { debitWallet, creditWallet } = './walletService';
+const walletService = require('./walletService');
 
 // Create transaction
 const createTransaction = async (transactionData) => {
@@ -234,7 +234,7 @@ const processTransactionWithWallet = async (transactionId) => {
     }
 
     // Debit wallet
-    await debitWallet(
+    await walletService.debitWallet(
       transaction.user_id,
       transaction.amount,
       'main',
@@ -298,7 +298,7 @@ const failTransaction = async (transactionId, reason = null) => {
 
     // Refund wallet if payment was made
     if (transaction.status === 'processing') {
-      await creditWallet(
+      await walletService.creditWallet(
         transaction.user_id,
         transaction.amount,
         'main',

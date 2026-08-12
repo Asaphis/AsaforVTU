@@ -1,6 +1,6 @@
 const pool = require('../config/database');
-const { creditWallet } = './walletService';
-const { createTransaction, completeTransaction, failTransaction } = './transactionService';
+const walletService = require('./walletService');
+const transactionService = require('./transactionService');
 
 // Create payment
 const createPayment = async (paymentData) => {
@@ -179,8 +179,8 @@ const processSuccessfulPayment = async (paymentId, providerData = {}) => {
     // Update payment status
     const updatedPayment = await updatePaymentStatus(paymentId, 'success', providerData);
 
-    // Credit wallet
-    await creditWallet(
+    // Credit wallet INSTANTLY
+    await walletService.creditWallet(
       payment.user_id,
       payment.amount,
       'main',
@@ -190,7 +190,7 @@ const processSuccessfulPayment = async (paymentId, providerData = {}) => {
 
     // If payment is linked to a transaction, process it
     if (payment.transaction_id) {
-      await completeTransaction(payment.transaction_id, providerData.provider_reference);
+      await transactionService.completeTransaction(payment.transaction_id, providerData.provider_reference);
     }
 
     await client.query('COMMIT');
@@ -225,7 +225,7 @@ const processFailedPayment = async (paymentId, reason = null) => {
 
     // If payment is linked to a transaction, fail it
     if (payment.transaction_id) {
-      await failTransaction(payment.transaction_id, reason || 'Payment failed');
+      await transactionService.failTransaction(payment.transaction_id, reason || 'Payment failed');
     }
 
     await client.query('COMMIT');
@@ -263,8 +263,7 @@ const reversePayment = async (paymentId, reason = null) => {
     });
 
     // Debit wallet (reverse the credit)
-    const { debitWallet } = require('./walletService');
-    await debitWallet(
+    await walletService.debitWallet(
       payment.user_id,
       payment.amount,
       'main',

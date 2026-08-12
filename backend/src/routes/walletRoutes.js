@@ -1,38 +1,56 @@
 const express = require('express');
-const cors = require('cors');
-const { verifyToken } = require('../middleware/auth');
-const walletController = require('../controllers/walletController');
+const { authenticate } = require('../middleware/auth');
+const walletService = require('../services/walletService');
 
 const router = express.Router();
 
-const originsEnv = process.env.CORS_ALLOWED_ORIGINS;
-const origins = originsEnv ? originsEnv.split(',').map(s => s.trim()).filter(Boolean) : [
-  'https://asaforvtu.onrender.com',
-  'https://www.Asafor.com',
-  'https://asaforvtu.onrender.com',
-  'https://asaforadmin.onrender.com',
-  'https://vtu.ferixas.com',
-  'http://localhost:3000',
-  'http://localhost:5000',
-  'http://localhost:5001'
-];
-const corsOptions = {
-  origin: (origin, callback) => {
-    const isAllowed = !origin || origins.includes(origin);
-    return isAllowed ? callback(null, true) : callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  optionsSuccessStatus: 200
-};
+router.use(authenticate);
 
-router.options('*', cors(corsOptions));
-router.use(cors(corsOptions));
-router.use(verifyToken);
+router.get('/', async (req, res) => {
+  try {
+    const wallet = await walletService.getWalletByUserId(req.user.id);
+    if (!wallet) {
+      return res.status(404).json({ error: 'Wallet not found' });
+    }
+    res.json({
+      main_balance: wallet.main_balance,
+      cashback_balance: wallet.cashback_balance,
+      referral_balance: wallet.referral_balance,
+      total_earned: wallet.total_earned,
+      total_spent: wallet.total_spent
+    });
+  } catch (error) {
+    console.error('[Wallet Routes] Get balance error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
-router.get('/', walletController.getBalance);
-router.get('/history', walletController.getHistory);
-router.post('/transfer', walletController.transferToMain);
+router.get('/history', async (req, res) => {
+  try {
+    const history = await walletService.getWalletTransactions(req.user.id);
+    res.json(history);
+  } catch (error) {
+    console.error('[Wallet Routes] Get history error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/transfer', async (req, res) => {
+  try {
+    const { amount, fromWalletType } = req.body || {};
+    if (!amount || Number(amount) <= 0) {
+      return res.status(400).json({ error: 'Invalid amount' });
+    }
+    if (!['cashback', 'referral'].includes(fromWalletType)) {
+      return res.status(400).json({ error: 'Invalid source wallet type' });
+    }
+    const result = await walletService.transferWalletBalance(req.user.id, fromWalletType, 'main', amount, 'Transfer to main wallet');
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('[Wallet Routes] Transfer error:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
 
 module.exports = router;
 
