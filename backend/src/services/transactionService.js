@@ -1,194 +1,377 @@
-const { db } = require('../config/firebase');
-const walletService = require('./walletService');
-const cashbackService = require('./cashbackService');
-const referralService = require('./referralService');
-const notificationService = require('./notificationService');
+const pool = require('../config/database');
+const { debitWallet, creditWallet } = './walletService';
 
-const TRANSACTION_COLLECTION = 'transactions';
-
-class TransactionService {
+// Create transaction
+const createTransaction = async (transactionData) => {
+  const client = await pool.connect();
   
-  async initiateTransaction(userId, type, amount, details, requestId) {
-    const providerName = 'IACafe';
-    const idempotencyKey = requestId || `REQ-${Date.now()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
-    // 1. Idempotency Check
-    if (requestId) {
-      const existing = await db.collection(TRANSACTION_COLLECTION)
-        .where('requestId', '==', requestId)
-        .limit(1)
-        .get();
-      
-      if (!existing.empty) {
-        return existing.docs[0].data();
-      }
-    }
+  try {
+    await client.query('BEGIN');
 
-    // 2. Ensure wallet exists & has sufficient balance (do not debit yet)
-    await walletService.createWallet(userId);
-    const bal = await walletService.getBalance(userId);
-    if ((bal.mainBalance || 0) < amount) {
-      throw new Error('Insufficient funds');
-    }
-
-    // 3. Create Transaction Record (Pending)
-    const transactionRef = db.collection(TRANSACTION_COLLECTION).doc();
-    let userPrice = Number(amount || 0);
-    let providerCost = Number(amount || 0);
-    let smsCost = 0;
-    try {
-      if (type === 'data' && details && details.planId) {
-        const planSnap = await db.collection('service_plans').where('metadata.variation_id', '==', String(details.planId)).limit(1).get();
-        if (!planSnap.empty) {
-          const p = planSnap.docs[0].data();
-          userPrice = Number(p.priceUser || userPrice);
-          providerCost = Number(p.priceApi || providerCost);
-        }
-      } else if (type === 'airtime' && details && (details.network || details.networkId)) {
-        try {
-          const settingsDoc = await db.collection('settings').doc('global').get();
-          const st = settingsDoc.exists ? settingsDoc.data() || {} : {};
-          
-          const airtimeNetworks = st.airtimeNetworks || {};
-          const netKey = String(details.network || details.networkId || '').toString().toUpperCase();
-          const discount = Number((airtimeNetworks[netKey] && airtimeNetworks[netKey].discount) || 0);
-          const rate = (100 - discount) / 100;
-          
-          // User pays discounted amount
-          userPrice = Math.round(Number(amount || 0) * rate);
-          // Provider cost is the same in this case unless we have a different API rate
-          providerCost = userPrice; 
-        } catch (e) {
-          console.error('[TransactionService] Airtime settings lookup failed:', e);
-        }
-      }
-    } catch (e) {
-      console.error('[TransactionService] Pricing resolution failed:', e);
-    }
-
-    // Update amount to be what user actually pays
-    const finalDebitAmount = userPrice;
-
-    // Re-check balance with the actual price
-    if ((bal.mainBalance || 0) < finalDebitAmount) {
-      throw new Error(`Insufficient funds. Required: ₦${finalDebitAmount}`);
-    }
-
-    const transactionData = {
-      id: transactionRef.id,
-      userId,
+    const {
+      user_id,
+      service_id,
+      plan_id,
       type,
-      amount: Number(amount), // Face value
-      payableAmount: finalDebitAmount, // Actual amount debited
-      details,
-      requestId: idempotencyKey,
-      status: 'pending',
-      createdAt: new Date(),
-      provider: providerName,
-      userPrice: finalDebitAmount,
-      providerCost,
-      smsCost,
-      serviceType: type
-    };
-    await transactionRef.set(transactionData);
+      amount,
+      phone,
+      meter_number,
+      smartcard_number,
+      customer_name,
+      customer_address,
+      metadata = {}
+    } = transactionData;
 
-    // 4. Debit Wallet
-    try {
-      await walletService.debitWallet(userId, finalDebitAmount, 'main', `${type} Purchase: ${details.phone}`);
-    } catch (error) {
-      await transactionRef.update({ status: 'failed', failureReason: 'Debit failed' });
-      throw error;
+    // Generate reference
+    const reference = `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Insert transaction
+    const result = await client.query(
+      `INSERT INTO transactions (user_id, service_id, plan_id, type, amount, reference, phone, meter_number, smartcard_number, customer_name, customer_address, metadata, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending')
+       RETURNING *`,
+      [user_id, service_id, plan_id, type, amount, reference, phone, meter_number, smartcard_number, customer_name, customer_address, JSON.stringify(metadata)]
+    );
+
+    const transaction = result.rows[0];
+
+    await client.query('COMMIT');
+
+    return transaction;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('[Transaction Service] Error creating transaction:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Update transaction status
+const updateTransactionStatus = async (transactionId, status, providerReference = null, metadata = null) => {
+  try {
+    const updateFields = ['status = $2'];
+    const updateValues = [transactionId, status];
+    let paramIndex = 3;
+
+    if (providerReference) {
+      updateFields.push(`provider_reference = $${paramIndex}`);
+      updateValues.push(providerReference);
+      paramIndex++;
     }
 
-    // 5. Call Provider
-    try {
-      const providerService = require('./providerService');
-      let result;
-      
-      if (type === 'airtime') {
-        result = await providerService.purchaseAirtime(idempotencyKey, details.phone, amount, details.network || details.networkId);
-      } else if (type === 'data') {
-        if (!details.planId) {
-          throw new Error('Data plan ID (variation_id) is required for data purchase');
-        }
-        result = await providerService.purchaseData(idempotencyKey, details.phone, details.planId, details.network || details.networkId);
-      } else if (type === 'cable') {
-        if (!details.customerId || !details.serviceId || !details.planId) {
-          throw new Error('customerId, serviceId, and planId are required for cable TV');
-        }
-        result = await providerService.purchaseCableTV(idempotencyKey, details.customerId, details.serviceId, details.planId, amount);
-      } else if (type === 'electricity') {
-        if (!details.customerId || !details.serviceId || !details.variationId || !amount) {
-          throw new Error('customerId, serviceId, variationId (prepaid/postpaid), and amount are required for electricity');
-        }
-        result = await providerService.purchaseElectricity(idempotencyKey, details.customerId, details.serviceId, details.variationId, amount);
-      } else {
-        // Fallback for other types
-        result = { success: false, message: 'Service not implemented yet' };
-      }
-
-      if (result.success) {
-        await transactionRef.update({
-          status: 'success',
-          providerTransactionId: result.transactionId,
-          providerResponse: result.apiResponse,
-          updatedAt: new Date()
-        });
-        try {
-          const maskedPhone = String(details.phone || '').replace(/^(\d{0,7})/, '*******');
-          const title = `${type.charAt(0).toUpperCase() + type.slice(1)} Purchase Successful`;
-          const body = `You purchased ${type} for ${maskedPhone}. Amount: ₦${amount}. Ref: ${result.transactionId}.`;
-          await notificationService.sendNotification(userId, title, body);
-          await notificationService.sendSms(details.phone, body);
-          const unit = Number(process.env.SMS_UNIT_COST || 0);
-          if (unit > 0) {
-            smsCost = unit;
-            await transactionRef.update({ smsCost });
-          }
-        } catch (notifyErr) {}
-        return { ...transactionData, status: 'success', smsCost }
-      } else {
-        // Refund if provider fails
-        await walletService.creditWallet(userId, amount, 'main', `Refund: ${type} failed`);
-        await transactionRef.update({
-          status: 'failed',
-          failureReason: result.message,
-          providerResponse: result.apiResponse,
-          updatedAt: new Date()
-        });
-        
-        // Return the actual provider error message for better debugging
-        const providerOrderId = result.apiResponse && result.apiResponse.order_id 
-          ? ` (Order ID: ${result.apiResponse.order_id})` 
-          : '';
-        
-        const finalMessage = `${result.message || 'Provider transaction failed'}${providerOrderId}`;
-
-        const err = new Error(finalMessage);
-        err.statusCode = 400; // Explicitly set status code for controller
-        if (result.message && result.message.toLowerCase().includes('token')) {
-            // Keep the providerError flag for controller if needed, but allow message to pass through
-            err.providerError = true;
-        }
-        throw err;
-      }
-    } catch (error) {
-      // If the error was thrown above, it has the correct message.
-      // If it's an unexpected error, we log it and rethrow.
-      console.error('Transaction Processing Error:', error);
-      throw error;
+    if (metadata) {
+      updateFields.push(`metadata = metadata || $${paramIndex}::jsonb`);
+      updateValues.push(JSON.stringify(metadata));
+      paramIndex++;
     }
 
-  }
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
 
-  async getTransactions(userId) {
-    const snapshot = await db.collection(TRANSACTION_COLLECTION)
-      .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .limit(50)
-      .get();
-    
-    return snapshot.docs.map(doc => doc.data());
-  }
-}
+    const query = `
+      UPDATE transactions 
+      SET ${updateFields.join(', ')} 
+      WHERE id = $1 
+      RETURNING *
+    `;
 
-module.exports = new TransactionService();
+    const result = await pool.query(query, updateValues);
+
+    if (result.rows.length === 0) {
+      throw new Error('Transaction not found');
+    }
+
+    return result.rows[0];
+  } catch (error) {
+    console.error('[Transaction Service] Error updating transaction:', error);
+    throw error;
+  }
+};
+
+// Get transaction by ID
+const getTransactionById = async (transactionId) => {
+  try {
+    const result = await pool.query(
+      `SELECT t.*, 
+              u.email, u.full_name,
+              s.name as service_name, s.category as service_category,
+              sp.name as plan_name, sp.network as plan_network
+       FROM transactions t
+       LEFT JOIN users u ON t.user_id = u.id
+       LEFT JOIN services s ON t.service_id = s.id
+       LEFT JOIN service_plans sp ON t.plan_id = sp.id
+       WHERE t.id = $1`,
+      [transactionId]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return result.rows[0];
+  } catch (error) {
+    console.error('[Transaction Service] Error getting transaction:', error);
+    throw error;
+  }
+};
+
+// Get transactions by user ID
+const getTransactionsByUserId = async (userId, limit = 50, offset = 0, status = null) => {
+  try {
+    let query = `
+      SELECT t.*, 
+             s.name as service_name, s.category as service_category,
+             sp.name as plan_name, sp.network as plan_network
+      FROM transactions t
+      LEFT JOIN services s ON t.service_id = s.id
+      LEFT JOIN service_plans sp ON t.plan_id = sp.id
+      WHERE t.user_id = $1
+    `;
+    const params = [userId];
+    let paramIndex = 2;
+
+    if (status) {
+      query += ` AND t.status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY t.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(limit, offset);
+
+    const result = await pool.query(query, params);
+
+    return result.rows;
+  } catch (error) {
+    console.error('[Transaction Service] Error getting user transactions:', error);
+    throw error;
+  }
+};
+
+// Get all transactions (admin)
+const getAllTransactions = async (limit = 100, offset = 0, status = null, type = null) => {
+  try {
+    let query = `
+      SELECT t.*, 
+             u.email, u.full_name, u.username,
+             s.name as service_name, s.category as service_category,
+             sp.name as plan_name, sp.network as plan_network
+      FROM transactions t
+      LEFT JOIN users u ON t.user_id = u.id
+      LEFT JOIN services s ON t.service_id = s.id
+      LEFT JOIN service_plans sp ON t.plan_id = sp.id
+      WHERE 1=1
+    `;
+    const params = [];
+    let paramIndex = 1;
+
+    if (status) {
+      query += ` AND t.status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
+    }
+
+    if (type) {
+      query += ` AND t.type = $${paramIndex}`;
+      params.push(type);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY t.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(limit, offset);
+
+    const result = await pool.query(query, params);
+
+    return result.rows;
+  } catch (error) {
+    console.error('[Transaction Service] Error getting all transactions:', error);
+    throw error;
+  }
+};
+
+// Get transaction by reference
+const getTransactionByReference = async (reference) => {
+  try {
+    const result = await pool.query(
+      `SELECT t.*, 
+              u.email, u.full_name,
+              s.name as service_name, s.category as service_category,
+              sp.name as plan_name, sp.network as plan_network
+       FROM transactions t
+       LEFT JOIN users u ON t.user_id = u.id
+       LEFT JOIN services s ON t.service_id = s.id
+       LEFT JOIN service_plans sp ON t.plan_id = sp.id
+       WHERE t.reference = $1`,
+      [reference]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return result.rows[0];
+  } catch (error) {
+    console.error('[Transaction Service] Error getting transaction by reference:', error);
+    throw error;
+  }
+};
+
+// Process transaction with wallet payment
+const processTransactionWithWallet = async (transactionId) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    // Get transaction
+    const transaction = await getTransactionById(transactionId);
+    if (!transaction) {
+      throw new Error('Transaction not found');
+    }
+
+    if (transaction.status !== 'pending') {
+      throw new Error('Transaction is not in pending status');
+    }
+
+    // Debit wallet
+    await debitWallet(
+      transaction.user_id,
+      transaction.amount,
+      'main',
+      `Payment for ${transaction.type} transaction`,
+      transaction.reference
+    );
+
+    // Update transaction status to processing
+    await updateTransactionStatus(transactionId, 'processing');
+
+    await client.query('COMMIT');
+
+    return transaction;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('[Transaction Service] Error processing transaction:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Complete transaction (success)
+const completeTransaction = async (transactionId, providerReference = null, metadata = null) => {
+  try {
+    const transaction = await updateTransactionStatus(
+      transactionId,
+      'success',
+      providerReference,
+      metadata
+    );
+
+    // Process cashback if applicable
+    // This would be handled by a separate cashback service
+
+    return transaction;
+  } catch (error) {
+    console.error('[Transaction Service] Error completing transaction:', error);
+    throw error;
+  }
+};
+
+// Fail transaction and refund wallet
+const failTransaction = async (transactionId, reason = null) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    // Get transaction
+    const transaction = await getTransactionById(transactionId);
+    if (!transaction) {
+      throw new Error('Transaction not found');
+    }
+
+    // Update transaction status
+    await updateTransactionStatus(transactionId, 'failed', null, {
+      failure_reason: reason,
+      failed_at: new Date().toISOString()
+    });
+
+    // Refund wallet if payment was made
+    if (transaction.status === 'processing') {
+      await creditWallet(
+        transaction.user_id,
+        transaction.amount,
+        'main',
+        `Refund for failed ${transaction.type} transaction: ${reason || 'Transaction failed'}`,
+        `REFUND_${transaction.reference}`
+      );
+    }
+
+    await client.query('COMMIT');
+
+    return transaction;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('[Transaction Service] Error failing transaction:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Get transaction statistics
+const getTransactionStats = async (userId = null, startDate = null, endDate = null) => {
+  try {
+    let query = `
+      SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE status = 'success') as successful,
+        COUNT(*) FILTER (WHERE status = 'failed') as failed,
+        COUNT(*) FILTER (WHERE status = 'pending') as pending,
+        SUM(amount) FILTER (WHERE status = 'success') as total_amount,
+        AVG(amount) FILTER (WHERE status = 'success') as average_amount
+      FROM transactions
+      WHERE 1=1
+    `;
+    const params = [];
+    let paramIndex = 1;
+
+    if (userId) {
+      query += ` AND user_id = $${paramIndex}`;
+      params.push(userId);
+      paramIndex++;
+    }
+
+    if (startDate) {
+      query += ` AND created_at >= $${paramIndex}`;
+      params.push(startDate);
+      paramIndex++;
+    }
+
+    if (endDate) {
+      query += ` AND created_at <= $${paramIndex}`;
+      params.push(endDate);
+      paramIndex++;
+    }
+
+    const result = await pool.query(query, params);
+
+    return result.rows[0];
+  } catch (error) {
+    console.error('[Transaction Service] Error getting stats:', error);
+    throw error;
+  }
+};
+
+module.exports = {
+  createTransaction,
+  updateTransactionStatus,
+  getTransactionById,
+  getTransactionsByUserId,
+  getAllTransactions,
+  getTransactionByReference,
+  processTransactionWithWallet,
+  completeTransaction,
+  failTransaction,
+  getTransactionStats
+};

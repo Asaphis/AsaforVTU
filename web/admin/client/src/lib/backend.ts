@@ -1,4 +1,4 @@
-import { auth, db } from "./firebase";
+import { apiRequest, getAccessToken } from "./auth";
 
 function getBaseUrl(): string {
   const prodUrlRaw = import.meta.env.VITE_VTU_BACKEND_URL as string | undefined;
@@ -22,8 +22,7 @@ function getBaseUrl(): string {
 }
 
 async function getToken(): Promise<string> {
-  const user = auth.currentUser;
-  return user ? await user.getIdToken() : "";
+  return getAccessToken() || "";
 }
 
 async function request<T>(method: string, path: string, data?: unknown): Promise<T> {

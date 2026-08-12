@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { signInAdmin } from "@/lib/firebase";
+import { loginAdmin } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -46,14 +46,28 @@ export default function Login() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await signInAdmin(values.email, values.password);
+      const user = await loginAdmin(values.email, values.password);
+      
+      // Check if user is admin
+      const allowedAdminEmails = (import.meta.env.VITE_ADMIN_EMAILS || 'asaphis.org@gmail.com')
+        .split(',')
+        .map(email => email.trim().toLowerCase())
+        .filter(Boolean);
+      
+      const isAdmin = user.is_admin || user.role === 'admin' || allowedAdminEmails.includes(user.email.toLowerCase());
+      
+      if (!isAdmin) {
+        await loginAdmin.logout();
+        throw new Error('Access denied: admin privileges required');
+      }
+      
       toast({
         title: "Access Granted",
         description: "Welcome to the administration bridge.",
       });
       setLocation("/");
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Access Denied", description: "Invalid credentials or unauthorized access." });
+      toast({ variant: "destructive", title: "Access Denied", description: error.message || "Invalid credentials or unauthorized access." });
     } finally {
       setIsLoading(false);
     }

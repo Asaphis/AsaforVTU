@@ -1,118 +1,178 @@
-const { auth, db, firebaseInitialized } = require('../config/firebase');
+const jwt = require('jsonwebtoken');
+const pool = require('../config/database');
 
-const verifyToken = async (req, res, next) => {
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '30d';
+
+// Generate JWT token
+const generateToken = (userId, email, role = 'user') => {
+  return jwt.sign(
+    { userId, email, role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+};
+
+// Generate refresh token
+const generateRefreshToken = async (userId) => {
+  const token = jwt.sign(
+    { userId, type: 'refresh' },
+    JWT_SECRET,
+    { expiresIn: REFRESH_TOKEN_EXPIRES_IN }
+  );
+  
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+  
+  await pool.query(
+    'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
+    [userId, token, expiresAt]
+  );
+  
+  return token;
+};
+
+// Verify JWT token
+const verifyToken = (token) => {
   try {
-    // Check if Firebase is initialized
-    if (!firebaseInitialized || !auth) {
-      console.error('[Auth Middleware] Firebase not initialized. Check FIREBASE_* environment variables.');
-      return res.status(503).json({ 
-        error: 'Authentication service unavailable',
-        details: 'Server configuration issue. Please contact support or check environment variables.',
-        code: 'FIREBASE_NOT_INITIALIZED'
-      });
-    }
+    return jwt.verify(token, JWT_SECRET);
+  } catch (error) {
+    return null;
+  }
+};
 
+// Authentication middleware
+const authenticate = async (req, res, next) => {
+  try {
     const authHeader = req.headers.authorization;
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('[Auth Middleware] No token provided in Authorization header');
-      return res.status(401).json({ error: 'Unauthorized: No token provided' });
+      return res.status(401).json({ 
+        error: 'Unauthorized',
+        message: 'No token provided' 
+      });
     }
 
     const token = authHeader.split('Bearer ')[1];
-    console.log('[Auth Middleware] Verifying token for request:', req.path);
+    const decoded = verifyToken(token);
 
-    // TEMPORARY: Test Token for E2E Testing
-    if (token === 'TEST_TOKEN_B1Xb1wb13tNNUpG7nbai7GeSwyR2') {
-      req.user = { 
-        uid: 'B1Xb1wb13tNNUpG7nbai7GeSwyR2', 
-        email: 'test_user@Asafor.com',
-        email_verified: true
-      };
-      console.log('[Auth Middleware] Using test token');
-      return next();
-    }
-
-    try {
-      const decodedToken = await auth.verifyIdToken(token);
-      req.user = decodedToken;
-      console.log('[Auth Middleware] Token verified successfully for user:', decodedToken.email || decodedToken.uid);
-      next();
-    } catch (verifyError) {
-      console.error('[Auth Middleware] Token verification failed:', {
-        code: verifyError.code,
-        message: verifyError.message,
+    if (!decoded) {
+      return res.status(401).json({ 
+        error: 'Unauthorized',
+        message: 'Invalid or expired token' 
       });
-      
-      if (verifyError.code === 'auth/id-token-expired') {
-        return res.status(401).json({ error: 'Unauthorized: Token expired' });
-      }
-      
-      // Check if it's an invalid API key error from Firebase
-      if (verifyError.code === 'auth/invalid-api-key' || verifyError.message?.includes('invalid-api-key')) {
-        return res.status(503).json({ 
-          error: 'Authentication service error',
-          details: 'Invalid Firebase API key. Server configuration issue.',
-          code: 'FIREBASE_INVALID_API_KEY'
-        });
-      }
-      
-      return res.status(403).json({ error: 'Unauthorized: Invalid token' });
     }
+
+    // Check if user exists and is active
+    const userResult = await pool.query(
+      'SELECT id, email, role, is_active FROM users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({ 
+        error: 'Unauthorized',
+        message: 'User not found' 
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    if (!user.is_active) {
+      return res.status(403).json({ 
+        error: 'Forbidden',
+        message: 'User account is deactivated' 
+      });
+    }
+
+    req.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role
+    };
+
+    next();
   } catch (error) {
-    console.error('[Auth Middleware] Unexpected error:', error);
+    console.error('[Auth Middleware] Error:', error);
     return res.status(500).json({ 
       error: 'Authentication error',
-      details: error.message 
+      message: error.message 
     });
   }
 };
 
-const isAdmin = async (req, res, next) => {
+// Admin authentication middleware
+const authenticateAdmin = async (req, res, next) => {
   try {
-    if (!firebaseInitialized || !db) {
-      console.error('[Admin Check] Firebase not initialized');
-      return res.status(503).json({ 
-        error: 'Authorization service unavailable',
-        code: 'FIREBASE_NOT_INITIALIZED'
+    await authenticate(req, res, () => {});
+
+    const allowedAdminEmails = (process.env.ADMIN_EMAILS || 'asaphis.org@gmail.com')
+      .split(',')
+      .map(email => email.trim().toLowerCase())
+      .filter(Boolean);
+
+    const isAdmin = req.user.role === 'admin' || 
+                   req.user.is_admin || 
+                   allowedAdminEmails.includes(req.user.email.toLowerCase());
+
+    if (!isAdmin) {
+      return res.status(403).json({ 
+        error: 'Forbidden',
+        message: 'Admin access required' 
       });
     }
 
-    const allowed = (process.env.ADMIN_EMAILS || 'asaphis.org@gmail.com')
-      .split(',')
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
-    const email = (req.user && req.user.email || '').toLowerCase();
-    if (
-      req.user &&
-      (
-        req.user.admin === true ||
-        (req.user.customClaims && req.user.customClaims.admin === true) ||
-        (email && allowed.includes(email))
-      )
-    ) {
-      return next();
-    }
-    const uid = req.user && req.user.uid;
-    if (!uid) return res.status(403).json({ error: 'Forbidden: Admins only' });
-    
-    try {
-      const userDoc = await db.collection('users').doc(uid).get();
-      const role = userDoc.exists ? (userDoc.data().role || userDoc.data().roles) : null;
-      const isRoleAdmin = role === 'admin' || (Array.isArray(role) && role.includes('admin'));
-      if (isRoleAdmin) {
-        return next();
-      }
-    } catch (dbError) {
-      console.error('[Admin Check] Database error:', dbError);
-      return res.status(500).json({ error: 'Admin check failed', details: dbError.message });
-    }
-    
-    return res.status(403).json({ error: 'Forbidden: Admins only' });
-  } catch (e) {
-    console.error('[Admin Check] Unexpected error:', e);
-    return res.status(500).json({ error: 'Admin check failed', details: e.message });
+    next();
+  } catch (error) {
+    console.error('[Admin Auth Middleware] Error:', error);
+    return res.status(500).json({ 
+      error: 'Admin authentication error',
+      message: error.message 
+    });
   }
 };
 
-module.exports = { verifyToken, isAdmin };
+// Optional authentication (doesn't fail if no token)
+const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      req.user = null;
+      return next();
+    }
 
+    const token = authHeader.split('Bearer ')[1];
+    const decoded = verifyToken(token);
+
+    if (decoded) {
+      const userResult = await pool.query(
+        'SELECT id, email, role, is_active FROM users WHERE id = $1',
+        [decoded.userId]
+      );
+
+      if (userResult.rows.length > 0 && userResult.rows[0].is_active) {
+        req.user = {
+          id: userResult.rows[0].id,
+          email: userResult.rows[0].email,
+          role: userResult.rows[0].role
+        };
+      }
+    }
+
+    req.user = req.user || null;
+    next();
+  } catch (error) {
+    req.user = null;
+    next();
+  }
+};
+
+module.exports = {
+  generateToken,
+  generateRefreshToken,
+  verifyToken,
+  authenticate,
+  authenticateAdmin,
+  optionalAuth
+};

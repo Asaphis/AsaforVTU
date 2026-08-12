@@ -1,246 +1,288 @@
-const { db } = require('../config/firebase');
+const pool = require('../config/database');
 
-const WALLET_COLLECTION = 'wallets';
-const TRANSACTION_COLLECTION = 'wallet_transactions';
+// Create wallet for user
+const createWallet = async (userId) => {
+  try {
+    const result = await pool.query(
+      `INSERT INTO wallets (user_id) 
+       VALUES ($1) 
+       ON CONFLICT (user_id) DO NOTHING 
+       RETURNING *`,
+      [userId]
+    );
 
-class WalletService {
-  _genRef(prefix = 'WTX') {
-    const ts = Date.now().toString(36).toUpperCase();
-    const rnd = Math.random().toString(36).slice(2, 7).toUpperCase();
-    return `${prefix}-${ts}-${rnd}`;
+    return result.rows[0] || await getWalletByUserId(userId);
+  } catch (error) {
+    console.error('[Wallet Service] Error creating wallet:', error);
+    throw error;
   }
+};
 
-  /**
-   * Initialize wallet for a new user
-   */
-  async createWallet(userId) {
-    const walletRef = db.collection(WALLET_COLLECTION).doc(userId);
-    const doc = await walletRef.get();
-    
-    if (!doc.exists) {
-      await walletRef.set({
-        mainBalance: 0,
-        cashbackBalance: 0,
-        referralBalance: 0,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-    }
-    return walletRef.get(); // Return the wallet data
-  }
+// Get wallet by user ID
+const getWalletByUserId = async (userId) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM wallets WHERE user_id = $1',
+      [userId]
+    );
 
-  /**
-   * Get wallet balance - now uses UID only (email lookup removed to avoid index issues)
-   */
-  async getBalance(userId) {
-    if (!userId) {
-      return { mainBalance: 0, cashbackBalance: 0, referralBalance: 0 };
-    }
-    
-    // Direct UID lookup only
-    const walletRef = db.collection(WALLET_COLLECTION).doc(userId);
-    const doc = await walletRef.get();
-    
-    if (doc.exists) {
-      return doc.data();
-    }
-    
-    // Auto-create if not exists (lazy initialization)
-    await this.createWallet(userId);
-    return { mainBalance: 0, cashbackBalance: 0, referralBalance: 0 };
-  }
-
-  /**
-   * Credit wallet (internal use or funding)
-   */
-  async creditWallet(userId, amount, walletType = 'main', description = 'Credit', externalReference = null) {
-    const walletRef = db.collection(WALLET_COLLECTION).doc(userId);
-    
-    return db.runTransaction(async (t) => {
-      // Check for duplicate external reference if provided
-      if (externalReference) {
-         const existingTx = await db.collection(TRANSACTION_COLLECTION)
-            .where('externalReference', '==', externalReference)
-            .limit(1)
-            .get();
-         if (!existingTx.empty) {
-             throw new Error(`Transaction with reference ${externalReference} already exists`);
-         }
-      }
-
-      const doc = await t.get(walletRef);
-      if (!doc.exists) {
-        throw new Error('Wallet not found');
-      }
-
-      const data = doc.data();
-      const field = `${walletType}Balance`;
-      const newBalance = (data[field] || 0) + amount;
-
-      t.update(walletRef, { 
-        [field]: newBalance,
-        updatedAt: new Date()
-      });
-
-      // Add to ledger
-      const transactionRef = db.collection(TRANSACTION_COLLECTION).doc();
-      t.set(transactionRef, {
-        userId,
-        type: 'credit',
-        amount,
-        walletType,
-        description,
-        status: 'success',
-        reference: this._genRef('CR'),
-        externalReference: externalReference || null,
-        balanceBefore: data[field] || 0,
-        balanceAfter: newBalance,
-        createdAt: new Date()
-      });
-
-      return newBalance;
-    });
-  }
-
-  /**
-   * Debit wallet
-   */
-  async debitWallet(userId, amount, walletType = 'main', description = 'Debit') {
-    const walletRef = db.collection(WALLET_COLLECTION).doc(userId);
-    
-    return db.runTransaction(async (t) => {
-      const doc = await t.get(walletRef);
-      if (!doc.exists) {
-        throw new Error('Wallet not found');
-      }
-
-      const data = doc.data();
-      const field = `${walletType}Balance`;
-      const currentBalance = data[field] || 0;
-
-      if (currentBalance < amount) {
-        throw new Error('Insufficient funds');
-      }
-
-      const newBalance = currentBalance - amount;
-
-      t.update(walletRef, { 
-        [field]: newBalance,
-        updatedAt: new Date()
-      });
-
-      // Add to ledger
-      const transactionRef = db.collection(TRANSACTION_COLLECTION).doc();
-      t.set(transactionRef, {
-        userId,
-        type: 'debit',
-        amount,
-        walletType,
-        description,
-        status: 'success',
-        reference: this._genRef('DB'),
-        balanceBefore: currentBalance,
-        balanceAfter: newBalance,
-        createdAt: new Date()
-      });
-
-      return newBalance;
-    });
-  }
-
-  /**
-   * Transfer from Cashback/Referral to Main
-   */
-  async transferToMain(userId, amount, fromWalletType) {
-    if (!['cashback', 'referral'].includes(fromWalletType)) {
-      throw new Error('Invalid source wallet type');
+    if (result.rows.length === 0) {
+      return null;
     }
 
-    const walletRef = db.collection(WALLET_COLLECTION).doc(userId);
-
-    return db.runTransaction(async (t) => {
-      const doc = await t.get(walletRef);
-      if (!doc.exists) {
-        throw new Error('Wallet not found');
-      }
-
-      const data = doc.data();
-      const sourceField = `${fromWalletType}Balance`;
-      const mainField = 'mainBalance';
-
-      const sourceBalance = data[sourceField] || 0;
-      const mainBalance = data[mainField] || 0;
-
-      if (sourceBalance < amount) {
-        throw new Error(`Insufficient ${fromWalletType} funds`);
-      }
-
-      const newSourceBalance = sourceBalance - amount;
-      const newMainBalance = mainBalance + amount;
-
-      t.update(walletRef, {
-        [sourceField]: newSourceBalance,
-        [mainField]: newMainBalance,
-        updatedAt: new Date()
-      });
-
-      // Ledger for Source Debit
-      const debitRef = db.collection(TRANSACTION_COLLECTION).doc();
-      t.set(debitRef, {
-        userId,
-        type: 'debit',
-        amount,
-        walletType: fromWalletType,
-        description: `Transfer to Main Wallet`,
-        status: 'success',
-        reference: this._genRef('TR-D'),
-        balanceBefore: sourceBalance,
-        balanceAfter: newSourceBalance,
-        createdAt: new Date()
-      });
-
-      // Ledger for Main Credit
-      const creditRef = db.collection(TRANSACTION_COLLECTION).doc();
-      t.set(creditRef, {
-        userId,
-        type: 'credit',
-        amount,
-        walletType: 'main',
-        description: `Transfer from ${fromWalletType}`,
-        status: 'success',
-        reference: this._genRef('TR-C'),
-        balanceBefore: mainBalance,
-        balanceAfter: newMainBalance,
-        createdAt: new Date()
-      });
-
-      return { newSourceBalance, newMainBalance };
-    });
+    return result.rows[0];
+  } catch (error) {
+    console.error('[Wallet Service] Error getting wallet:', error);
+    throw error;
   }
+};
 
-  async getHistory(userId) {
-    try {
-      const snapshot = await db.collection(TRANSACTION_COLLECTION)
-        .where('userId', '==', userId)
-        .orderBy('createdAt', 'desc')
-        .limit(20)
-        .get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (e) {
-      // Fallback without composite index: fetch by userId and sort in memory
-      const snapshot = await db.collection(TRANSACTION_COLLECTION)
-        .where('userId', '==', userId)
-        .limit(50)
-        .get();
-      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      items.sort((a, b) => {
-        const ta = a.createdAt?._seconds ? a.createdAt._seconds : new Date(a.createdAt).getTime() / 1000;
-        const tb = b.createdAt?._seconds ? b.createdAt._seconds : new Date(b.createdAt).getTime() / 1000;
-        return tb - ta;
-      });
-      return items.slice(0, 20);
+// Credit wallet
+const creditWallet = async (userId, amount, walletType = 'main', description = null, reference = null) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    // Ensure wallet exists
+    let wallet = await getWalletByUserId(userId);
+    if (!wallet) {
+      wallet = await createWallet(userId);
     }
-  }
-}
 
-module.exports = new WalletService();
+    // Determine which balance to update
+    const balanceField = `${walletType}_balance`;
+    const currentBalance = wallet[balanceField] || 0;
+    const newBalance = parseFloat(currentBalance) + parseFloat(amount);
+
+    // Update wallet balance
+    await client.query(
+      `UPDATE wallets 
+       SET ${balanceField} = $1, 
+           total_earned = total_earned + $2,
+           updated_at = CURRENT_TIMESTAMP 
+       WHERE user_id = $3`,
+      [newBalance, amount, userId]
+    );
+
+    // Record transaction
+    await client.query(
+      `INSERT INTO wallet_transactions (user_id, wallet_id, type, amount, balance_after, description, reference)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userId, wallet.id, 'credit', amount, newBalance, description, reference]
+    );
+
+    await client.query('COMMIT');
+
+    // Return updated wallet
+    const updatedWallet = await getWalletByUserId(userId);
+    return updatedWallet;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('[Wallet Service] Error crediting wallet:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Debit wallet
+const debitWallet = async (userId, amount, walletType = 'main', description = null, reference = null) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    // Ensure wallet exists
+    let wallet = await getWalletByUserId(userId);
+    if (!wallet) {
+      throw new Error('Wallet not found');
+    }
+
+    // Determine which balance to update
+    const balanceField = `${walletType}_balance`;
+    const currentBalance = wallet[balanceField] || 0;
+
+    // Check sufficient balance
+    if (parseFloat(currentBalance) < parseFloat(amount)) {
+      throw new Error(`Insufficient ${walletType} balance`);
+    }
+
+    const newBalance = parseFloat(currentBalance) - parseFloat(amount);
+
+    // Update wallet balance
+    await client.query(
+      `UPDATE wallets 
+       SET ${balanceField} = $1, 
+           total_spent = total_spent + $2,
+           updated_at = CURRENT_TIMESTAMP 
+       WHERE user_id = $3`,
+      [newBalance, amount, userId]
+    );
+
+    // Record transaction
+    await client.query(
+      `INSERT INTO wallet_transactions (user_id, wallet_id, type, amount, balance_after, description, reference)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userId, wallet.id, 'debit', amount, newBalance, description, reference]
+    );
+
+    await client.query('COMMIT');
+
+    // Return updated wallet
+    const updatedWallet = await getWalletByUserId(userId);
+    return updatedWallet;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('[Wallet Service] Error debiting wallet:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Transfer between wallet types
+const transferWalletBalance = async (userId, fromType, toType, amount, description = null) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    // Ensure wallet exists
+    let wallet = await getWalletByUserId(userId);
+    if (!wallet) {
+      throw new Error('Wallet not found');
+    }
+
+    const fromField = `${fromType}_balance`;
+    const toField = `${toType}_balance`;
+    const fromBalance = wallet[fromField] || 0;
+    const toBalance = wallet[toField] || 0;
+
+    // Check sufficient balance
+    if (parseFloat(fromBalance) < parseFloat(amount)) {
+      throw new Error(`Insufficient ${fromType} balance`);
+    }
+
+    const newFromBalance = parseFloat(fromBalance) - parseFloat(amount);
+    const newToBalance = parseFloat(toBalance) + parseFloat(amount);
+
+    // Update wallet balances
+    await client.query(
+      `UPDATE wallets 
+       SET ${fromField} = $1, ${toField} = $2, updated_at = CURRENT_TIMESTAMP 
+       WHERE user_id = $3`,
+      [newFromBalance, newToBalance, userId]
+    );
+
+    // Record debit transaction
+    await client.query(
+      `INSERT INTO wallet_transactions (user_id, wallet_id, type, amount, balance_after, description)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [userId, wallet.id, 'debit', amount, newFromBalance, description || ` (Transfer from ${fromType} to ${toType})`]
+    );
+
+    // Record credit transaction
+    await client.query(
+      `INSERT INTO wallet_transactions (user_id, wallet_id, type, amount, balance_after, description)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [userId, wallet.id, 'credit', amount, newToBalance, description || ` (Transfer from ${fromType} to ${toType})`]
+    );
+
+    await client.query('COMMIT');
+
+    // Return updated wallet
+    const updatedWallet = await getWalletByUserId(userId);
+    return updatedWallet;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('[Wallet Service] Error transferring balance:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Get wallet transactions
+const getWalletTransactions = async (userId, limit = 50, offset = 0) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM wallet_transactions 
+       WHERE user_id = $1 
+       ORDER BY created_at DESC 
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    );
+
+    return result.rows;
+  } catch (error) {
+    console.error('[Wallet Service] Error getting transactions:', error);
+    throw error;
+  }
+};
+
+// Get all wallets (admin)
+const getAllWallets = async (limit = 100, offset = 0) => {
+  try {
+    const result = await pool.query(
+      `SELECT w.*, u.email, u.full_name, u.username 
+       FROM wallets w 
+       JOIN users u ON w.user_id = u.id 
+       ORDER BY w.created_at DESC 
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+
+    return result.rows;
+  } catch (error) {
+    console.error('[Wallet Service] Error getting all wallets:', error);
+    throw error;
+  }
+};
+
+// Get wallet balance
+const getWalletBalance = async (userId, walletType = 'main') => {
+  try {
+    const wallet = await getWalletByUserId(userId);
+    if (!wallet) {
+      return 0;
+    }
+
+    const balanceField = `${walletType}_balance`;
+    return parseFloat(wallet[balanceField] || 0);
+  } catch (error) {
+    console.error('[Wallet Service] Error getting balance:', error);
+    throw error;
+  }
+};
+
+// Get total system wallet balance (admin)
+const getTotalSystemBalance = async () => {
+  try {
+    const result = await pool.query(
+      `SELECT 
+         SUM(main_balance) as total_main,
+         SUM(cashback_balance) as total_cashback,
+         SUM(referral_balance) as total_referral,
+         COUNT(*) as total_wallets
+       FROM wallets`
+    );
+
+    return result.rows[0];
+  } catch (error) {
+    console.error('[Wallet Service] Error getting system balance:', error);
+    throw error;
+  }
+};
+
+module.exports = {
+  createWallet,
+  getWalletByUserId,
+  creditWallet,
+  debitWallet,
+  transferWalletBalance,
+  getWalletTransactions,
+  getAllWallets,
+  getWalletBalance,
+  getTotalSystemBalance
+};

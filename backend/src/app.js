@@ -7,7 +7,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
-const { db } = require('./config/firebase');
+const pool = require('./config/database');
 
 // Middleware
 app.use(helmet());
@@ -75,22 +75,11 @@ app.get('/', (req, res) => {
 // Public services endpoint for user frontend
 app.get('/api/services', async (_req, res) => {
   try {
-    if (!db) return res.json([]);
-    const snap = await db.collection('services').get();
-    let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const defaults = [
-      { id: 'airtime', name: 'Airtime', category: 'Airtime & Data', enabled: true, active: true },
-      { id: 'data', name: 'Data', category: 'Data Plans', enabled: true, active: true },
-      { id: 'cable', name: 'Cable TV', category: 'Cable TV', enabled: true, active: true },
-      { id: 'electricity', name: 'Electricity', category: 'Electricity', enabled: true, active: true },
-      { id: 'exam-pins', name: 'Exam PINs', category: 'Exam PINs', enabled: true, active: true },
-    ];
-    const existing = new Set(rows.map(r => String(r.id || '').toLowerCase()));
-    for (const d of defaults) {
-      if (!existing.has(d.id)) rows.push(d);
-    }
-    res.json(rows);
+    const { getAllServices } = require('./services/serviceService');
+    const services = await getAllServices(true);
+    res.json(services);
   } catch (e) {
+    console.error('Error fetching services:', e);
     res.json([]);
   }
 });
@@ -98,47 +87,31 @@ app.get('/api/services', async (_req, res) => {
 // Public plans endpoint for user frontend
 app.get('/api/plans', async (req, res) => {
   try {
-    if (!db) return res.json([]);
+    const { getServicePlans } = require('./services/serviceService');
     const { type, network } = req.query;
     
-    let query = db.collection('service_plans');
-    const snap = await query.get();
+    const filters = { active_only: true };
+    if (type) filters.type = type;
+    if (network) filters.network = network;
     
-    let rows = snap.docs.map(d => {
-      const x = d.data() || {};
-      return {
-        id: d.id,
-        network: x.network || '',
-        networkKey: x.networkKey || '',
-        name: x.name || '',
-        type: x.type || 'data',
-        subType: x.subType || '',
-        priceUser: Number(x.priceUser || x.price_user || 0),
-        priceApi: Number(x.priceApi || x.price_api || 0),
-        active: x.active !== false,
-        metadata: x.metadata || null,
-        createdAt: x.createdAt || new Date(),
-      };
-    });
+    const plans = await getServicePlans(filters);
     
-    // Filter by active status
-    rows = rows.filter(r => r.active);
+    // Transform to match expected format
+    const transformedPlans = plans.map(plan => ({
+      id: plan.id,
+      network: plan.network,
+      networkKey: plan.network_key,
+      name: plan.name,
+      type: plan.type,
+      subType: plan.sub_type,
+      priceUser: Number(plan.price_user),
+      priceApi: Number(plan.price_api),
+      active: plan.is_active,
+      metadata: plan.metadata,
+      createdAt: plan.created_at
+    }));
     
-    // Filter by type if provided
-    if (type) {
-      rows = rows.filter(r => r.type === type);
-    }
-    
-    // Filter by network if provided
-    if (network) {
-      const netLower = String(network).toLowerCase();
-      rows = rows.filter(r => 
-        r.network.toLowerCase() === netLower || 
-        r.networkKey.toLowerCase() === netLower
-      );
-    }
-    
-    res.json(rows);
+    res.json(transformedPlans);
   } catch (e) {
     console.error('Error fetching plans:', e);
     res.json([]);
@@ -148,59 +121,58 @@ app.get('/api/plans', async (req, res) => {
 // Public settings for user frontend
 app.get('/api/settings', async (_req, res) => {
   try {
-    if (!db) return res.json({});
-    const doc = await db.collection('settings').doc('global').get();
-    if (!doc.exists) {
-      // Return defaults if document doesn't exist
-      return res.json({
-        airtimeNetworks: {
-          MTN: { enabled: true, discount: 0 },
-          Airtel: { enabled: true, discount: 0 },
-          Glo: { enabled: true, discount: 0 },
-          "9mobile": { enabled: true, discount: 0 }
-        },
-        systemStatus: 'online',
-        announcementsEnabled: true
-      });
-    }
-    const data = doc.data();
-    // Only expose non-sensitive fields
+    // Get settings from database
+    const settingsResult = await pool.query(
+      "SELECT key, value FROM settings WHERE key IN ('airtime_networks', 'system_status', 'announcements_enabled')"
+    );
+    
+    const settings = {};
+    settingsResult.rows.forEach(row => {
+      settings[row.key] = row.value;
+    });
+    
+    const airtimeNetworks = settings.airtime_networks || {
+      MTN: { enabled: true, discount: 0 },
+      Airtel: { enabled: true, discount: 0 },
+      Glo: { enabled: true, discount: 0 },
+      "9mobile": { enabled: true, discount: 0 }
+    };
+    
+    const systemStatus = settings.system_status?.status || 'online';
+    const announcementsEnabled = settings.announcements_enabled !== false;
+    
     res.json({
-      airtimeNetworks: data.airtimeNetworks || {},
-      systemStatus: data.systemStatus || 'online',
-      announcementsEnabled: data.announcementsEnabled !== false
+      airtimeNetworks,
+      systemStatus,
+      announcementsEnabled
     });
   } catch (e) {
-    res.json({});
+    console.error('Error fetching settings:', e);
+    // Return defaults on error
+    res.json({
+      airtimeNetworks: {
+        MTN: { enabled: true, discount: 0 },
+        Airtel: { enabled: true, discount: 0 },
+        Glo: { enabled: true, discount: 0 },
+        "9mobile": { enabled: true, discount: 0 }
+      },
+      systemStatus: 'online',
+      announcementsEnabled: true
+    });
   }
 });
 
 app.get('/api/announcements', async (_req, res) => {
   try {
-    if (!db) return res.json([]);
+    const result = await pool.query(
+      `SELECT * FROM announcements 
+       WHERE is_active = true 
+       AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+       ORDER BY created_at DESC 
+       LIMIT 10`
+    );
     
-    // Fetch active announcements. 
-    // We avoid complex orderBy in Firestore to prevent index requirements.
-    const snap = await db.collection('announcements')
-      .where('active', '==', true)
-      .limit(50)
-      .get();
-      
-    let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    
-    // Sort in memory by createdAt descending
-    rows.sort((a, b) => {
-      const getTime = (val) => {
-        if (!val) return 0;
-        if (typeof val === 'number') return val;
-        if (val.toDate) return val.toDate().getTime();
-        if (val.seconds) return val.seconds * 1000;
-        return new Date(val).getTime() || 0;
-      };
-      return getTime(b.createdAt) - getTime(a.createdAt);
-    });
-    
-    res.json(rows.slice(0, 10));
+    res.json(result.rows);
   } catch (e) {
     console.error('Error fetching public announcements:', e);
     res.json([]);
@@ -208,6 +180,7 @@ app.get('/api/announcements', async (_req, res) => {
 });
 
 // Import Routes
+const authRoutes = require('./routes/authRoutes');
 const walletRoutes = require('./routes/walletRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -216,6 +189,7 @@ const webhookRoutes = require('./routes/webhookRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 const vtuRoutes = require('./routes/vtuRoutes');
 
+app.use('/api/auth', authRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/admin', adminRoutes);

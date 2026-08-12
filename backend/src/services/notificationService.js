@@ -1,77 +1,163 @@
-const { messaging } = require('../config/firebase');
-const axios = require('axios');
+const pool = require('../config/database');
 
-class NotificationService {
-  async sendNotification(userId, title, body, data = {}) {
-    try {
-      console.log(`[Notification] To: ${userId} | ${title}: ${body}`);
-    } catch (error) {
-      console.error('Error sending notification:', error);
-    }
+// Create notification
+const createNotification = async (notificationData) => {
+  try {
+    const { user_id, type, title, message, metadata = {} } = notificationData;
+
+    const result = await pool.query(
+      `INSERT INTO notifications (user_id, type, title, message, metadata)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [user_id, type, title, message, JSON.stringify(metadata)]
+    );
+
+    return result.rows[0];
+  } catch (error) {
+    console.error('[Notification Service] Error creating notification:', error);
+    throw error;
   }
+};
 
-  async sendWelcomeEmail(email, displayName, password) {
-    try {
-      // Log the welcome email details (in production, you'd integrate with an email service)
-      console.log(`[Welcome Email] To: ${email} | Name: ${displayName}`);
-      
-      // You can integrate with any email service here
-      // For now, we'll use Firebase Functions or a simple endpoint
-      
-      // Example with a custom email service:
-      const emailServiceUrl = process.env.EMAIL_SERVICE_URL;
-      if (emailServiceUrl) {
-        await axios.post(emailServiceUrl, {
-          to: email,
-          subject: 'Welcome to Asafor VTU',
-          template: 'welcome',
-          data: {
-            name: displayName,
-            email: email,
-            loginUrl: process.env.FRONTEND_URL || 'https://vtu.ferixas.com/login'
-          }
-        }, {
-          headers: { 'Content-Type': 'application/json' },
-          timeout: 15000
-        });
-      }
-      
-      return { success: true };
-    } catch (error) {
-      console.error('[Notification] Welcome email error:', error?.message || error);
-      return { success: false, error: error.message };
+// Get notifications by user ID
+const getNotificationsByUserId = async (userId, unreadOnly = false, limit = 50, offset = 0) => {
+  try {
+    let query = 'SELECT * FROM notifications WHERE user_id = $1';
+    const params = [userId];
+    let paramIndex = 2;
+
+    if (unreadOnly) {
+      query += ` AND is_read = false`;
     }
-  }
 
-  async sendSms(phone, message) {
-    try {
-      if ((process.env.SEND_PURCHASE_SMS || '').toLowerCase() !== 'true') {
-        return;
-      }
-      const apiKey = process.env.SMS_TERMII_API_KEY || '';
-      const senderId = process.env.SMS_SENDER_ID || 'Asafor';
-      const channel = process.env.SMS_CHANNEL || 'dnd';
-      if (!apiKey) {
-        console.warn('SMS provider API key missing');
-        return;
-      }
-      const payload = {
-        api_key: apiKey,
-        to: String(phone),
-        from: senderId,
-        sms: String(message),
-        type: 'plain',
-        channel
-      };
-      await axios.post('https://api.ng.termii.com/api/sms/send', payload, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 15000
-      });
-    } catch (error) {
-      console.error('Error sending SMS:', error?.response?.data || error?.message || String(error));
+    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(limit, offset);
+
+    const result = await pool.query(query, params);
+
+    return result.rows;
+  } catch (error) {
+    console.error('[Notification Service] Error getting notifications:', error);
+    throw error;
+  }
+};
+
+// Mark notification as read
+const markNotificationAsRead = async (notificationId, userId) => {
+  try {
+    const result = await pool.query(
+      `UPDATE notifications 
+       SET is_read = true 
+       WHERE id = $1 AND user_id = $2 
+       RETURNING *`,
+      [notificationId, userId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('Notification not found');
     }
+
+    return result.rows[0];
+  } catch (error) {
+    console.error('[Notification Service] Error marking notification as read:', error);
+    throw error;
   }
-}
+};
 
-module.exports = new NotificationService();
+// Mark all notifications as read for user
+const markAllNotificationsAsRead = async (userId) => {
+  try {
+    const result = await pool.query(
+      `UPDATE notifications 
+       SET is_read = true 
+       WHERE user_id = $1 AND is_read = false 
+       RETURNING *`,
+      [userId]
+    );
 
+    return result.rows;
+  } catch (error) {
+    console.error('[Notification Service] Error marking all notifications as read:', error);
+    throw error;
+  }
+};
+
+// Delete notification
+const deleteNotification = async (notificationId, userId) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM notifications WHERE id = $1 AND user_id = $2 RETURNING *',
+      [notificationId, userId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('Notification not found');
+    }
+
+    return result.rows[0];
+  } catch (error) {
+    console.error('[Notification Service] Error deleting notification:', error);
+    throw error;
+  }
+};
+
+// Get unread count for user
+const getUnreadCount = async (userId) => {
+  try {
+    const result = await pool.query(
+      'SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = false',
+      [userId]
+    );
+
+    return parseInt(result.rows[0].count);
+  } catch (error) {
+    console.error('[Notification Service] Error getting unread count:', error);
+    throw error;
+  }
+};
+
+// Bulk create notifications (for announcements)
+const createBulkNotifications = async (userIds, notificationData) => {
+  try {
+    const { type, title, message, metadata = {} } = notificationData;
+
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+
+      const notifications = [];
+      for (const userId of userIds) {
+        const result = await client.query(
+          `INSERT INTO notifications (user_id, type, title, message, metadata)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING *`,
+          [userId, type, title, message, JSON.stringify(metadata)]
+        );
+        notifications.push(result.rows[0]);
+      }
+
+      await client.query('COMMIT');
+
+      return notifications;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('[Notification Service] Error creating bulk notifications:', error);
+    throw error;
+  }
+};
+
+module.exports = {
+  createNotification,
+  getNotificationsByUserId,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification,
+  getUnreadCount,
+  createBulkNotifications
+};

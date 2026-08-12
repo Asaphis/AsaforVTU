@@ -1,0 +1,542 @@
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const pool = require('../config/database');
+const { generateToken, generateRefreshToken } = '../middleware/auth';
+
+const SALT_ROUNDS = 10;
+
+// Hash password
+const hashPassword = async (password) => {
+  return await bcrypt.hash(password, SALT_ROUNDS);
+};
+
+// Compare password
+const comparePassword = async (password, hash) => {
+  return await bcrypt.compare(password, hash);
+};
+
+// Generate referral code
+const generateReferralCode = () => {
+  return crypto.randomBytes(4).toString('hex').toUpperCase();
+};
+
+// Register new user
+const registerUser = async (userData) => {
+  const {
+    email,
+    password,
+    full_name,
+    username,
+    phone,
+    pin,
+    referral_code
+  } = userData;
+
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    // Check if email already exists
+    const emailCheck = await client.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (emailCheck.rows.length > 0) {
+      throw new Error('Email already registered');
+    }
+
+    // Check if username already exists
+    if (username) {
+      const usernameCheck = await client.query(
+        'SELECT id FROM users WHERE username = $1',
+        [username.toLowerCase()]
+      );
+
+      if (usernameCheck.rows.length > 0) {
+        throw new Error('Username already taken');
+      }
+    }
+
+    // Handle referral
+    let referredBy = null;
+    if (referral_code) {
+      const referralCheck = await client.query(
+        'SELECT id, referral_code FROM users WHERE referral_code = $1',
+        [referral_code.toUpperCase()]
+      );
+
+      if (referralCheck.rows.length > 0) {
+        referredBy = referralCheck.rows[0].referral_code;
+      }
+    }
+
+    // Hash password
+    const passwordHash = await hashPassword(password);
+
+    // Hash PIN if provided
+    let pinHash = null;
+    if (pin) {
+      pinHash = await hashPassword(pin);
+    }
+
+    // Generate referral code for new user
+    const userReferralCode = generateReferralCode();
+
+    // Insert user
+    const userResult = await client.query(
+      `INSERT INTO users (email, password_hash, full_name, username, phone, pin_hash, referral_code, referred_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, email, full_name, username, phone, referral_code, created_at`,
+      [email.toLowerCase(), passwordHash, full_name, username?.toLowerCase(), phone, pinHash, userReferralCode, referredBy]
+    );
+
+    const user = userResult.rows[0];
+
+    // Create wallet for user
+    await client.query(
+      'INSERT INTO wallets (user_id) VALUES ($1)',
+      [user.id]
+    );
+
+    // Handle referral reward
+    if (referredBy) {
+      const referrerResult = await client.query(
+        'SELECT id FROM users WHERE referral_code = $1',
+        [referredBy]
+      );
+
+      if (referrerResult.rows.length > 0) {
+        const referrerId = referrerResult.rows[0].id;
+
+        // Record referral
+        await client.query(
+          `INSERT INTO referrals (referrer_id, referred_id, referral_code)
+           VALUES ($1, $2, $3)`,
+          [referrerId, user.id, referredBy]
+        );
+      }
+    }
+
+    // Generate email verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await client.query(
+      `INSERT INTO email_verification_tokens (user_id, token, expires_at)
+       VALUES ($1, $2, $3)`,
+      [user.id, verificationToken, verificationExpiresAt]
+    );
+
+    await client.query('COMMIT');
+
+    // Generate tokens
+    const accessToken = generateToken(user.id, user.email, 'user');
+    const refreshToken = await generateRefreshToken(user.id);
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        username: user.username,
+        phone: user.phone,
+        referral_code: user.referral_code,
+        email_verified: false,
+        created_at: user.created_at
+      },
+      tokens: {
+        access_token: accessToken,
+        refresh_token: refreshToken
+      },
+      verification_token: verificationToken
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Login user
+const loginUser = async (email, password) => {
+  const client = await pool.connect();
+  
+  try {
+    // Find user by email
+    const userResult = await client.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (userResult.rows.length === 0) {
+      throw new Error('Invalid credentials');
+    }
+
+    const user = userResult.rows[0];
+
+    // Check if user is active
+    if (!user.is_active) {
+      throw new Error('Account is deactivated');
+    }
+
+    // Verify password
+    const isValidPassword = await comparePassword(password, user.password_hash);
+
+    if (!isValidPassword) {
+      throw new Error('Invalid credentials');
+    }
+
+    // Update last login
+    await client.query(
+      'UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1',
+      [user.id]
+    );
+
+    // Generate tokens
+    const accessToken = generateToken(user.id, user.email, user.role);
+    const refreshToken = await generateRefreshToken(user.id);
+
+    // Get user wallet
+    const walletResult = await client.query(
+      'SELECT * FROM wallets WHERE user_id = $1',
+      [user.id]
+    );
+
+    const wallet = walletResult.rows[0] || null;
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        username: user.username,
+        phone: user.phone,
+        role: user.role,
+        is_admin: user.is_admin,
+        email_verified: user.email_verified,
+        referral_code: user.referral_code,
+        avatar_url: user.avatar_url,
+        created_at: user.created_at,
+        wallet: wallet ? {
+          main_balance: wallet.main_balance,
+          cashback_balance: wallet.cashback_balance,
+          referral_balance: wallet.referral_balance
+        } : null
+      },
+      tokens: {
+        access_token: accessToken,
+        refresh_token: refreshToken
+      }
+    };
+  } finally {
+    client.release();
+  }
+};
+
+// Refresh token
+const refreshAccessToken = async (refreshToken) => {
+  const client = await pool.connect();
+  
+  try {
+    // Check if refresh token exists and is valid
+    const tokenResult = await client.query(
+      `SELECT rt.*, u.id, u.email, u.role, u.is_active
+       FROM refresh_tokens rt
+       JOIN users u ON rt.user_id = u.id
+       WHERE rt.token = $1 AND rt.revoked_at IS NULL AND rt.expires_at > CURRENT_TIMESTAMP`,
+      [refreshToken]
+    );
+
+    if (tokenResult.rows.length === 0) {
+      throw new Error('Invalid or expired refresh token');
+    }
+
+    const tokenData = tokenResult.rows[0];
+
+    if (!tokenData.is_active) {
+      throw new Error('User account is deactivated');
+    }
+
+    // Generate new access token
+    const accessToken = generateToken(tokenData.id, tokenData.email, tokenData.role);
+
+    return {
+      access_token: accessToken
+    };
+  } finally {
+    client.release();
+  }
+};
+
+// Logout user
+const logoutUser = async (refreshToken) => {
+  await pool.query(
+    'UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP WHERE token = $1',
+    [refreshToken]
+  );
+};
+
+// Verify email
+const verifyEmail = async (token) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    // Find valid verification token
+    const tokenResult = await client.query(
+      `SELECT user_id, expires_at FROM email_verification_tokens
+       WHERE token = $1 AND verified_at IS NULL AND expires_at > CURRENT_TIMESTAMP`,
+      [token]
+    );
+
+    if (tokenResult.rows.length === 0) {
+      throw new Error('Invalid or expired verification token');
+    }
+
+    const { user_id } = tokenResult.rows[0];
+
+    // Mark user as verified
+    await client.query(
+      'UPDATE users SET email_verified = TRUE WHERE id = $1',
+      [user_id]
+    );
+
+    // Mark token as verified
+    await client.query(
+      'UPDATE email_verification_tokens SET verified_at = CURRENT_TIMESTAMP WHERE token = $1',
+      [token]
+    );
+
+    await client.query('COMMIT');
+
+    return { success: true, message: 'Email verified successfully' };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Request password reset
+const requestPasswordReset = async (email) => {
+  const client = await pool.connect();
+  
+  try {
+    // Find user by email
+    const userResult = await client.query(
+      'SELECT id, email FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (userResult.rows.length === 0) {
+      // Don't reveal if user exists
+      return { success: true, message: 'If the email exists, a reset link has been sent' };
+    }
+
+    const user = userResult.rows[0];
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
+
+    // Store reset token
+    await client.query(
+      `INSERT INTO password_reset_tokens (user_id, token, expires_at)
+       VALUES ($1, $2, $3)`,
+      [user.id, resetToken, expiresAt]
+    );
+
+    return {
+      success: true,
+      message: 'Password reset link sent',
+      reset_token: resetToken
+    };
+  } finally {
+    client.release();
+  }
+};
+
+// Reset password
+const resetPassword = async (token, newPassword) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    // Find valid reset token
+    const tokenResult = await client.query(
+      `SELECT user_id, expires_at FROM password_reset_tokens
+       WHERE token = $1 AND used_at IS NULL AND expires_at > CURRENT_TIMESTAMP`,
+      [token]
+    );
+
+    if (tokenResult.rows.length === 0) {
+      throw new Error('Invalid or expired reset token');
+    }
+
+    const { user_id } = tokenResult.rows[0];
+
+    // Hash new password
+    const passwordHash = await hashPassword(newPassword);
+
+    // Update user password
+    await client.query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
+      [passwordHash, user_id]
+    );
+
+    // Mark token as used
+    await client.query(
+      'UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE token = $1',
+      [token]
+    );
+
+    // Revoke all refresh tokens for security
+    await client.query(
+      'UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = $1',
+      [user_id]
+    );
+
+    await client.query('COMMIT');
+
+    return { success: true, message: 'Password reset successfully' };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Get user by ID
+const getUserById = async (userId) => {
+  const result = await pool.query(
+    'SELECT id, email, full_name, username, phone, email_verified, is_active, is_admin, role, referral_code, avatar_url, created_at, last_login_at FROM users WHERE id = $1',
+    [userId]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const user = result.rows[0];
+
+  // Get user wallet
+  const walletResult = await pool.query(
+    'SELECT * FROM wallets WHERE user_id = $1',
+    [userId]
+  );
+
+  const wallet = walletResult.rows[0] || null;
+
+  return {
+    ...user,
+    wallet: wallet ? {
+      main_balance: wallet.main_balance,
+      cashback_balance: wallet.cashback_balance,
+      referral_balance: wallet.referral_balance
+    } : null
+  };
+};
+
+// Update user profile
+const updateUserProfile = async (userId, updates) => {
+  const allowedFields = ['full_name', 'username', 'phone', 'avatar_url'];
+  const updateFields = [];
+  const updateValues = [];
+  let paramIndex = 1;
+
+  for (const field of allowedFields) {
+    if (updates[field] !== undefined) {
+      updateFields.push(`${field} = $${paramIndex}`);
+      updateValues.push(updates[field]);
+      paramIndex++;
+    }
+  }
+
+  if (updateFields.length === 0) {
+    throw new Error('No valid fields to update');
+  }
+
+  updateValues.push(userId);
+
+  const query = `
+    UPDATE users 
+    SET ${updateFields.join(', ')} 
+    WHERE id = $${paramIndex}
+    RETURNING id, email, full_name, username, phone, avatar_url
+  `;
+
+  const result = await pool.query(query, updateValues);
+
+  if (result.rows.length === 0) {
+    throw new Error('User not found');
+  }
+
+  return result.rows[0];
+};
+
+// Change password
+const changePassword = async (userId, currentPassword, newPassword) => {
+  const client = await pool.connect();
+  
+  try {
+    // Get current password hash
+    const userResult = await client.query(
+      'SELECT password_hash FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      throw new Error('User not found');
+    }
+
+    const user = userResult.rows[0];
+
+    // Verify current password
+    const isValidPassword = await comparePassword(currentPassword, user.password_hash);
+
+    if (!isValidPassword) {
+      throw new Error('Current password is incorrect');
+    }
+
+    // Hash new password
+    const passwordHash = await hashPassword(newPassword);
+
+    // Update password
+    await client.query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
+      [passwordHash, userId]
+    );
+
+    // Revoke all refresh tokens for security
+    await client.query(
+      'UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = $1',
+      [userId]
+    );
+
+    return { success: true, message: 'Password changed successfully' };
+  } finally {
+    client.release();
+  }
+};
+
+module.exports = {
+  registerUser,
+  loginUser,
+  refreshAccessToken,
+  logoutUser,
+  verifyEmail,
+  requestPasswordReset,
+  resetPassword,
+  getUserById,
+  updateUserProfile,
+  changePassword,
+  hashPassword,
+  comparePassword
+};

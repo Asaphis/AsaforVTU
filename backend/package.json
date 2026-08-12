@@ -5,21 +5,25 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "migrate": "node scripts/runMigration.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.6.0",
+    "bcrypt": "^5.1.0",
     "cors": "^2.8.5",
+    "crypto": "^1.0.1",
     "dotenv": "^16.0.0",
     "express": "^4.18.0",
-    "firebase-admin": "^11.0.0",
     "helmet": "^7.0.0",
     "joi": "^17.0.0",
+    "jsonwebtoken": "^9.0.0",
     "morgan": "^1.10.0",
     "node-cron": "^4.2.1",
+    "pg": "^8.11.0",
     "protobufjs": "^7.5.4"
   },
   "devDependencies": {
