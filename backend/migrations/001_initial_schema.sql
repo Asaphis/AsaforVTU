@@ -19,10 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
   avatar_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  last_login_at TIMESTAMP WITH TIME ZONE,
-  INDEX idx_users_email (email),
-  INDEX idx_users_username (username),
-  INDEX idx_users_referral_code (referral_code)
+  last_login_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Wallets Table (replaces Firebase wallets collection)
@@ -36,8 +33,7 @@ CREATE TABLE IF NOT EXISTS wallets (
   total_spent DECIMAL(15, 2) DEFAULT 0.00,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(user_id),
-  INDEX idx_wallets_user_id (user_id)
+  UNIQUE(user_id)
 );
 
 -- Wallet Transactions Table (replaces Firebase wallet_transactions collection)
@@ -51,10 +47,7 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
   description TEXT,
   reference VARCHAR(100) UNIQUE,
   metadata JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_wallet_transactions_user_id (user_id),
-  INDEX idx_wallet_transactions_type (type),
-  INDEX idx_wallet_transactions_created_at (created_at)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Services Table (replaces Firebase services collection)
@@ -69,10 +62,7 @@ CREATE TABLE IF NOT EXISTS services (
   sort_order INTEGER DEFAULT 0,
   metadata JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_services_slug (slug),
-  INDEX idx_services_category (category),
-  INDEX idx_services_is_active (is_active)
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Service Plans Table (replaces Firebase service_plans collection)
@@ -89,11 +79,7 @@ CREATE TABLE IF NOT EXISTS service_plans (
   is_active BOOLEAN DEFAULT TRUE,
   metadata JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_service_plans_service_id (service_id),
-  INDEX idx_service_plans_network (network),
-  INDEX idx_service_plans_type (type),
-  INDEX idx_service_plans_is_active (is_active)
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Transactions Table (replaces Firebase transactions collection)
@@ -114,12 +100,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   customer_address TEXT,
   metadata JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_transactions_user_id (user_id),
-  INDEX idx_transactions_status (status),
-  INDEX idx_transactions_type (type),
-  INDEX idx_transactions_reference (reference),
-  INDEX idx_transactions_created_at (created_at)
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Payments Table (replaces Firebase payments collection)
@@ -136,11 +117,7 @@ CREATE TABLE IF NOT EXISTS payments (
   flw_ref VARCHAR(100),
   metadata JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_payments_user_id (user_id),
-  INDEX idx_payments_status (status),
-  INDEX idx_payments_provider_reference (provider_reference),
-  INDEX idx_payments_tx_ref (tx_ref)
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Support Tickets Table (replaces Firebase support_tickets collection)
@@ -152,10 +129,7 @@ CREATE TABLE IF NOT EXISTS support_tickets (
   status VARCHAR(50) DEFAULT 'open', -- 'open', 'in_progress', 'resolved', 'closed'
   priority VARCHAR(50) DEFAULT 'normal', -- 'low', 'normal', 'high', 'urgent'
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_support_tickets_user_id (user_id),
-  INDEX idx_support_tickets_status (status),
-  INDEX idx_support_tickets_created_at (created_at)
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Support Messages Table (replaces Firebase support_messages collection)
@@ -165,9 +139,7 @@ CREATE TABLE IF NOT EXISTS support_messages (
   user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   is_admin BOOLEAN DEFAULT FALSE,
   message TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_support_messages_ticket_id (ticket_id),
-  INDEX idx_support_messages_created_at (created_at)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Announcements Table (replaces Firebase announcements collection)
@@ -180,9 +152,7 @@ CREATE TABLE IF NOT EXISTS announcements (
   target_audience VARCHAR(50) DEFAULT 'all', -- 'all', 'users', 'admins'
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  expires_at TIMESTAMP WITH TIME ZONE,
-  INDEX idx_announcements_is_active (is_active),
-  INDEX idx_announcements_created_at (created_at)
+  expires_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Settings Table (replaces Firebase settings collection)
@@ -191,8 +161,7 @@ CREATE TABLE IF NOT EXISTS settings (
   key VARCHAR(100) UNIQUE NOT NULL,
   value JSONB NOT NULL,
   description TEXT,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_settings_key (key)
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Referrals Table (replaces Firebase referrals collection)
@@ -205,10 +174,7 @@ CREATE TABLE IF NOT EXISTS referrals (
   is_paid BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(referrer_id, referred_id),
-  INDEX idx_referrals_referrer_id (referrer_id),
-  INDEX idx_referrals_referred_id (referred_id),
-  INDEX idx_referrals_referral_code (referral_code)
+  UNIQUE(referrer_id, referred_id)
 );
 
 -- Notifications Table (replaces Firebase notifications collection)
@@ -220,10 +186,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   message TEXT NOT NULL,
   is_read BOOLEAN DEFAULT FALSE,
   metadata JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_notifications_user_id (user_id),
-  INDEX idx_notifications_is_read (is_read),
-  INDEX idx_notifications_created_at (created_at)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Admin Audit Log Table (replaces Firebase admin_audit collection)
@@ -237,10 +200,7 @@ CREATE TABLE IF NOT EXISTS admin_audit_log (
   details JSONB,
   ip_address VARCHAR(45),
   user_agent TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_admin_audit_log_admin_id (admin_id),
-  INDEX idx_admin_audit_log_action (action),
-  INDEX idx_admin_audit_log_created_at (created_at)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Password Reset Tokens Table
@@ -250,10 +210,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   token VARCHAR(255) UNIQUE NOT NULL,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
   used_at TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_password_reset_tokens_user_id (user_id),
-  INDEX idx_password_reset_tokens_token (token),
-  INDEX idx_password_reset_tokens_expires_at (expires_at)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Email Verification Tokens Table
@@ -263,10 +220,7 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
   token VARCHAR(255) UNIQUE NOT NULL,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
   verified_at TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_email_verification_tokens_user_id (user_id),
-  INDEX idx_email_verification_tokens_token (token),
-  INDEX idx_email_verification_tokens_expires_at (expires_at)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Refresh Tokens Table (for JWT refresh tokens)
@@ -276,10 +230,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   token VARCHAR(500) UNIQUE NOT NULL,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  revoked_at TIMESTAMP WITH TIME ZONE,
-  INDEX idx_refresh_tokens_user_id (user_id),
-  INDEX idx_refresh_tokens_token (token),
-  INDEX idx_refresh_tokens_expires_at (expires_at)
+  revoked_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Create function to update updated_at timestamp
@@ -339,3 +290,70 @@ INSERT INTO services (name, slug, icon, category, description, is_active, sort_o
   ('Electricity', 'electricity', 'zap', 'Electricity', 'Pay electricity bills for all providers', true, 4),
   ('Exam PINs', 'exam-pins', 'book', 'Exam PINs', 'Purchase WAEC, NECO, and JAMB exam pins', true, 5)
 ON CONFLICT (slug) DO NOTHING;
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
+
+CREATE INDEX IF NOT EXISTS idx_wallets_user_id ON wallets(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user_id ON wallet_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_type ON wallet_transactions(type);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_created_at ON wallet_transactions(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_services_slug ON services(slug);
+CREATE INDEX IF NOT EXISTS idx_services_category ON services(category);
+CREATE INDEX IF NOT EXISTS idx_services_is_active ON services(is_active);
+
+CREATE INDEX IF NOT EXISTS idx_service_plans_service_id ON service_plans(service_id);
+CREATE INDEX IF NOT EXISTS idx_service_plans_network ON service_plans(network);
+CREATE INDEX IF NOT EXISTS idx_service_plans_type ON service_plans(type);
+CREATE INDEX IF NOT EXISTS idx_service_plans_is_active ON service_plans(is_active);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
+CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
+CREATE INDEX IF NOT EXISTS idx_transactions_reference ON transactions(reference);
+CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
+CREATE INDEX IF NOT EXISTS idx_payments_provider_reference ON payments(provider_reference);
+CREATE INDEX IF NOT EXISTS idx_payments_tx_ref ON payments(tx_ref);
+
+CREATE INDEX IF NOT EXISTS idx_support_tickets_user_id ON support_tickets(user_id);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_created_at ON support_tickets(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_support_messages_ticket_id ON support_messages(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_support_messages_created_at ON support_messages(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_announcements_is_active ON announcements(is_active);
+CREATE INDEX IF NOT EXISTS idx_announcements_created_at ON announcements(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key);
+
+CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_referred_id ON referrals(referred_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_referral_code ON referrals(referral_code);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_admin_id ON admin_audit_log(admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_action ON admin_audit_log(action);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created_at ON admin_audit_log(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_id ON email_verification_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_token ON email_verification_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_expires_at ON email_verification_tokens(expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
