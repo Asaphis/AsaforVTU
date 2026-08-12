@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const pool = require('../config/database');
-const { generateToken, generateRefreshToken } = '../middleware/auth';
+const { generateToken, generateRefreshToken } = require('../middleware/auth');
 
 const SALT_ROUNDS = 10;
 

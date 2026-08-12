@@ -83,8 +83,7 @@ async function adminAuth(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-export function registerRoutes(app: Express): Server {
-  const httpServer = createServer(app);
+export function registerRoutes(app: Express, httpServer: Server): void {
 
   // Health check
   app.get("/api/health", (_req: Request, res: Response) => {
@@ -298,5 +297,4 @@ export function registerRoutes(app: Express): Server {
     await proxyRequest(req, res, "POST", "/api/admin/wallet/fix-ghosts");
   });
 
-  return httpServer;
 }

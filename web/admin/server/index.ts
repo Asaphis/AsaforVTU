@@ -127,7 +127,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await registerRoutes(httpServer, app);
+  await registerRoutes(app, httpServer);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -151,7 +151,7 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "3002", 10);
+  const port = parseInt(process.env.PORT || "5003", 10);
   // Avoid `reusePort` on Windows where it's not supported (ENOTSUP).
   const listenOptions: any = { port };
   // Bind to all interfaces on non-windows, otherwise bind to localhost
