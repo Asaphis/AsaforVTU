@@ -264,4 +264,6 @@ export default {
   updateProfile,
   changePassword,
   apiRequest,
+  getAccessToken,
+  getUser,
 };
