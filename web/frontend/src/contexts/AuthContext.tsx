@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { UserProfile, SignUpData, LoginCredentials, AuthState, AuthContextType } from '@/types/auth';
-import { signIn, signUp, signOut, getCurrentUser, isAuthenticated } from '@/lib/auth';
+import { signIn, signUp, signOut, getCurrentUser, isAuthenticated, requestPasswordReset, resetPassword } from '@/lib/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -177,6 +177,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadUserData();
   }, [loadUserData]);
 
+  const requestPasswordResetFn = async (email: string) => {
+    try {
+      await requestPasswordReset(email);
+    } catch (error: any) {
+      throw error;
+    }
+  };
+
+  const resetPasswordFn = async (token: string, newPassword: string) => {
+    try {
+      await resetPassword(token, newPassword);
+    } catch (error: any) {
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     user: state.user,
     loading: state.loading,
@@ -185,7 +201,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn: login,
     signUp: signUpFn,
     signOut: logoutFn,
-    refreshUser
+    refreshUser,
+    resetPassword: resetPasswordFn,
+    requestPasswordReset: requestPasswordResetFn
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

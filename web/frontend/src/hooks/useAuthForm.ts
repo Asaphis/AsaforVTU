@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { SignUpData, LoginCredentials } from '@/types/auth';
+import { requestPasswordReset } from '@/lib/auth';
 
 // Validation schemas
 const baseSignUpSchema = z.object({
@@ -53,7 +54,7 @@ type FormErrors<T> = Partial<Record<keyof T | 'general', string>>;
 export function useAuthForm() {
   const { addNotification } = useNotifications();
   const router = useRouter();
-  const { signUp, signIn, resetPassword, verifyEmail } = useAuth();
+  const { signUp, signIn, verifyEmail } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors<SignUpData & LoginCredentials>>({});
   const [needsVerification, setNeedsVerification] = useState<boolean>(false);
@@ -141,7 +142,7 @@ export function useAuthForm() {
 
     setIsLoading(true);
     try {
-      await resetPassword(email);
+      await requestPasswordReset(email);
       addNotification('success', 'Email sent', 'Check your email for password reset instructions.');
     } catch (error: any) {
       addNotification('error', 'Error', error.message || 'Failed to send password reset email. Please try again.');

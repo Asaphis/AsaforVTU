@@ -24,6 +24,7 @@ export interface SignUpData {
   phone?: string;
   transactionPin?: string;
   referralCode?: string;
+  referralUsername?: string;
 }
 
 export interface LoginCredentials {
@@ -47,4 +48,6 @@ export interface AuthContextType {
   signUp: (data: SignUpData) => Promise<any>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
 }

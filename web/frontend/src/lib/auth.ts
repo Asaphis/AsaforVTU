@@ -297,7 +297,7 @@ export const verifyEmail = async (token: string): Promise<void> => {
 };
 
 // Request password reset
-export const resetPassword = async (email: string): Promise<void> => {
+export const requestPasswordReset = async (email: string): Promise<void> => {
   const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
     method: 'POST',
     headers: {
@@ -376,6 +376,7 @@ export default {
   getCurrentUser,
   isAuthenticated,
   verifyEmail,
+  requestPasswordReset,
   resetPassword,
   updateProfile,
   changePassword,
