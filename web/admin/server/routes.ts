@@ -95,6 +95,60 @@ export function registerRoutes(app: Express): Server {
     });
   });
 
+  // Auth routes (proxy to backend)
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/auth/login", req.body);
+  });
+
+  app.post("/api/auth/register", async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/auth/register", req.body);
+  });
+
+  app.post("/api/auth/refresh", async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/auth/refresh", req.body);
+  });
+
+  app.post("/api/auth/logout", async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/auth/logout", req.body);
+  });
+
+  app.get("/api/auth/me", async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/auth/me");
+  });
+
+  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/auth/forgot-password", req.body);
+  });
+
+  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/auth/reset-password", req.body);
+  });
+
+  app.post("/api/auth/verify-email", async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/auth/verify-email", req.body);
+  });
+
+  app.post("/api/auth/change-password", async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/auth/change-password", req.body);
+  });
+
+  app.put("/api/auth/profile", async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "PUT", "/api/auth/profile", req.body);
+  });
+
+  // Public API routes (no auth required)
+  app.get("/api/services", async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/services");
+  });
+
+  app.get("/api/plans", async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/plans");
+  });
+
+  app.get("/api/announcements", async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/announcements");
+  });
+
   // Admin stats
   app.get("/api/admin/stats", adminAuth, async (req: Request, res: Response) => {
     await proxyRequest(req, res, "GET", "/api/admin/stats");
