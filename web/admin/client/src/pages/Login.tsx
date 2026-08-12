@@ -71,8 +71,12 @@ export default function Login() {
         title: "Access Granted",
         description: "Welcome to the administration bridge.",
       });
-      setLocation("/");
+      
+      // Force redirect to dashboard
+      console.log("Redirecting to dashboard...");
+      window.location.href = "/";
     } catch (error: any) {
+      console.error("Login error:", error);
       toast({ 
         variant: "destructive", 
         title: "Access Denied", 
