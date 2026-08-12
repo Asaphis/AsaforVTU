@@ -1,4 +1,4 @@
-import { apiRequest, getAccessToken } from "./auth";
+import { apiRequest, getAccessToken, getUser } from "./auth";
 
 function getBaseUrl(): string {
   const prodUrlRaw = import.meta.env.VITE_VTU_BACKEND_URL as string | undefined;
@@ -34,7 +34,8 @@ async function request<T>(method: string, path: string, data?: unknown): Promise
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
   const fallbackAdminEmail = envAdmins[0] || "";
-  const currentEmail = (auth.currentUser?.email || fallbackAdminEmail || "").toLowerCase();
+  const currentUser = getUser();
+  const currentEmail = (currentUser?.email || fallbackAdminEmail || "").toLowerCase();
 
   const res = await fetch(url, {
     method,

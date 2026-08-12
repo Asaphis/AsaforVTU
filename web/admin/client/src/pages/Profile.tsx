@@ -1,30 +1,47 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { auth } from "@/lib/firebase";
+import { getCurrentUser, updateProfile, changePassword } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import { updateAdminProfile, changeAdminPassword } from "@/lib/backend";
 import { ShieldCheck } from "lucide-react";
 
 export default function ProfilePage() {
-  const user = auth.currentUser || {};
+  const [user, setUser] = useState<any>(null);
   const { toast } = useToast();
-  const [displayName, setDisplayName] = useState((user as any).displayName || "");
-  const [phoneNumber, setPhoneNumber] = useState((user as any).phoneNumber || "");
+  const [displayName, setDisplayName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    try {
+      const currentUser = await getCurrentUser();
+      if (currentUser) {
+        setUser(currentUser);
+        setDisplayName(currentUser.full_name || "");
+        setPhoneNumber(currentUser.phone || "");
+      }
+    } catch (e) {
+      console.error('Failed to load user:', e);
+    }
+  };
+
   const handleUpdateProfile = async () => {
     setIsUpdatingProfile(true);
     try {
-      await updateAdminProfile({ displayName, phoneNumber });
+      await updateProfile({ full_name: displayName, phone: phoneNumber });
+      await loadUser();
       toast({ title: "Profile updated", description: "Your changes have been saved." });
     } catch (e: any) {
       toast({ title: "Update failed", description: e.message || "An error occurred", variant: "destructive" });
@@ -40,7 +57,7 @@ export default function ProfilePage() {
     }
     setIsUpdatingPassword(true);
     try {
-      await changeAdminPassword({ currentPassword, newPassword });
+      await changePassword(currentPassword, newPassword);
       toast({ title: "Password updated", description: "Your password has been changed successfully." });
       setCurrentPassword("");
       setNewPassword("");
@@ -64,16 +81,16 @@ export default function ProfilePage() {
           <CardHeader className="text-center p-6 pb-2 border-b border-slate-100">
             <div className="mx-auto mb-6 relative group">
               <Avatar className="h-28 w-28 border-4 border-white shadow-md ring-2 ring-primary/20">
-                <AvatarImage src={(user as any).photoURL || ""} className="object-cover" />
+                <AvatarImage src={(user as any).avatar_url || ""} className="object-cover" />
                 <AvatarFallback className="text-3xl bg-primary text-white font-bold">
-                  {String((user as any).displayName || (user as any).email || "A").charAt(0).toUpperCase()}
+                  {String((user as any).full_name || (user as any).email || "A").charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="absolute -bottom-2 right-0 bg-primary h-8 w-8 rounded-xl flex items-center justify-center border-4 border-white shadow">
                 <ShieldCheck className="h-4 w-4 text-white" />
               </div>
             </div>
-            <CardTitle className="text-xl font-bold text-slate-900">{(user as any).displayName || 'Admin User'}</CardTitle>
+            <CardTitle className="text-xl font-bold text-slate-900">{(user as any).full_name || 'Admin User'}</CardTitle>
             <CardDescription className="text-primary font-bold uppercase tracking-wider text-[10px] mt-2">{(user as any).email || ''}</CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-4">

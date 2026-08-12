@@ -1,4 +1,3 @@
-import { doc } from "firebase/firestore";
 import { getAnnouncements, getTickets, replyTicket, getTicketMessages, updateTicketStatus, deleteTicketAdmin } from "@/lib/backend";
 import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

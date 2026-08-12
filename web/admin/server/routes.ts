@@ -1,1712 +1,247 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { initializeApp, getApps, applicationDefault, cert } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
 
-function cleanEnvString(s?: string): string {
-  const v = typeof s === "string" ? s.trim().replace(/^`|`$/g, "") : "";
-  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
-    return v.slice(1, -1);
-  }
-  return v;
+function getBackendUrl(): string {
+  const prodUrl = process.env.VITE_VTU_BACKEND_URL || process.env.BACKEND_URL || "https://vtuapi.ferixas.com";
+  const localUrl = process.env.VITE_VTU_BACKEND_URL_LOCAL || "http://localhost:5000";
+  
+  // Check if we're in development
+  const isDev = process.env.NODE_ENV === "development";
+  return isDev ? localUrl : prodUrl;
 }
 
-let adminInitSource = "";
-let adminInitError = "";
-
-function ensureFirebaseAdminInitialized(): boolean {
-  if (getApps().length) return true;
-  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
-  const saRaw = cleanEnvString(process.env.FIREBASE_SERVICE_ACCOUNT);
-  if (saRaw) {
-    try {
-      const json = JSON.parse(saRaw);
-      initializeApp({ credential: cert(json), projectId: json.project_id || projectId } as any);
-      adminInitSource = "service_account_json";
-      adminInitError = "";
-      return true;
-    } catch (e: any) {
-      adminInitSource = "service_account_json";
-      adminInitError = String(e?.message || "init_failed");
-    }
-  }
-  const clientEmail = cleanEnvString(process.env.FIREBASE_CLIENT_EMAIL);
-  const rawKey = process.env.FIREBASE_PRIVATE_KEY;
-  if (clientEmail && rawKey) {
-    try {
-      const privateKey = String(rawKey).replace(/\\n/g, "\n");
-      initializeApp({ credential: cert({ projectId: projectId, clientEmail: clientEmail, privateKey: privateKey }), projectId } as any);
-      adminInitSource = "client_email_private_key";
-      adminInitError = "";
-      return true;
-    } catch (e: any) {
-      adminInitSource = "client_email_private_key";
-      adminInitError = String(e?.message || "init_failed");
-    }
-  }
-  try {
-    initializeApp({ credential: applicationDefault(), projectId } as any);
-    adminInitSource = "application_default";
-    adminInitError = "";
-    return true;
-  } catch (e: any) {
-    adminInitSource = "application_default";
-    adminInitError = String(e?.message || "init_failed");
-  }
-  return false;
-}
-
-function getAuthSafe(): any {
-  ensureFirebaseAdminInitialized();
-  try {
-    return getAuth();
-  } catch {
-    return {
-      listUsers: async (_: number) => ({ users: [] }),
-      verifyIdToken: async (_: string) => { throw new Error("auth unavailable"); },
-      getUserByEmail: async (_: string) => { throw new Error("auth unavailable"); },
-      getUser: async (_: string) => { throw new Error("auth unavailable"); },
-      deleteUser: async (_: string) => { throw new Error("auth unavailable"); },
-      updateUser: async (_: string, __: any) => { throw new Error("auth unavailable"); },
-      createUser: async (_: any) => { throw new Error("auth unavailable"); },
-      setCustomUserClaims: async (_: string, __: any) => {},
-    } as any;
-  }
-}
-
-function getFirestoreSafe(): any {
-  ensureFirebaseAdminInitialized();
-  try {
-    return getFirestore();
-  } catch {
-    const emptySnap = { empty: true, docs: [], size: 0, forEach: () => {} };
-    const emptyDoc = { exists: false, id: "", data: () => ({}), get: async () => ({ exists: false, data: () => ({}) }) };
-    const coll = () => ({
-      orderBy: (_: string, __?: any) => coll(),
-      limit: (_: number) => coll(),
-      where: (_: string, __: any, ___: any) => coll(),
-      get: async () => emptySnap,
-      add: async (_: any) => ({ id: "" }),
-      doc: (_: string) => ({
-        get: async () => emptyDoc,
-        set: async (_: any, __?: any) => {},
-        update: async (_: any) => {},
-        delete: async () => {},
-      }),
-    });
-    return {
-      collection: (_: string) => coll(),
-    } as any;
-  }
-}
-
-function pickNumber(source: any, keys: string[]): number {
-  for (const k of keys) {
-    const v = source?.[k];
-    if (v === undefined || v === null) continue;
-    const n = Number(v);
-    if (!Number.isNaN(n)) return n;
-  }
-  return 0;
-}
-
-function getCreatedMs(value: any): number {
-  if (!value) return 0;
-  if (typeof value === "number") return value;
-  if (typeof value === "string") {
-    const t = Date.parse(value);
-    return Number.isFinite(t) ? t : 0;
-  }
-  if (value instanceof Date) return value.getTime();
-  if (typeof value.toMillis === "function") {
-    try {
-      return Number(value.toMillis());
-    } catch {
-      return 0;
-    }
-  }
-  return 0;
-}
-
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express
-): Promise<Server> {
-  ensureFirebaseAdminInitialized();
-
-  function getAllowedEmails(): string[] {
-    const env = process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || "asaphis.org@gmail.com";
-    return env.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  }
-
-  async function verifyTokenAndGetEmail(token?: string): Promise<{ email?: string; isAdmin?: boolean }> {
-    if (!token) return { email: undefined, isAdmin: false };
-    try {
-      const decoded: any = await getAuthSafe().verifyIdToken(token);
-      const email = String(decoded.email || "").toLowerCase();
-      const isAdmin = Boolean(decoded.admin === true || (decoded.customClaims && decoded.customClaims.admin === true));
-      return { email: email || undefined, isAdmin };
-    } catch {
-      return { email: undefined, isAdmin: false };
-    }
-  }
-
-  async function adminAuth(req: Request, res: Response, next: NextFunction) {
-    // Skip auth check for development/preview on Replit
-    const isDev = process.env.NODE_ENV === "development" || process.env.REPLIT_SLUG || process.env.REPLIT_DEV_DOMAIN;
-    if (isDev) {
-      console.log("[Admin Auth] Bypassing for development/Replit preview");
-      return next();
-    }
-
-    const headerEmail = String(req.headers["x-admin-email"] || "").toLowerCase();
-    const allowed = getAllowedEmails();
-    if (headerEmail && allowed.includes(headerEmail)) return next();
-    const authHeader = req.headers.authorization || "";
-    const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
-    const tokenInfo = await verifyTokenAndGetEmail(bearer);
-    if (tokenInfo?.isAdmin) return next();
-    const candidateEmail = tokenInfo?.email || headerEmail;
-    if (candidateEmail && allowed.includes(candidateEmail)) return next();
-    return res.status(403).json({ message: "Forbidden" });
-  }
-
-  const settingsStore: any = {
-    providerBaseUrl: "",
-    apiKey: "",
-    secretKey: "",
-    cashbackEnabled: false,
-    dailyReferralBudget: 0,
+// Helper to proxy requests to backend
+async function proxyRequest<T>(req: Request, res: Response, method: string, path: string, body?: any): Promise<void> {
+  const backendUrl = getBackendUrl();
+  const url = `${backendUrl}${path}`;
+  
+  const token = req.headers.authorization || "";
+  
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: token } : {}),
   };
 
-  app.get("/api/health/details", async (_req: Request, res: Response) => {
-    const initialized = getApps().length > 0;
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
-    const clientEmail = cleanEnvString(process.env.FIREBASE_CLIENT_EMAIL);
-    const hasPrivateKey = !!process.env.FIREBASE_PRIVATE_KEY;
-    const hasServiceAccount = !!cleanEnvString(process.env.FIREBASE_SERVICE_ACCOUNT);
-    
-    res.json({
-      initialized,
-      source: adminInitSource,
-      error: adminInitError,
-      hasServiceAccount,
-      hasClientEmail: !!clientEmail,
-      hasPrivateKey,
-      projectId: projectId || "not_set",
-      env: {
-        NODE_ENV: process.env.NODE_ENV,
-        PORT: process.env.PORT
-      }
+  try {
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
     });
-  });
 
-  app.get("/api/admin/settings", adminAuth, async (_req: Request, res: Response) => {
-    try {
-      const db = getFirestoreSafe();
-      const doc = await db.collection("admin_settings").doc("settings").get();
-      if (doc.exists) return res.json(doc.data() || settingsStore);
-    } catch {}
-    return res.json(settingsStore);
-  });
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : null;
 
-  app.post("/api/admin/settings", adminAuth, async (req: Request, res: Response) => {
-    const body = req.body || {};
-    Object.assign(settingsStore, body);
-    try {
-      const db = getFirestoreSafe();
-      await db.collection("admin_settings").doc("settings").set(settingsStore, { merge: true });
-    } catch {}
-    return res.json({ message: "Settings updated" });
-  });
+    res.status(response.status).json(data);
+  } catch (error: any) {
+    console.error(`[Proxy] Error proxying to ${path}:`, error);
+    res.status(500).json({ error: error.message || "Backend request failed" });
+  }
+}
 
-  app.get("/api/admin/transactions", adminAuth, async (_req: Request, res: Response) => {
-    try {
-      const db = getFirestoreSafe();
-      const names = ["admin_transactions", "transactions"];
-      let txs: any[] = [];
-      for (const n of names) {
-        const snap = await db.collection(n).orderBy("createdAt", "desc").limit(200).get();
-        if (!snap.empty) {
-          txs = snap.docs.map((d) => {
-            const x: any = d.data() || {};
-            return {
-              id: d.id,
-              user: x.user || x.user_email || x.userEmail || "",
-              amount: Number(x.amount || 0),
-              status: x.status || "success",
-              type: x.type || "transaction",
-              providerStatus: x.providerStatus || x.provider_status || "",
-              providerErrorCode: x.providerErrorCode || x.provider_error_code || "",
-              providerErrorMessage: x.providerErrorMessage || x.provider_error_message || "",
-              providerRaw: x.providerRaw || x.provider_raw || null,
-              createdAt: x.createdAt || x.timestamp || Date.now(),
-            };
-          });
-          break;
-        }
-      }
-      return res.json(txs);
-    } catch {
-      return res.json([]);
-    }
-  });
+// Admin auth middleware
+async function adminAuth(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization || "";
+  
+  if (!authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
-  app.get("/api/admin/users", adminAuth, async (req: Request, res: Response) => {
-    const limit = Math.max(1, Math.min(1000, Number((req.query.limit as string) || "100")));
-    const db = getFirestoreSafe();
-    let baseUsers: Array<{
-      id: string;
-      uid: string;
-      displayName: string;
-      email: string;
-      phone: string;
-      joinedAt: any;
-      status: string;
-    }> = [];
-    try {
-      const auth = getAuthSafe();
-      const list = await auth.listUsers(limit);
-      console.log(`[Admin API] Found ${list.users.length} users from Auth`);
-      baseUsers = list.users.map((u) => ({
-        id: u.uid,
-        uid: u.uid,
-        displayName: u.displayName || "",
-        email: u.email || "",
-        phone: u.phoneNumber || "",
-        joinedAt: u.metadata?.creationTime || "",
-        status: u.disabled ? "inactive" : "active",
-      }));
-    } catch (authError: any) {
-      console.error("[Admin API] Auth listUsers failed, falling back to multiple collections:", authError.message);
-      try {
-        const colls = ["users", "wallets", "user_wallets", "profiles"];
-        for (const c of colls) {
-          try {
-            const snap = await db.collection(c).limit(limit).get();
-            if (!snap.empty) {
-              console.log(`[Admin API] Found ${snap.docs.length} users from ${c} fallback`);
-              const fallbackUsers = snap.docs.map((d) => {
-                const x: any = d.data() || {};
-                return {
-                  id: d.id,
-                  uid: x.uid || x.userId || d.id,
-                  displayName: x.displayName || x.name || x.fullName || x.email || d.id,
-                  email: x.email || "",
-                  phone: x.phone || x.phoneNumber || "",
-                  joinedAt: x.createdAt || x.timestamp || "",
-                  status: (x.disabled || x.status === "inactive" || x.status === "suspended") ? "inactive" : "active",
-                };
-              });
-              baseUsers = [...baseUsers, ...fallbackUsers];
-            }
-          } catch (err: any) {
-             console.error(`[Admin API] Fallback collection ${c} failed:`, err.message);
-          }
-        }
-        
-        // Remove duplicates if any
-        const seen = new Set();
-        baseUsers = baseUsers.filter(u => {
-          const key = (u.uid || u.id || "").toLowerCase();
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-
-      } catch (dbError: any) {
-        console.error("[Admin API] Comprehensive fallback failed:", dbError.message);
-      }
-    }
-    
-    // If no users found at all, return empty array early
-    if (baseUsers.length === 0) {
-      console.log("[Admin API] No users found in Auth or Firestore");
-      return res.json([]);
-    }
-
-    const profiles: Record<string, { phone: string; displayName: string }> = {};
-    try {
-      const colls = ["users", "profiles", "user_profiles"];
-      for (const c of colls) {
-        try {
-          const snap = await db.collection(c).limit(1000).get();
-          if (!snap.empty) {
-            console.log(`[Admin API] Found ${snap.docs.length} profile records in ${c}`);
-            for (const d of snap.docs) {
-              const x: any = d.data() || {};
-              const uidKey = String(x.uid || x.userId || d.id || "").toLowerCase();
-              const emailKey = String(x.email || x.user_email || "").toLowerCase();
-              const phone = String(x.phone || x.phoneNumber || "");
-              const displayName = String(x.displayName || x.name || x.fullName || "");
-              if (uidKey) profiles[uidKey] = { phone, displayName };
-              if (emailKey && !profiles[emailKey]) profiles[emailKey] = { phone, displayName };
-            }
-          }
-        } catch (err: any) {
-           console.error(`[Admin API] Profile fallback ${c} failed:`, err.message);
-        }
-      }
-    } catch (err: any) {
-      console.error("[Admin API] Profiles fetch failed:", err.message);
-    }
-    const balances: Record<string, { main_balance: number; cashback_balance: number; referral_balance: number }> = {};
-    try {
-      const names = ["user_wallets", "wallets"];
-      for (const n of names) {
-        const snap = await db.collection(n).limit(1000).get();
-        console.log(`[Admin API] Checked ${n}, found ${snap.docs.length} wallet records`);
-        for (const d of snap.docs) {
-          const x: any = d.data() || {};
-          const uidKey = String(x.userId || x.uid || d.id || "").toLowerCase();
-          const emailKey = String(x.user_email || x.userEmail || x.email || "").toLowerCase();
-          const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
-          const cb = Number(x.cashbackBalance || x.cashback_balance || 0);
-          const rb = Number(x.referralBalance || x.referral_balance || 0);
-          const value = { main_balance: mb, cashback_balance: cb, referral_balance: rb };
-          if (uidKey) {
-            balances[uidKey] = value;
-          }
-          if (emailKey && !balances[emailKey]) {
-            balances[emailKey] = value;
-          }
-        }
-      }
-    } catch (err: any) {
-      console.error("[Admin API] Balances fetch failed:", err.message);
-    }
-    const users = baseUsers.map((u) => {
-      const uidKey = String(u.uid || u.id || "").toLowerCase();
-      const emailKey = String(u.email || "").toLowerCase();
-      const profile = profiles[uidKey] || profiles[emailKey];
-      const bal = balances[uidKey] || balances[emailKey];
-      const phone = u.phone || (profile ? profile.phone : "");
-      const displayName = u.displayName || (profile ? profile.displayName : "");
-      return {
-        id: u.id || uidKey || emailKey,
-        uid: u.uid || u.id || uidKey || emailKey, // Ensure uid is present
-        displayName: displayName || emailKey || uidKey || "Unknown User",
-        email: u.email || emailKey || "",
-        phone: phone || "",
-        joinedAt: u.joinedAt || "",
-        walletBalance: bal ? Number(bal.main_balance || 0) : 0,
-        cashbackBalance: bal ? Number(bal.cashback_balance || 0) : 0,
-        referralBalance: bal ? Number(bal.referral_balance || 0) : 0,
-        status: u.status || "active",
-      };
+  const token = authHeader.slice(7);
+  
+  try {
+    // Verify token with backend
+    const backendUrl = getBackendUrl();
+    const response = await fetch(`${backendUrl}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
     });
-    res.json(users);
-  });
 
-  app.post("/api/admin/users/promote", adminAuth, (req: Request, res: Response) => {
-    const uid = String((req.body?.uid as string) || "");
-    const email = String((req.body?.email as string) || "");
-    const setClaims = async (targetUid: string) => {
-      await getAuthSafe().setCustomUserClaims(targetUid, { admin: true });
-      const user = await getAuthSafe().getUser(targetUid);
-      res.json({ success: true, uid: targetUid, email: String(user.email || "") });
-    };
-    const run = async () => {
-      if (uid) {
-        await setClaims(uid);
-        return;
-      }
-      if (email) {
-        const userRecord = await getAuthSafe().getUserByEmail(email);
-        await setClaims(userRecord.uid);
-        return;
-      }
-      res.status(400).json({ success: false, message: "uid or email required" });
-    };
-    run().catch((e) => {
-      res.status(400).json({ success: false, message: String(e?.message || "error") });
-    });
-  });
-
-  app.post("/api/admin/wallet/credit", adminAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = String((req.body?.userId as string) || "");
-      const amount = Number((req.body?.amount as number) || 0);
-      const walletType = String((req.body?.walletType as string) || "main");
-      
-      if (!userId || !amount || amount <= 0) {
-        return res.status(400).json({ success: false, message: "Invalid userId or amount" });
-      }
-
-      const db = getFirestoreSafe();
-      let resolvedUid = "";
-      let resolvedEmail = "";
-      
-      try {
-        if (userId.includes("@")) {
-          const u = await getAuthSafe().getUserByEmail(userId);
-          resolvedUid = String(u.uid || "").toLowerCase();
-          resolvedEmail = String(u.email || userId || "").toLowerCase();
-        } else {
-          const u = await getAuthSafe().getUser(userId);
-          resolvedUid = String(u.uid || userId || "").toLowerCase();
-          resolvedEmail = String(u.email || "").toLowerCase();
-        }
-      } catch (authError: any) {
-        console.error("[Admin Credit] Auth lookup failed:", authError?.message);
-        // Try to find user by email in Firestore
-        if (userId.includes("@")) {
-          resolvedEmail = userId.toLowerCase();
-        } else {
-          resolvedUid = userId.toLowerCase();
-        }
-      }
-
-      if (!resolvedUid && resolvedEmail) {
-        try {
-          const q = await db.collection("users").where("email", "==", resolvedEmail).limit(1).get();
-          if (!q.empty) {
-            resolvedUid = String(q.docs[0].id || "").toLowerCase();
-          }
-        } catch (e: any) {
-          console.error("[Admin Credit] User lookup failed:", e?.message);
-        }
-      }
-
-      if (!resolvedUid && !resolvedEmail) {
-        return res.status(404).json({ success: false, message: "User not found" });
-      }
-
-      const targetIds = Array.from(new Set([resolvedUid, resolvedEmail].filter(Boolean)));
-      const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      
-      // Record admin transaction
-      await db.collection("admin_transactions").doc(id).set({
-        id,
-        user_email: userId,
-        user_id: resolvedUid,
-        amount,
-        status: "success",
-        type: "credit",
-        createdAt: Date.now(),
-      });
-
-      // Update wallet - only use "wallets" collection (consistent with main backend)
-      const keyA = walletType === "cashback" ? "cashback_balance" : walletType === "referral" ? "referral_balance" : "main_balance";
-      const keyB = walletType === "cashback" ? "cashbackBalance" : walletType === "referral" ? "referralBalance" : "mainBalance";
-      
-      for (const tid of targetIds) {
-        const w = db.collection("wallets").doc(tid);
-        const wsnap = await w.get();
-        const dataW: any = wsnap.exists ? (wsnap.data() as any) : {};
-        const startW = walletType === "cashback"
-          ? Number(dataW.cashback_balance || dataW.cashbackBalance || 0)
-          : walletType === "referral"
-          ? Number(dataW.referral_balance || dataW.referralBalance || 0)
-          : Number(dataW.main_balance || dataW.mainBalance || dataW.balance || 0);
-        const updatedW: any = { [keyA]: startW + amount, [keyB]: startW + amount, updatedAt: Date.now() };
-        if (walletType === "main") updatedW.balance = startW + amount;
-        await w.set(updatedW, { merge: true });
-      }
-
-      // Log the transaction
-      const logId = `wl_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      await db.collection("wallet_logs").doc(logId).set({
-        id: logId,
-        user_email: userId,
-        user_id: resolvedUid,
-        type: "credit",
-        amount,
-        description: String(req.body?.description || "Admin credit"),
-        createdAt: Date.now(),
-      });
-
-      const finalBalance = amount; // Returned for reference
-      res.json({ success: true, userId, newBalance: finalBalance, walletType });
-    } catch (error: any) {
-      console.error("[Admin Credit] Error:", error?.message);
-      res.status(500).json({ success: false, message: error?.message || "Credit failed" });
+    if (!response.ok) {
+      return res.status(401).json({ error: "Unauthorized" });
     }
-  });
 
-  app.post("/api/admin/wallet/debit", adminAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = String((req.body?.userId as string) || "");
-      const amount = Number((req.body?.amount as number) || 0);
-      const walletType = String((req.body?.walletType as string) || "main");
-      
-      if (!userId || !amount || amount <= 0) {
-        return res.status(400).json({ success: false, message: "Invalid userId or amount" });
-      }
-
-      const db = getFirestoreSafe();
-      let resolvedUid = "";
-      let resolvedEmail = "";
-      
-      try {
-        if (userId.includes("@")) {
-          const u = await getAuthSafe().getUserByEmail(userId);
-          resolvedUid = String(u.uid || "").toLowerCase();
-          resolvedEmail = String(u.email || userId || "").toLowerCase();
-        } else {
-          const u = await getAuthSafe().getUser(userId);
-          resolvedUid = String(u.uid || userId || "").toLowerCase();
-          resolvedEmail = String(u.email || "").toLowerCase();
-        }
-      } catch (authError: any) {
-        console.error("[Admin Debit] Auth lookup failed:", authError?.message);
-        if (userId.includes("@")) {
-          resolvedEmail = userId.toLowerCase();
-        } else {
-          resolvedUid = userId.toLowerCase();
-        }
-      }
-
-      if (!resolvedUid && resolvedEmail) {
-        try {
-          const q = await db.collection("users").where("email", "==", resolvedEmail).limit(1).get();
-          if (!q.empty) {
-            resolvedUid = String(q.docs[0].id || "").toLowerCase();
-          }
-        } catch (e: any) {
-          console.error("[Admin Debit] User lookup failed:", e?.message);
-        }
-      }
-
-      if (!resolvedUid && !resolvedEmail) {
-        return res.status(404).json({ success: false, message: "User not found" });
-      }
-
-      const targetIds = Array.from(new Set([resolvedUid, resolvedEmail].filter(Boolean)));
-      const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      
-      // Record admin transaction
-      await db.collection("admin_transactions").doc(id).set({
-        id,
-        user_email: userId,
-        user_id: resolvedUid,
-        amount,
-        status: "success",
-        type: "debit",
-        createdAt: Date.now(),
-      });
-
-      // Update wallet - only use "wallets" collection (consistent with main backend)
-      const keyA = walletType === "cashback" ? "cashback_balance" : walletType === "referral" ? "referral_balance" : "main_balance";
-      const keyB = walletType === "cashback" ? "cashbackBalance" : walletType === "referral" ? "referralBalance" : "mainBalance";
-      
-      for (const tid of targetIds) {
-        const w = db.collection("wallets").doc(tid);
-        const wsnap = await w.get();
-        const dataW: any = wsnap.exists ? (wsnap.data() as any) : {};
-        const startW = walletType === "cashback"
-          ? Number(dataW.cashback_balance || dataW.cashbackBalance || 0)
-          : walletType === "referral"
-          ? Number(dataW.referral_balance || dataW.referralBalance || 0)
-          : Number(dataW.main_balance || dataW.mainBalance || dataW.balance || 0);
-        
-        if (startW < amount) {
-          return res.status(400).json({ success: false, message: "Insufficient balance" });
-        }
-        
-        const updatedW: any = { [keyA]: startW - amount, [keyB]: startW - amount, updatedAt: Date.now() };
-        if (walletType === "main") updatedW.balance = startW - amount;
-        await w.set(updatedW, { merge: true });
-      }
-
-      // Log the transaction
-      const logId = `wl_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      await db.collection("wallet_logs").doc(logId).set({
-        id: logId,
-        user_email: userId,
-        user_id: resolvedUid,
-        type: "debit",
-        amount,
-        description: String(req.body?.description || "Admin debit"),
-        createdAt: Date.now(),
-      });
-
-      res.json({ success: true, userId, newBalance: 0, walletType });
-    } catch (error: any) {
-      console.error("[Admin Debit] Error:", error?.message);
-      res.status(500).json({ success: false, message: error?.message || "Debit failed" });
-    }
-  });
-
-  app.post("/api/admin/users/suspend", adminAuth, async (req: Request, res: Response) => {
-    const uid = String((req.body?.uid as string) || "");
-    const email = String((req.body?.email as string) || "");
-    const suspend = Boolean(req.body?.suspend);
-    const auth = getAuthSafe();
-    try {
-      let targetUid = uid;
-      if (!targetUid && email) {
-        const u = await auth.getUserByEmail(email);
-        targetUid = u.uid;
-      }
-      if (!targetUid) return res.status(400).json({ success: false, message: "uid or email required" });
-      await auth.updateUser(targetUid, { disabled: suspend });
-      const user = await auth.getUser(targetUid);
-      res.json({ success: true, uid: targetUid, email: String(user.email || ""), disabled: Boolean(user.disabled) });
-    } catch (e: any) {
-      res.status(400).json({ success: false, message: String(e?.message || "error") });
-    }
-  });
-
-  app.post("/api/admin/users/delete", adminAuth, async (req: Request, res: Response) => {
-    const uid = String((req.body?.uid as string) || "");
-    const email = String((req.body?.email as string) || "");
-    const auth = getAuthSafe();
-    try {
-      let targetUid = uid;
-      if (!targetUid && email) {
-        const u = await auth.getUserByEmail(email);
-        targetUid = u.uid;
-      }
-      if (!targetUid) return res.status(400).json({ success: false, message: "uid or email required" });
-      await auth.deleteUser(targetUid);
-      res.json({ success: true, uid: targetUid, email });
-    } catch (e: any) {
-      res.status(400).json({ success: false, message: String(e?.message || "error") });
-    }
-  });
-
-  app.post("/api/admin/users/password", adminAuth, async (req: Request, res: Response) => {
-    const uid = String((req.body?.uid as string) || "");
-    const email = String((req.body?.email as string) || "");
-    const password = String((req.body?.password as string) || "");
-    const auth = getAuthSafe();
-    try {
-      let targetUid = uid;
-      if (!targetUid && email) {
-        const u = await auth.getUserByEmail(email);
-        targetUid = u.uid;
-      }
-      if (!targetUid || !password) return res.status(400).json({ success: false, message: "uid/email and password required" });
-      await auth.updateUser(targetUid, { password });
-      const user = await auth.getUser(targetUid);
-      res.json({ success: true, uid: targetUid, email: String(user.email || "") });
-    } catch (e: any) {
-      res.status(400).json({ success: false, message: String(e?.message || "error") });
-    }
-  });
-
-  app.get("/api/admin/users/transactions", adminAuth, async (req: Request, res: Response) => {
-    const email = String((req.query?.email as string) || "").trim();
-    const uid = String((req.query as any)?.uid || "").trim();
-    if (!email && !uid) return res.json([]);
-    try {
-      const db = getFirestoreSafe();
-      const names = ["admin_transactions", "transactions", "wallet_transactions"];
-      for (const n of names) {
-        let rows: any[] = [];
-        if (email) {
-          const queries = [
-            db.collection(n).where("user_email", "==", email).limit(500).get(),
-            db.collection(n).where("user", "==", email).limit(500).get(),
-            db.collection(n).where("userEmail", "==", email).limit(500).get(),
-            db.collection(n).where("email", "==", email).limit(500).get(),
-          ];
-          const snaps = await Promise.allSettled(queries);
-          for (const s of snaps) {
-            if (s.status === "fulfilled") {
-              const snap = s.value;
-              if (!snap.empty) {
-                rows = rows.concat(
-                  snap.docs.map((d) => {
-                    const x: any = d.data() || {};
-                    return {
-                      id: d.id,
-                      user: x.user || x.user_email || x.userEmail || x.email || x.userId || "",
-                      amount: Number(x.amount || 0),
-                      status: x.status || "success",
-                      type: x.type || "transaction",
-                      providerStatus: x.providerStatus || x.provider_status || "",
-                      providerErrorCode: x.providerErrorCode || x.provider_error_code || "",
-                      providerErrorMessage: x.providerErrorMessage || x.provider_error_message || "",
-                      providerRaw: x.providerRaw || x.provider_raw || null,
-                      createdAt: x.createdAt || x.timestamp || Date.now(),
-                    };
-                  }),
-                );
-              }
-            }
-          }
-        }
-        if (uid) {
-          const queries = [
-            db.collection(n).where("userId", "==", uid).limit(500).get(),
-            db.collection(n).where("uid", "==", uid).limit(500).get(),
-          ];
-          const snaps = await Promise.allSettled(queries);
-          for (const s of snaps) {
-            if (s.status === "fulfilled") {
-              const snap = s.value;
-              if (!snap.empty) {
-                rows = rows.concat(
-                  snap.docs.map((d) => {
-                    const x: any = d.data() || {};
-                    return {
-                      id: d.id,
-                      user: x.user || x.user_email || x.userEmail || x.email || x.userId || "",
-                      amount: Number(x.amount || 0),
-                      status: x.status || "success",
-                      type: x.type || "transaction",
-                      providerStatus: x.providerStatus || x.provider_status || "",
-                      providerErrorCode: x.providerErrorCode || x.provider_error_code || "",
-                      providerErrorMessage: x.providerErrorMessage || x.provider_error_message || "",
-                      providerRaw: x.providerRaw || x.provider_raw || null,
-                      createdAt: x.createdAt || x.timestamp || Date.now(),
-                    };
-                  }),
-                );
-              }
-            }
-          }
-        }
-        if (rows.length > 0) {
-          const map: Record<string, any> = {};
-          for (const r of rows) map[r.id] = r;
-          const list = Object.values(map);
-          list.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-          return res.json(list);
-        }
-      }
-      return res.json([]);
-    } catch {
-      return res.json([]);
-    }
-  });
-
-  app.post("/api/admin/plans", adminAuth, async (req: Request, res: Response) => {
-    const body = req.body || {};
-    const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const network = String(body.network || "");
-    const name = String(body.name || "");
-    const priceUser = Number(body.priceUser || 0);
-    const priceApi = Number(body.priceApi || 0);
-    const active = body.active === undefined ? true : Boolean(body.active);
-    const type = String(body.metadata?.type || body.type || "data");
+    const user = await response.json();
     
-    if (!network || !name || !priceUser || !priceApi) {
-      return res.status(400).json({ message: "network, name, priceUser, priceApi required" });
+    // Check if admin
+    const allowedAdminEmails = (process.env.ADMIN_EMAILS || "asaphis.org@gmail.com")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    const isAdmin = user.is_admin || user.role === "admin" || allowedAdminEmails.includes(user.email.toLowerCase());
+
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Forbidden" });
     }
-    try {
-      const db = getFirestoreSafe();
-      await db.collection("service_plans").doc(id).set({
-        network,
-        name,
-        priceUser,
-        priceApi,
-        active,
-        type,
-        metadata: body.metadata || null,
-        createdAt: Date.now(),
-      });
-    } catch {}
-    return res.json({ id, network, name, priceUser, priceApi, active, type, metadata: body.metadata || null });
-  });
 
-  app.get("/api/admin/plans", adminAuth, async (_req: Request, res: Response) => {
-    try {
-      const db = getFirestoreSafe();
-      const snap = await db.collection("service_plans").get();
-      const rows = snap.docs.map(d => {
-        const x: any = d.data() || {};
-        return {
-          id: d.id,
-          network: x.network || "",
-          name: x.name || "",
-          priceUser: Number(x.priceUser || x.price_user || 0),
-          priceApi: Number(x.priceApi || x.price_api || 0),
-          active: Boolean(x.active !== false),
-          type: x.type || "data",
-          metadata: x.metadata || null,
-          createdAt: x.createdAt || Date.now(),
-        };
-      });
-      return res.json(rows);
-    } catch {
-      return res.json([]);
-    }
-  });
+    (req as any).user = user;
+    next();
+  } catch (error: any) {
+    console.error("[Admin Auth] Error:", error);
+    res.status(401).json({ error: "Unauthorized" });
+  }
+}
 
-  app.put("/api/admin/plans/:id", adminAuth, async (req: Request, res: Response) => {
-    const id = String(req.params.id || "");
-    const body = req.body || {};
-    if (!id) return res.status(400).json({ message: "id and at least one field required" });
-    try {
-      const db = getFirestoreSafe();
-      const patch: any = {};
-      if (body.network !== undefined) patch.network = String(body.network || "");
-      if (body.name !== undefined) patch.name = String(body.name || "");
-      if (body.priceUser !== undefined) patch.priceUser = Number(body.priceUser || 0);
-      if (body.priceApi !== undefined) patch.priceApi = Number(body.priceApi || 0);
-      if (body.active !== undefined) patch.active = Boolean(body.active);
-      if (body.metadata !== undefined) patch.metadata = body.metadata ? body.metadata : null;
-      await db.collection("service_plans").doc(id).set(patch, { merge: true });
-    } catch {}
-    return res.json({ id, ...body });
-  });
+export function registerRoutes(app: Express): Server {
+  const httpServer = createServer(app);
 
-  app.delete("/api/admin/plans/:id", adminAuth, async (req: Request, res: Response) => {
-    const id = String(req.params.id || "");
-    if (!id) return res.status(400).json({ message: "id required" });
-    try {
-      const db = getFirestoreSafe();
-      await db.collection("service_plans").doc(id).delete();
-    } catch {}
-    return res.json({ success: true, id });
-  });
-
-  // Service Categories
-  app.get("/api/admin/services", adminAuth, async (_req: Request, res: Response) => {
-    try {
-      const db = getFirestoreSafe();
-      const snap = await db.collection("services").get();
-      const services = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      return res.json(services);
-    } catch (e: any) {
-      return res.status(500).json({ error: e.message });
-    }
-  });
-
-  app.post("/api/admin/services", adminAuth, async (req: Request, res: Response) => {
-    try {
-      const db = getFirestoreSafe();
-      const { id, name, icon, category } = req.body || {};
-      const docId = id || String(name).toLowerCase().replace(/\s+/g, '-');
-      await db.collection("services").doc(docId).set({
-        name,
-        icon: icon || '',
-        category: category || 'Other',
-        active: true,
-        createdAt: Date.now()
-      });
-      return res.json({ success: true, id: docId });
-    } catch (e: any) {
-      return res.status(500).json({ error: e.message });
-    }
-  });
-
-  app.put("/api/admin/services/:id", adminAuth, async (req: Request, res: Response) => {
-    try {
-      const db = getFirestoreSafe();
-      const { id } = req.params;
-      const { name, icon, category, active } = req.body || {};
-      const patch: any = {};
-      if (name !== undefined) patch.name = name;
-      if (icon !== undefined) patch.icon = icon;
-      if (category !== undefined) patch.category = category;
-      if (active !== undefined) patch.active = active;
-      patch.updatedAt = Date.now();
-      await db.collection("services").doc(id).set(patch, { merge: true });
-      return res.json({ success: true });
-    } catch (e: any) {
-      return res.status(500).json({ error: e.message });
-    }
-  });
-
-  app.delete("/api/admin/services/:id", adminAuth, async (req: Request, res: Response) => {
-    try {
-      const db = getFirestoreSafe();
-      const { id } = req.params;
-      await db.collection("services").doc(id).delete();
-      return res.json({ success: true });
-    } catch (e: any) {
-      return res.status(500).json({ error: e.message });
-    }
-  });
-
-  app.get("/api/admin/profile", adminAuth, async (req: Request, res: Response) => {
-    const authHeader = req.headers.authorization || "";
-    const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
-    const tokenInfo = await verifyTokenAndGetEmail(bearer);
-    if (!tokenInfo?.email) return res.status(401).json({ message: "Unauthorized" });
-
-    try {
-      const user = await getAuthSafe().getUserByEmail(tokenInfo.email);
-      return res.json({
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName || "",
-        phoneNumber: user.phoneNumber || "",
-        disabled: user.disabled,
-        metadata: user.metadata,
-      });
-    } catch (e: any) {
-      return res.status(400).json({ message: e.message || "Error fetching profile" });
-    }
-  });
-
-  app.post("/api/admin/profile/update", adminAuth, async (req: Request, res: Response) => {
-    const authHeader = req.headers.authorization || "";
-    const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
-    const tokenInfo = await verifyTokenAndGetEmail(bearer);
-    if (!tokenInfo?.email) return res.status(401).json({ message: "Unauthorized" });
-
-    const { displayName, phoneNumber } = req.body;
-    try {
-      const user = await getAuthSafe().getUserByEmail(tokenInfo.email);
-      await getAuthSafe().updateUser(user.uid, {
-        displayName: displayName || user.displayName,
-        phoneNumber: phoneNumber || user.phoneNumber,
-      });
-      return res.json({ success: true, message: "Profile updated successfully" });
-    } catch (e: any) {
-      return res.status(400).json({ message: e.message || "Error updating profile" });
-    }
-  });
-
-  app.post("/api/admin/profile/password", adminAuth, async (req: Request, res: Response) => {
-    const authHeader = req.headers.authorization || "";
-    const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
-    const tokenInfo = await verifyTokenAndGetEmail(bearer);
-    if (!tokenInfo?.email) return res.status(401).json({ message: "Unauthorized" });
-
-    const { newPassword } = req.body;
-    try {
-      const user = await getAuthSafe().getUserByEmail(tokenInfo.email);
-      await getAuthSafe().updateUser(user.uid, {
-        password: newPassword,
-      });
-      return res.json({ success: true, message: "Password updated successfully" });
-    } catch (e: any) {
-      return res.status(400).json({ message: e.message || "Error updating password" });
-    }
-  });
-
-  app.get("/api/admin/wallet/requests", adminAuth, async (_req: Request, res: Response) => {
-    try {
-      const db = getFirestoreSafe();
-      const snap = await db.collection("funding_requests").orderBy("createdAt", "desc").limit(100).get();
-      const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      return res.json(rows);
-    } catch {
-      return res.json([]);
-    }
-  });
-
-  app.post("/api/admin/wallet/requests/:id/approve", adminAuth, async (req: Request, res: Response) => {
-    const id = req.params.id;
-    try {
-      const db = getFirestoreSafe();
-      await db.collection("funding_requests").doc(id).update({ status: "approved", approvedAt: Date.now() });
-      return res.json({ success: true });
-    } catch (e: any) {
-      return res.status(400).json({ message: e.message });
-    }
-  });
-
-  app.post("/api/admin/wallet/requests/:id/reject", adminAuth, async (req: Request, res: Response) => {
-    const id = req.params.id;
-    try {
-      const db = getFirestoreSafe();
-      await db.collection("funding_requests").doc(id).update({ status: "rejected", rejectedAt: Date.now() });
-      return res.json({ success: true });
-    } catch (e: any) {
-      return res.status(400).json({ message: e.message });
-    }
-  });
-
-  // Support Tickets
-  app.get("/api/admin/support/tickets", adminAuth, async (_req: Request, res: Response) => {
-    try {
-      const db = getFirestoreSafe();
-      const snap = await db.collection("tickets").limit(200).get();
-      const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      return res.json(rows);
-    } catch { return res.json([]); }
-  });
-
-  app.post("/api/admin/support/tickets/:id/reply", adminAuth, async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const { message } = req.body;
-    try {
-      const db = getFirestoreSafe();
-      const tRef = db.collection("tickets").doc(id);
-      await tRef.collection("messages").add({
-        text: message,
-        sender: "admin",
-        createdAt: new Date(),
-        read: false
-      });
-      await tRef.update({
-        status: "replied",
-        lastMessage: message,
-        lastMessageAt: new Date()
-      });
-      return res.json({ success: true });
-    } catch (e: any) { return res.status(400).json({ message: e.message }); }
-  });
-
-  // Announcements
-  app.get("/api/admin/announcements", adminAuth, async (_req: Request, res: Response) => {
-    try {
-      const db = getFirestoreSafe();
-      const snap = await db.collection("announcements").get();
-      const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // Sort in memory for consistency
-      rows.sort((a: any, b: any) => {
-        const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt || 0);
-        const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt || 0);
-        return Number(tB) - Number(tA);
-      });
-      return res.json(rows);
-    } catch { return res.json([]); }
-  });
-
-  app.post("/api/admin/announcements", adminAuth, async (req: Request, res: Response) => {
-    const { title, content, type = "info" } = req.body;
-    try {
-      const db = getFirestoreSafe();
-      const doc = await db.collection("announcements").add({
-        title,
-        content,
-        type,
-        active: true,
-        createdAt: new Date()
-      });
-      return res.json({ id: doc.id });
-    } catch (e: any) { return res.status(400).json({ message: e.message }); }
-  });
-
-  app.delete("/api/admin/announcements/:id", adminAuth, async (req: Request, res: Response) => {
-    try {
-      await getFirestoreSafe().collection("announcements").doc(req.params.id).delete();
-      return res.json({ success: true });
-    } catch (e: any) { return res.status(400).json({ message: e.message }); }
-  });
-
-  app.get("/api/ping", (_req: Request, res: Response) => {
-    res.json({ ok: true });
-  });
-
-  app.get("/api/admin/stats", adminAuth, async (_req: Request, res: Response) => {
-    const result = {
-      totalUsers: 0,
-      walletBalance: 0,
-      totalTransactions: 0,
-      todaySales: 0,
-      dailyTotals: [] as Array<{ day: string; total: number }>,
-      recentTransactions: [] as any[],
-    };
-    try {
-      const db = getFirestoreSafe();
-      const auth = getAuthSafe();
-      
-      // Attempt to get user count from Auth first, fallback to Firestore
-      let usersCount = 0;
-      try {
-        const list = await auth.listUsers(1000);
-        usersCount = list.users.length;
-      } catch (e: any) {
-        console.error("[Admin Stats] Auth listUsers failed:", e.message);
-        try {
-          const snap = await db.collection("users").get();
-          usersCount = snap.size;
-        } catch {
-          // If Firestore "users" also fails, maybe try "wallets" as a proxy
-          try {
-            const walletSnap = await db.collection("wallets").get();
-            usersCount = walletSnap.size;
-          } catch {
-            usersCount = 0;
-          }
-        }
-      }
-      result.totalUsers = usersCount;
-
-      const txNames = ["transactions", "admin_transactions", "wallet_transactions", "wallet_deposits"];
-      const walletNames = ["wallets", "user_wallets"];
-      let txs: any[] = [];
-      for (const n of txNames) {
-        try {
-          const snap = await db.collection(n).orderBy("createdAt", "desc").limit(500).get();
-          if (!snap.empty) {
-            console.log(`[Admin Stats] Using ${n} for transactions, found ${snap.docs.length} records`);
-            txs = snap.docs.map((d) => {
-              const x: any = d.data() || {};
-              return {
-                id: d.id,
-                user: x.user || x.user_email || x.userEmail || x.email || x.userId || x.uid || "",
-                amount: Number(x.amount || x.userPrice || 0),
-                status: x.status || "success",
-                type: x.type || x.serviceType || "transaction",
-                createdAt: x.createdAt || x.timestamp || Date.now(),
-              };
-            });
-            break;
-          }
-        } catch (err: any) {
-          console.error(`[Admin Stats] Error fetching from ${n}:`, err.message);
-        }
-      }
-      result.totalTransactions = txs.length;
-
-      const now = new Date();
-      result.todaySales = txs.filter(t => {
-        const d = new Date(getCreatedMs(t.createdAt));
-        return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      }).reduce((sum, t) => sum + Number(t.amount || 0), 0);
-
-      let walletSum = 0;
-      for (const n of walletNames) {
-        try {
-          const snap = await db.collection(n).get();
-          if (!snap.empty) {
-            walletSum = snap.docs.reduce((sum, d) => {
-              const x: any = d.data() || {};
-              const mb = Number(x.mainBalance || x.main_balance || x.balance || 0);
-              return sum + mb;
-            }, 0);
-            break;
-          }
-        } catch (err: any) {
-          console.error(`[Admin Stats] Error fetching from ${n}:`, err.message);
-        }
-      }
-      result.walletBalance = walletSum;
-
-      const days: Array<{ day: string; total: number }> = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const key = d.toLocaleDateString(undefined, { weekday: "short" });
-        const total = txs.filter(t => {
-          const td = new Date(getCreatedMs(t.createdAt));
-          return td.getDate() === d.getDate() && td.getMonth() === d.getMonth() && td.getFullYear() === d.getFullYear();
-        }).reduce((sum, t) => sum + Number(t.amount || 0), 0);
-        days.push({ day: key, total });
-      }
-      result.dailyTotals = days;
-      result.recentTransactions = txs.slice(0, 5);
-      return res.json(result);
-    } catch (e: any) {
-      console.error("[Admin Stats] General failure:", e.message);
-      return res.json(result);
-    }
-  });
-
-  app.get("/api/admin/wallet/logs", adminAuth, async (_req: Request, res: Response) => {
-    try {
-      const db = getFirestoreSafe();
-      const names = ["wallet_logs", "wallet_transactions"];
-      for (const n of names) {
-        const snap = await db.collection(n).orderBy("createdAt", "desc").limit(200).get();
-        if (!snap.empty) {
-          const rows = snap.docs.map((d) => {
-            const x: any = d.data() || {};
-            return {
-              id: d.id,
-              user: x.user || x.user_email || x.userEmail || x.email || x.userId || "",
-              type: x.type || "",
-              amount: Number(x.amount || 0),
-              description: x.description || "",
-              createdAt: x.createdAt || Date.now(),
-            };
-          });
-          return res.json(rows);
-        }
-      }
-      return res.json([]);
-    } catch {
-      return res.json([]);
-    }
-  });
-
-  app.get("/api/admin/wallet/deposits", adminAuth, async (_req: Request, res: Response) => {
-    try {
-      const db = getFirestoreSafe();
-      const snap = await db.collection("wallet_deposits").orderBy("createdAt", "desc").limit(200).get();
-      const rows = snap.docs.map((d) => {
-        const x: any = d.data() || {};
-        return {
-          id: d.id,
-          user: x.user || x.user_email || x.userEmail || x.email || x.userId || "",
-          amount: Number(x.amount || 0),
-          method: x.method || "",
-          status: x.status || "",
-          createdAt: x.createdAt || Date.now(),
-        };
-      });
-      return res.json(rows);
-    } catch {
-      return res.json([]);
-    }
-  });
-
-  app.get("/api/admin/finance/system", adminAuth, async (_req: Request, res: Response) => {
-    const makePeriod = (days: number) => {
-      const d = new Date();
-      d.setDate(d.getDate() - days);
-      return d.getTime();
-    };
-    try {
-      const db = getFirestoreSafe();
-      const txNames = ["transactions", "admin_transactions", "wallet_transactions"];
-      const depositsSnap = await db.collection("wallet_deposits").orderBy("createdAt", "desc").limit(2000).get();
-      const deposits = depositsSnap.docs.map(d => d.data() || {});
-      const collectTx = async () => {
-        let rows: any[] = [];
-        for (const n of txNames) {
-          const snap = await db.collection(n).orderBy("createdAt", "desc").limit(3000).get();
-          if (!snap.empty) {
-            rows = rows.concat(
-              snap.docs.map(d => {
-                const x: any = d.data() || {};
-                return {
-                  id: d.id,
-                  userId: x.userId || "",
-                  user: x.user || x.user_email || x.userEmail || x.email || "",
-                  userPrice: Number(x.userPrice || x.amount || 0),
-                  providerCost: Number(x.providerCost || 0),
-                  smsCost: Number(x.smsCost || 0),
-                  serviceType: String(x.serviceType || x.type || ""),
-                  status: String(x.status || ""),
-                  createdAt: Number(x.createdAt || 0),
-                };
-              }),
-            );
-          }
-        }
-        return rows;
-      };
-      const transactions = await collectTx();
-      const allWallets: Array<{ main: number }> = [];
-      for (const n of ["wallets", "user_wallets"]) {
-        const snap = await db.collection(n).limit(2000).get();
-        if (!snap.empty) {
-          allWallets.push(
-            ...snap.docs.map(d => {
-              const x: any = d.data() || {};
-              return { main: Number(x.mainBalance || x.main_balance || x.balance || 0) };
-            }),
-          );
-        }
-      }
-      const requiredProviderBalance = allWallets.reduce((s, w) => s + Number(w.main || 0), 0);
-      const computeBucket = (startTs: number) => {
-        const dep = deposits.filter(d => Number(d.createdAt || 0) >= startTs).reduce((s, d) => s + Number(d.amount || 0), 0);
-        const tx = transactions.filter(t => Number(t.createdAt || 0) >= startTs);
-        const provider = tx.reduce((s, t) => s + Number(t.providerCost || 0), 0);
-        const sms = tx.reduce((s, t) => s + Number(t.smsCost || 0), 0);
-        const revenue = tx.filter(t => String(t.status || "") === "success").reduce((s, t) => s + Number(t.userPrice || 0), 0);
-        const net = revenue - provider - sms;
-        return { deposits: dep, providerCost: provider, smsCost: sms, netProfit: net };
-      };
-      const daily = computeBucket(makePeriod(1));
-      const weekly = computeBucket(makePeriod(7));
-      const monthly = computeBucket(makePeriod(30));
-      res.json({ daily, weekly, monthly, requiredProviderBalance });
-    } catch {
-      res.json({ daily: { deposits: 0, providerCost: 0, smsCost: 0, netProfit: 0 }, weekly: { deposits: 0, providerCost: 0, smsCost: 0, netProfit: 0 }, monthly: { deposits: 0, providerCost: 0, smsCost: 0, netProfit: 0 }, requiredProviderBalance: 0 });
-    }
-  });
-
-  app.get("/api/admin/finance/analytics", adminAuth, async (req: Request, res: Response) => {
-    const rawEmail = String((req.query?.email as string) || "").trim();
-    const rawUid = String((req.query as any)?.uid || "").trim();
-    const email = rawEmail.toLowerCase();
-    const uid = rawUid.toLowerCase();
-    const scope: "system" | "user" = (rawEmail || rawUid) ? "user" : "system";
-    const startParam = (req.query as any)?.start;
-    const endParam = (req.query as any)?.end;
-    const startTs = startParam !== undefined && startParam !== ""
-      ? Number(startParam)
-      : undefined;
-    const endTs = endParam !== undefined && endParam !== ""
-      ? Number(endParam)
-      : undefined;
-    const makePeriod = (days: number) => {
-      const d = new Date();
-      d.setDate(d.getDate() - days);
-      return d.getTime();
-    };
-    let providerBalanceRequired = 0;
-    let walletBalance = 0;
-    let totalWalletBalance = 0;
-    try {
-      const db = getFirestoreSafe();
-      const txNames = ["transactions", "admin_transactions", "wallet_transactions"];
-      const depositsSnap = await db.collection("wallet_deposits").orderBy("createdAt", "desc").limit(1000).get();
-      const depositsAll = depositsSnap.docs.map(d => d.data() || {});
-      const depositsScoped = scope === "user"
-        ? depositsAll.filter(d => {
-            const u = String((d.user as string) || (d.user_email as string) || (d.userId as string) || "").toLowerCase();
-            return (email && u === email) || (uid && u === uid);
-          })
-        : depositsAll;
-      const depositsFiltered = depositsScoped.filter(d => {
-        const t = Number(d.createdAt || 0);
-        if (startTs !== undefined && t < startTs) return false;
-        if (endTs !== undefined && t > endTs) return false;
-        return true;
-      });
-      let transactions: any[] = [];
-      for (const n of txNames) {
-        const snap = await db.collection(n).orderBy("createdAt", "desc").limit(1000).get();
-        if (!snap.empty) {
-          const rows = snap.docs.map(d => {
-            const x: any = d.data() || {};
-            const status = String(x.status || "");
-            const type = String(x.type || "").toLowerCase();
-            const serviceType = String(x.serviceType || x.type || "");
-            const isService =
-              (!!serviceType && !["credit", "debit", "transfer", "wallet", "funding"].includes(type)) ||
-              pickNumber(x, ["providerCost", "priceApi", "price_api"]) > 0;
-            const userPrice = pickNumber(x, ["userPrice", "priceUser", "price_user", "amount", "user_amount", "paid", "userPaid"]);
-            let providerCost = pickNumber(x, ["providerCost", "priceApi", "price_api", "apiPrice", "provider_price", "providerPrice", "cost", "serviceCost"]);
-            
-            // If providerCost is missing, try to derive it from profit or use fallback ratio
-            if (providerCost <= 0) {
-              const profit = pickNumber(x, ["profit", "adminProfit", "admin_profit", "commission", "gain"]);
-              if (profit > 0 && userPrice > 0) {
-                providerCost = userPrice - profit;
-              } else if (userPrice > 0) {
-                // Fallback: Use 0.90 as a likely cost if both profit and providerCost are missing
-                providerCost = userPrice * 0.90;
-              }
-            }
-            const smsCost = Number((x as any).sms_cost ?? (x as any).smsCost ?? 0);
-            return {
-              id: d.id,
-              userId: x.userId || "",
-              user: x.user || x.user_email || x.userEmail || x.email || x.userId || "",
-              userPrice,
-              providerCost,
-              smsCost,
-              serviceType,
-              status,
-              createdAt: getCreatedMs(x.createdAt),
-              isService,
-              raw: x,
-            };
-          });
-          const filteredBase = rows.filter(r => r.isService);
-          const scoped = scope === "user"
-            ? filteredBase.filter(r => {
-                const uId = String(r.userId || "").toLowerCase();
-                const uEmail = String(r.user || "").toLowerCase();
-                return (email && uEmail === email) || (uid && uId === uid);
-              })
-            : filteredBase;
-          const timeFiltered = scoped.filter(t => {
-            const tt = Number(t.createdAt || 0);
-            if (startTs !== undefined && tt < startTs) return false;
-            if (endTs !== undefined && tt > endTs) return false;
-            return true;
-          });
-          transactions = transactions.concat(
-            timeFiltered.map(t => {
-              const x: any = t.raw || {};
-              const s = String(t.status || "").toLowerCase();
-              const ps = String(x.providerStatus || x.provider_status || "");
-              const pe = String(x.providerErrorCode || x.provider_error_code || "");
-              const pm = String(x.providerErrorMessage || x.provider_error_message || "");
-              const se = String(x.error || x.errorMessage || "");
-              const failureSource =
-                s === "success"
-                  ? ""
-                  : (pe || ps || pm)
-                  ? "provider"
-                  : se
-                  ? "system"
-                  : "unknown";
-              const failureReason = s === "success" ? "" : (pm || pe || ps || se || "");
-              return { ...t, failureSource, failureReason };
-            }),
-          );
-        }
-      }
-      transactions.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-
-      if (scope === "user") {
-        for (const n of ["wallets", "user_wallets"]) {
-          const doc = await db.collection(n).doc(rawUid || rawEmail || email || uid).get();
-          if (doc.exists) {
-            const x: any = doc.data() || {};
-            walletBalance = Number(x.mainBalance || x.main_balance || x.balance || 0);
-            break;
-          }
-        }
-        const getAvgRatio = () => {
-          const validTx = transactions.filter(t => 
-            String(t.status || "").toLowerCase() === "success" && 
-            Number(t.providerCost || 0) > 0 && 
-            Number(t.userPrice || 0) > 0
-          );
-          if (validTx.length === 0) return 0.92;
-          const sumUser = validTx.reduce((s, t) => s + Number(t.userPrice), 0);
-          const sumProv = validTx.reduce((s, t) => s + Number(t.providerCost), 0);
-          return sumProv / sumUser;
-        };
-        providerBalanceRequired = walletBalance * getAvgRatio();
-      } else {
-        const allWallets: any[] = [];
-        const walletColls = ["wallets", "user_wallets"];
-        for (const coll of walletColls) {
-          const snap = await db.collection(coll).get();
-          if (!snap.empty) {
-            snap.docs.forEach(d => {
-              const x: any = d.data() || {};
-              allWallets.push(Number(x.mainBalance || x.main_balance || x.balance || 0));
-            });
-          }
-        }
-        totalWalletBalance = allWallets.reduce((s, b) => s + b, 0);
-        const getAvgRatio = () => {
-          const validTx = transactions.filter(t => 
-            String(t.status || "").toLowerCase() === "success" && 
-            Number(t.providerCost || 0) > 0 && 
-            Number(t.userPrice || 0) > 0
-          );
-          if (validTx.length === 0) return 0.92;
-          const sumUser = validTx.reduce((s, t) => s + Number(t.userPrice), 0);
-          const sumProv = validTx.reduce((s, t) => s + Number(t.providerCost), 0);
-          return sumProv / sumUser;
-        };
-        providerBalanceRequired = totalWalletBalance * getAvgRatio();
-      }
-
-      const computeBucket = (bucketStart: number) => {
-        const dep = depositsFiltered
-          .filter(d => Number(d.createdAt || 0) >= bucketStart)
-          .reduce((s, d) => s + Number(d.amount || 0), 0);
-        const tx = transactions.filter(t => Number(t.createdAt || 0) >= bucketStart);
-        const txSuccess = tx.filter(t => String(t.status || "").toLowerCase() === "success");
-        const provider = txSuccess.reduce((s, t) => s + Number(t.providerCost || 0), 0);
-        const sms = txSuccess.reduce((s, t) => s + Number(t.smsCost || 0), 0);
-        const revenue = txSuccess.reduce((s, t) => s + Number(t.userPrice || 0), 0);
-        const net = revenue - provider - sms;
-        return { deposits: dep, providerCost: provider, smsCost: sms, netProfit: net };
-      };
-
-      const daily = computeBucket(makePeriod(1));
-      const weekly = computeBucket(makePeriod(7));
-      const monthly = computeBucket(makePeriod(30));
-
-      const depositsTotal = depositsFiltered.reduce((s, d) => s + Number(d.amount || 0), 0);
-      const successTxAll = transactions.filter(t => String(t.status || "").toLowerCase() === "success");
-      const providerCostTotal = successTxAll.reduce((s, t) => s + Number(t.providerCost || 0), 0);
-      const smsCostTotal = successTxAll.reduce((s, t) => s + Number(t.smsCost || 0), 0);
-      const revenueTotal = successTxAll.reduce((s, t) => s + Number(t.userPrice || 0), 0);
-      const netProfitTotal = revenueTotal - providerCostTotal - smsCostTotal;
-
-      res.json({
-        scope,
-        providerBalanceRequired,
-        walletBalance: scope === "user" ? walletBalance : 0,
-        totalWalletBalance,
-        daily,
-        weekly,
-        monthly,
-        totals: { depositsTotal, providerCostTotal, smsCostTotal, netProfitTotal },
-        transactions,
-      });
-    } catch {
-      res.json({
-        scope,
-        providerBalanceRequired: 0,
-        walletBalance: scope === "user" ? 0 : 0,
-        daily: { deposits: 0, providerCost: 0, smsCost: 0, netProfit: 0 },
-        weekly: { deposits: 0, providerCost: 0, smsCost: 0, netProfit: 0 },
-        monthly: { deposits: 0, providerCost: 0, smsCost: 0, netProfit: 0 },
-        totals: { depositsTotal: 0, providerCostTotal: 0, smsCostTotal: 0, netProfitTotal: 0 },
-        transactions: [],
-      });
-    }
-  });
-
-  app.get("/api/admin/finance/user", adminAuth, async (req: Request, res: Response) => {
-    const email = String((req.query?.email as string) || "").toLowerCase();
-    const uid = String((req.query as any)?.uid || "").toLowerCase();
-    if (!email && !uid) return res.status(400).json({ message: "uid or email required" });
-    try {
-      const db = getFirestoreSafe();
-      const txNames = ["transactions", "admin_transactions", "wallet_transactions"];
-      const depositsSnap = await db.collection("wallet_deposits").orderBy("createdAt", "desc").limit(2000).get();
-      const depositsAll = depositsSnap.docs.map(d => d.data() || {});
-      const deposits = depositsAll.filter(d => {
-        const u = String((d.user as string) || (d.user_email as string) || (d.userId as string) || "").toLowerCase();
-        return (email && u === email) || (uid && u === uid);
-      });
-      let transactions: any[] = [];
-      for (const n of txNames) {
-        const snap = await db.collection(n).orderBy("createdAt", "desc").limit(2000).get();
-        if (!snap.empty) {
-          const rows = snap.docs.map(d => {
-            const x: any = d.data() || {};
-            return {
-              id: d.id,
-              userId: x.userId || "",
-              user: x.user || x.user_email || x.userEmail || x.email || "",
-              userPrice: Number(x.userPrice || x.amount || 0),
-              providerCost: Number(x.providerCost || 0),
-              smsCost: Number(x.smsCost || 0),
-              serviceType: String(x.serviceType || x.type || ""),
-              status: String(x.status || ""),
-              createdAt: Number(x.createdAt || 0),
-            };
-          });
-          const filtered = rows.filter(r => {
-            const uId = String(r.userId || "").toLowerCase();
-            const uEmail = String(r.user || "").toLowerCase();
-            return (email && (uEmail === email)) || (uid && (uId === uid));
-          });
-          transactions = transactions.concat(filtered);
-        }
-      }
-      transactions.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-      let walletBalance = 0;
-      for (const n of ["wallets", "user_wallets"]) {
-        const doc = await db.collection(n).doc(uid || email).get();
-        if (doc.exists) {
-          const x: any = doc.data() || {};
-          walletBalance = Number(x.mainBalance || x.main_balance || x.balance || 0);
-          break;
-        }
-      }
-      const totalDeposited = deposits.reduce((s, d) => s + Number(d.amount || 0), 0);
-      const totalSpent = transactions.filter(t => String(t.status || "") === "success").reduce((s, t) => s + Number(t.userPrice || 0), 0);
-      const totalProviderCost = transactions.reduce((s, t) => s + Number(t.providerCost || 0), 0);
-      const totalSmsCost = transactions.reduce((s, t) => s + Number(t.smsCost || 0), 0);
-      const netProfit = totalSpent - totalProviderCost - totalSmsCost;
-      const recent = transactions.slice(0, 50);
-      const rateDen = recent.reduce((s, t) => s + Number(t.userPrice || 0), 0);
-      const rateNum = recent.reduce((s, t) => s + Number(t.providerCost || 0), 0);
-      const providerRate = rateDen > 0 ? rateNum / rateDen : 1;
-      const avgSms = recent.length > 0 ? recent.reduce((s, t) => s + Number(t.smsCost || 0), 0) / recent.length : 0;
-      const riskProviderBalance = walletBalance * providerRate;
-      const riskSmsCost = avgSms;
-      const riskExpectedProfit = walletBalance - riskProviderBalance - riskSmsCost;
-      res.json({
-        walletBalance,
-        totalDeposited,
-        totalSpent,
-        totalProviderCost,
-        totalSmsCost,
-        netProfit,
-        transactions,
-        risk: { providerBalanceRequired: riskProviderBalance, smsCost: riskSmsCost, expectedProfit: riskExpectedProfit },
-      });
-    } catch {
-      res.json({ walletBalance: 0, totalDeposited: 0, totalSpent: 0, totalProviderCost: 0, totalSmsCost: 0, netProfit: 0, transactions: [], risk: { providerBalanceRequired: 0, smsCost: 0, expectedProfit: 0 } });
-    }
-  });
-
-  app.get("/api/admin/transactions/:id", adminAuth, async (req: Request, res: Response) => {
-    const id = String(req.params.id || "");
-    if (!id) return res.status(400).json({ message: "id required" });
-    try {
-      const db = getFirestoreSafe();
-      const doc = await db.collection("admin_transactions").doc(id).get();
-      if (doc.exists) {
-        const x: any = doc.data() || {};
-        return res.json({
-          id,
-          user: x.user || x.user_email || x.userEmail || "",
-          amount: Number(x.amount || 0),
-          status: x.status || "",
-          type: x.type || "",
-          providerStatus: x.providerStatus || x.provider_status || "",
-          providerErrorCode: x.providerErrorCode || x.provider_error_code || "",
-          providerErrorMessage: x.providerErrorMessage || x.provider_error_message || "",
-          providerRaw: x.providerRaw || x.provider_raw || null,
-          createdAt: x.createdAt || x.timestamp || Date.now(),
-        });
-      }
-    } catch {}
-    return res.json({});
-  });
-
-  app.post("/api/admin/users/create", adminAuth, async (req: Request, res: Response) => {
-    const email = String((req.body?.email as string) || "");
-    const password = String((req.body?.password as string) || "");
-    const displayName = String((req.body?.displayName as string) || "");
-    const phoneNumber = String((req.body?.phoneNumber as string) || "");
-    if (!email || !password) return res.status(400).json({ success: false, message: "email and password required" });
-    try {
-      const user = await getAuthSafe().createUser({ email, password, displayName: displayName || undefined, phoneNumber: phoneNumber || undefined });
-      res.json({ success: true, uid: user.uid, email: user.email, displayName: user.displayName });
-    } catch (e: any) {
-      res.status(400).json({ success: false, message: String(e?.message || "error") });
-    }
-  });
-
-  app.get("/api/admin/admins", adminAuth, async (_req: Request, res: Response) => {
-    try {
-      const db = getFirestoreSafe();
-      const snap = await db.collection("admin_accounts").orderBy("createdAt", "desc").get();
-      const rows = snap.docs.map(d => {
-        const x: any = d.data() || {};
-        return { email: x.email || d.id, uid: x.uid || "", createdAt: x.createdAt || Date.now() };
-      });
-      return res.json(rows);
-    } catch {
-      return res.json([]);
-    }
-  });
-
-  app.post("/api/admin/admins", adminAuth, async (req: Request, res: Response) => {
-    const email = String((req.body?.email as string) || "");
-    const password = String((req.body?.password as string) || "");
-    const displayName = String((req.body?.displayName as string) || "");
-    if (!email || !password) return res.status(400).json({ success: false, message: "email and password required" });
-    try {
-      const user = await getAuthSafe().createUser({ email, password, displayName: displayName || undefined });
-      await getAuthSafe().setCustomUserClaims(user.uid, { admin: true });
-      try {
-        const db = getFirestoreSafe();
-        await db.collection("admin_accounts").doc(email.toLowerCase()).set({ email: email.toLowerCase(), uid: user.uid, createdAt: Date.now() }, { merge: true });
-      } catch {}
-      res.json({ success: true, uid: user.uid, email: user.email });
-    } catch (e: any) {
-      res.status(400).json({ success: false, message: String(e?.message || "error") });
-    }
-  });
-
-  app.get("/api/health", async (_req: Request, res: Response) => {
-    const envs = {
-      ADMIN_EMAILS: Boolean(process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS),
-      FIREBASE_PROJECT_ID: Boolean(process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID),
-      FIREBASE_SERVICE_ACCOUNT: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT),
-      FIREBASE_CLIENT_EMAIL: Boolean(process.env.FIREBASE_CLIENT_EMAIL),
-      FIREBASE_PRIVATE_KEY: Boolean(process.env.FIREBASE_PRIVATE_KEY),
-      PORT: Boolean(process.env.PORT),
-    };
-    const firebaseAdminInitialized = getApps().length > 0 || ensureFirebaseAdminInitialized();
+  // Health check
+  app.get("/api/health", (_req: Request, res: Response) => {
     res.json({
       server: "up",
       time: new Date().toISOString(),
-      envs,
-      firebaseAdminInitialized,
+      backend: getBackendUrl(),
     });
   });
 
-  app.get("/api/health/details", async (_req: Request, res: Response) => {
-    const hasSa = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT);
-    const hasEmail = Boolean(process.env.FIREBASE_CLIENT_EMAIL);
-    const hasKey = Boolean(process.env.FIREBASE_PRIVATE_KEY);
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || "";
-    const initialized = getApps().length > 0 || ensureFirebaseAdminInitialized();
-    res.json({
-      initialized,
-      source: adminInitSource,
-      error: adminInitError,
-      hasServiceAccount: hasSa,
-      hasClientEmail: hasEmail,
-      hasPrivateKey: hasKey,
-      projectId,
-    });
+  // Admin stats
+  app.get("/api/admin/stats", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/admin/stats");
   });
 
-  app.get("/api/admin/health", adminAuth, async (req: Request, res: Response) => {
-    const authHeader = req.headers.authorization || "";
-    const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
-    const email = await verifyTokenAndGetEmail(bearer);
-    res.json({
-      authorized: true,
-      email,
-      firebaseAdminInitialized: getApps().length > 0,
-    });
+  // Admin settings
+  app.get("/api/admin/settings", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/admin/settings");
+  });
+
+  app.post("/api/admin/settings", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/settings", req.body);
+  });
+
+  // Transactions
+  app.get("/api/admin/transactions", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/admin/transactions");
+  });
+
+  // Users
+  app.get("/api/admin/users", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/admin/users");
+  });
+
+  app.post("/api/admin/users/create", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/users/create", req.body);
+  });
+
+  app.post("/api/admin/users/promote", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/users/promote", req.body);
+  });
+
+  app.post("/api/admin/users/suspend", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/users/suspend", req.body);
+  });
+
+  // Wallet operations
+  app.post("/api/admin/wallet/credit", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/wallet/credit", req.body);
+  });
+
+  app.post("/api/admin/wallet/debit", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/wallet/debit", req.body);
+  });
+
+  app.post("/api/admin/wallet/reverify", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/wallet/reverify", req.body);
+  });
+
+  app.get("/api/admin/wallet/logs", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/admin/wallet/logs");
+  });
+
+  app.get("/api/admin/wallet/deposits", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/admin/wallet/deposits");
+  });
+
+  // Support tickets
+  app.get("/api/admin/support/tickets", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/admin/support/tickets");
+  });
+
+  app.post("/api/admin/support/tickets/create", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/support/tickets/create", req.body);
+  });
+
+  app.get("/api/admin/support/tickets/:id/messages", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", `/api/admin/support/tickets/${req.params.id}/messages`);
+  });
+
+  app.post("/api/admin/support/tickets/:id/reply", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", `/api/admin/support/tickets/${req.params.id}/reply`, req.body);
+  });
+
+  app.post("/api/admin/support/tickets/:id/status", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", `/api/admin/support/tickets/${req.params.id}/status`, req.body);
+  });
+
+  app.post("/api/admin/support/tickets/:id/delete", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", `/api/admin/support/tickets/${req.params.id}/delete`);
+  });
+
+  // Announcements
+  app.get("/api/admin/announcements", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/admin/announcements");
+  });
+
+  app.post("/api/admin/announcements", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/announcements", req.body);
+  });
+
+  app.delete("/api/admin/announcements/:id", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "DELETE", `/api/admin/announcements/${req.params.id}`);
+  });
+
+  // Payments
+  app.post("/api/admin/payments/reconcile", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/payments/reconcile", req.body);
+  });
+
+  // Services
+  app.get("/api/admin/services", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/admin/services");
+  });
+
+  app.post("/api/admin/services", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/services", req.body);
+  });
+
+  app.put("/api/admin/services/:id", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "PUT", `/api/admin/services/${req.params.id}`, req.body);
+  });
+
+  app.delete("/api/admin/services/:id", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "DELETE", `/api/admin/services/${req.params.id}`);
+  });
+
+  // Admin management
+  app.get("/api/admin/admins", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/admin/admins");
+  });
+
+  app.post("/api/admin/admins", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/admins", req.body);
+  });
+
+  // Profile
+  app.get("/api/admin/profile", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "GET", "/api/admin/profile");
+  });
+
+  app.post("/api/admin/profile/update", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/profile/update", req.body);
+  });
+
+  app.post("/api/admin/profile/password", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/profile/password", req.body);
+  });
+
+  // Verification
+  app.post("/api/admin/users/verification-link", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/users/verification-link", req.body);
+  });
+
+  // Wallet fix
+  app.post("/api/admin/wallet/fix-ghosts", adminAuth, async (req: Request, res: Response) => {
+    await proxyRequest(req, res, "POST", "/api/admin/wallet/fix-ghosts");
   });
 
   return httpServer;

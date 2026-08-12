@@ -2,7 +2,7 @@ import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
-import { auth, onAuthStateChanged } from "@/lib/firebase";
+import { isAuthenticated } from "@/lib/auth";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -15,67 +15,40 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged((user: any) => {
-      console.log("Auth state changed:", user ? "authenticated" : "not authenticated");
-      if (user) {
-        setIsAuthenticated(true);
-        if (location === "/login" || location === "/forgot-password") {
-          setLocation("/");
-        }
-      } else {
-        setIsAuthenticated(false);
+    const checkAuth = async () => {
+      const authenticated = await isAuthenticated();
+      console.log("Auth state:", authenticated ? "authenticated" : "not authenticated");
+      setIsAuthenticated(authenticated);
+      if (authenticated && (location === "/login" || location === "/forgot-password")) {
+        setLocation("/");
       }
       setIsLoading(false);
-    });
-    return () => unsubscribe();
+    };
+    checkAuth();
   }, [location, setLocation]);
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <p className="text-slate-500 font-medium animate-pulse">Initializing Dashboard...</p>
-        </div>
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  // If not authenticated and not on login/forgot password, redirect to login
-  if (!isAuthenticated && location !== "/login" && location !== "/forgot-password") {
+  if (!isAuthenticated) {
     setLocation("/login");
-    return (
-      <div className="flex h-screen items-center justify-center bg-white">
-        <div className="flex flex-col items-center gap-4">
-          <p className="text-slate-500 font-medium">Redirecting to login...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If on login page or forgot password, render without layout
-  if (location === "/login" || location === "/forgot-password") {
-    return <main className="min-h-screen bg-white">{children}</main>;
+    return null;
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900">
+    <div className="flex h-screen bg-slate-50">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex flex-1 flex-col md:pl-64">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Topbar onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-          <div className="mx-auto max-w-6xl">
-            {children}
-          </div>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+          {children}
         </main>
       </div>
-      {sidebarOpen && (
-        <button
-          aria-label="Close sidebar overlay"
-          onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 z-30 bg-black/20 md:hidden"
-        />
-      )}
     </div>
   );
 }

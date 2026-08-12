@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { loginAdmin } from "@/lib/auth";
+import { loginAdmin, logout } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -57,7 +57,7 @@ export default function Login() {
       const isAdmin = user.is_admin || user.role === 'admin' || allowedAdminEmails.includes(user.email.toLowerCase());
       
       if (!isAdmin) {
-        await loginAdmin.logout();
+        await logout();
         throw new Error('Access denied: admin privileges required');
       }
       

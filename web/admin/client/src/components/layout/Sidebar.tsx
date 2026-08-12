@@ -13,7 +13,7 @@ import {
   LogOut,
   LifeBuoy
 } from "lucide-react";
-import { signOut } from "@/lib/firebase";
+import { logout } from "@/lib/auth";
 
 // Use the brand logo
 const logoUrl = "/logo.png";
@@ -83,7 +83,7 @@ export function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => voi
 
         <div className="mt-4 pt-4 border-t border-slate-200">
           <button
-            onClick={() => signOut()}
+            onClick={() => logout()}
             className="flex w-full items-center rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-600 transition-all hover:bg-red-50 hover:text-red-600 group"
           >
             <div className="w-7 h-7 rounded-md bg-slate-100 flex items-center justify-center mr-3 group-hover:bg-red-100 transition-colors">
