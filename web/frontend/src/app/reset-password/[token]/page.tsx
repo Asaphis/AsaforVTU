@@ -9,8 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { AuthLayout } from "@/components/auth/AuthLayout";
-import { verifyPasswordResetCode, confirmPasswordReset } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { resetPassword } from '@/lib/auth';
 
 interface ResetPasswordFormData {
   password: string;
@@ -30,30 +29,14 @@ function ResetPasswordContent({ params }: { params: { token: string } }) {
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Determine reset code (Support both query param `oobCode` and path param)
+  // Determine reset token (Support both query param and path param)
   useEffect(() => {
-    const validateToken = async () => {
-      try {
-        const code = searchParams.get('oobCode') || params.token;
-        if (!code) {
-          setIsValidToken(false);
-          return;
-        }
-
-        // Verify the password reset code with Firebase
-        const emailFromCode = await verifyPasswordResetCode(auth, code);
-        if (emailFromCode) {
-          setIsValidToken(true);
-        } else {
-          setIsValidToken(false);
-        }
-      } catch (error) {
-        console.error("Error validating token:", error);
-        setIsValidToken(false);
-      }
-    };
-
-    validateToken();
+    const token = searchParams.get('token') || params.token;
+    if (!token) {
+      setIsValidToken(false);
+    } else {
+      setIsValidToken(true);
+    }
   }, [params.token, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,11 +54,10 @@ function ResetPasswordContent({ params }: { params: { token: string } }) {
     setMessage(null);
 
     try {
-      const code = searchParams.get('oobCode') || params.token;
-      if (!code) throw new Error('Invalid or missing reset code');
+      const token = searchParams.get('token') || params.token;
+      if (!token) throw new Error('Invalid or missing reset token');
 
-      // Confirm password reset with Firebase
-      await confirmPasswordReset(auth, code, formData.password);
+      await resetPassword(token, formData.password);
 
       setMessage({
         type: 'success',
@@ -229,7 +211,7 @@ function ResetPasswordContent({ params }: { params: { token: string } }) {
               Remember your password?{' '}
               <Link 
                 href="/login" 
-                className="text-primary hover:underline underline-offset-4"
+                className="text-primary hover:underline font-medium"
               >
                 Sign in
               </Link>
@@ -243,11 +225,7 @@ function ResetPasswordContent({ params }: { params: { token: string } }) {
 
 export default function ResetPasswordPage({ params }: { params: { token: string } }) {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    }>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
       <ResetPasswordContent params={params} />
     </Suspense>
   );

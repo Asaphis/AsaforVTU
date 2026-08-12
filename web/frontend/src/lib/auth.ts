@@ -313,7 +313,7 @@ export const resetPassword = async (email: string): Promise<void> => {
 };
 
 // Reset password with token
-export const confirmResetPassword = async (token: string, newPassword: string): Promise<void> => {
+export const resetPassword = async (token: string, newPassword: string): Promise<void> => {
   const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
     method: 'POST',
     headers: {
@@ -328,9 +328,20 @@ export const confirmResetPassword = async (token: string, newPassword: string): 
   }
 };
 
-// Check if user is authenticated
-export const isAuthenticated = (): boolean => {
-  return !!getAccessToken();
+// Change password (for logged in users)
+export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+  const response = await apiRequest('/api/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Password change failed');
+  }
 };
 
 // Update user profile
@@ -350,20 +361,12 @@ export const updateProfile = async (updates: Partial<User>): Promise<User> => {
   return updatedUser;
 };
 
-// Change password
-export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
-  const response = await apiRequest('/api/auth/change-password', {
-    method: 'POST',
-    body: JSON.stringify({
-      current_password: currentPassword,
-      new_password: newPassword,
-    }),
-  });
+// Logout (alias for signOut)
+export const logout = signOut;
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Password change failed');
-  }
+// Check if user is authenticated
+export const isAuthenticated = (): boolean => {
+  return !!getAccessToken();
 };
 
 export default {
@@ -374,7 +377,6 @@ export default {
   isAuthenticated,
   verifyEmail,
   resetPassword,
-  confirmResetPassword,
   updateProfile,
   changePassword,
   apiRequest,

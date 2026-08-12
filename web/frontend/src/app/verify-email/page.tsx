@@ -3,8 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { applyActionCode } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { verifyEmail } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 export const dynamic = 'force-dynamic';
 
@@ -15,9 +14,8 @@ function VerifyEmailContent() {
   const [message, setMessage] = useState<string>('');
 
   useEffect(() => {
-    const code = searchParams.get('oobCode');
-    const mode = searchParams.get('mode');
-    if (!code || mode !== 'verifyEmail') {
+    const token = searchParams.get('token');
+    if (!token) {
       setStatus('error');
       setMessage('Invalid verification link. Please request a new one.');
       return;
@@ -25,7 +23,7 @@ function VerifyEmailContent() {
     const verify = async () => {
       setStatus('verifying');
       try {
-        await applyActionCode(auth, code);
+        await verifyEmail(token);
         setStatus('success');
         setMessage('Your email has been verified. You can now sign in.');
       } catch (err: any) {
