@@ -1,54 +1,69 @@
 const walletService = require('./walletService');
-const { db } = require('../config/firebase');
+const pool = require('../config/database');
 const notificationService = require('./notificationService');
 
 const REFERRAL_BONUS_AMOUNT = 10; // Configurable
-const SETTINGS_DOC = 'settings/global';
 
 class ReferralService {
   
   async getDailyBudget() {
-    const settings = await db.doc(SETTINGS_DOC).get();
-    if (!settings.exists) return 1000; // Default
-    return settings.data().dailyReferralBudget || 0;
+    try {
+      const result = await pool.query(
+        "SELECT value FROM settings WHERE key = 'referral_settings'"
+      );
+      
+      if (result.rows.length > 0) {
+        return result.rows[0].value?.daily_budget || 1000;
+      }
+      return 1000; // Default
+    } catch (error) {
+      console.error('[Referral Service] Error getting daily budget:', error);
+      return 1000;
+    }
   }
 
   async getDailyUsage() {
-    const today = new Date().toISOString().split('T')[0];
-    const statsRef = db.collection('daily_stats').doc(today);
-    const doc = await statsRef.get();
-    if (!doc.exists) return 0;
-    return doc.data().referralPayout || 0;
-  }
-
-  async incrementDailyUsage(amount) {
-    const today = new Date().toISOString().split('T')[0];
-    const statsRef = db.collection('daily_stats').doc(today);
-    
-    await db.runTransaction(async (t) => {
-      const doc = await t.get(statsRef);
-      const current = doc.exists ? (doc.data().referralPayout || 0) : 0;
-      t.set(statsRef, { referralPayout: current + amount }, { merge: true });
-    });
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const result = await pool.query(
+        `SELECT COALESCE(SUM(reward_amount), 0) as total 
+         FROM referrals 
+         WHERE DATE(created_at) = $1`,
+        [today]
+      );
+      return Number(result.rows[0].total || 0);
+    } catch (error) {
+      console.error('[Referral Service] Error getting daily usage:', error);
+      return 0;
+    }
   }
 
   async processReferral(userId, transactionId) {
     try {
       // 1. Get User Profile to find referrer
-      const userDoc = await db.collection('users').doc(userId).get();
-      if (!userDoc.exists) return;
+      const userResult = await pool.query(
+        'SELECT referred_by FROM users WHERE id = $1',
+        [userId]
+      );
       
-      const userData = userDoc.data();
-      const referrerId = userData.referredBy;
+      if (userResult.rows.length === 0) {
+        console.log('[Referral Service] User not found');
+        return;
+      }
+      
+      const referrerId = userResult.rows[0].referred_by;
 
-      if (!referrerId) return;
+      if (!referrerId) {
+        console.log('[Referral Service] User has no referrer');
+        return;
+      }
 
       // 2. Check Budget
       const budget = await this.getDailyBudget();
       const usage = await this.getDailyUsage();
 
       if (usage + REFERRAL_BONUS_AMOUNT > budget) {
-        console.log('Daily referral budget exceeded');
+        console.log('[Referral Service] Daily referral budget exceeded');
         await notificationService.sendNotification(
           referrerId,
           'Referral Bonus Missed',
@@ -57,7 +72,18 @@ class ReferralService {
         return;
       }
 
-      // 3. Credit Referrer
+      // 3. Check if referral already processed
+      const existingReferral = await pool.query(
+        'SELECT id FROM referrals WHERE referred_id = $1 LIMIT 1',
+        [userId]
+      );
+      
+      if (existingReferral.rows.length > 0) {
+        console.log('[Referral Service] Referral already processed');
+        return;
+      }
+
+      // 4. Credit Referrer
       await walletService.creditWallet(
         referrerId,
         REFERRAL_BONUS_AMOUNT,
@@ -65,8 +91,12 @@ class ReferralService {
         `Referral bonus from user ${userId}`
       );
 
-      // 4. Update Usage
-      await this.incrementDailyUsage(REFERRAL_BONUS_AMOUNT);
+      // 5. Record referral
+      await pool.query(
+        `INSERT INTO referrals (referrer_id, referred_id, referral_code, reward_amount, is_paid)
+         VALUES ($1, $2, $3, $4, true)`,
+        [referrerId, userId, '', REFERRAL_BONUS_AMOUNT]
+      );
       
       await notificationService.sendNotification(
         referrerId,
@@ -75,7 +105,7 @@ class ReferralService {
       );
 
     } catch (error) {
-      console.error('Error processing referral:', error);
+      console.error('[Referral Service] Error processing referral:', error);
     }
   }
 }

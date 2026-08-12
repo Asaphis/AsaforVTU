@@ -1,23 +1,28 @@
 const walletService = require('./walletService');
-const { db } = require('../config/firebase');
+const pool = require('../config/database');
 const notificationService = require('./notificationService');
 
 const CASHBACK_PERCENTAGE = 0.03; // 3%
-const SETTINGS_DOC = 'settings/global';
 
 class CashbackService {
   async processCashback(userId, amount, transactionId) {
-    // Check if cashback is enabled globally
-    const settings = await db.doc(SETTINGS_DOC).get();
-    if (settings.exists && settings.data().cashbackEnabled === false) {
-      console.log('Cashback is disabled globally');
-      return;
-    }
+    try {
+      // Check if cashback is enabled globally
+      const settingsResult = await pool.query(
+        "SELECT value FROM settings WHERE key = 'cashback_settings'"
+      );
+      
+      if (settingsResult.rows.length > 0) {
+        const cashbackSettings = settingsResult.rows[0].value;
+        if (cashbackSettings.enabled === false) {
+          console.log('[Cashback Service] Cashback is disabled globally');
+          return;
+        }
+      }
 
-    const cashbackAmount = amount * CASHBACK_PERCENTAGE;
+      const cashbackAmount = amount * CASHBACK_PERCENTAGE;
 
-    if (cashbackAmount > 0) {
-      try {
+      if (cashbackAmount > 0) {
         await walletService.creditWallet(
           userId, 
           cashbackAmount, 
@@ -28,11 +33,11 @@ class CashbackService {
         await notificationService.sendNotification(
           userId,
           'Cashback Received',
-          `You received ₦${cashbackAmount} cashback!`
+          `You received ₦${cashbackAmount.toFixed(2)} cashback!`
         );
-      } catch (error) {
-        console.error('Error processing cashback:', error);
       }
+    } catch (error) {
+      console.error('[Cashback Service] Error processing cashback:', error);
     }
   }
 }
