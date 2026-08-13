@@ -1,6 +1,6 @@
 import express from "express";
 import { registerRoutes } from "./routes.js";
-import { serveStatic } from "./static.js";
+import serveStatic from "./static.cjs";
 import { createServer } from "http";
 import fs from "fs";
 import path from "path";
