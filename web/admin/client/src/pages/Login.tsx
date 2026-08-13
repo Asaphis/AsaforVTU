@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -29,6 +30,7 @@ const formSchema = z.object({
 });
 
 export default function Login() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -44,25 +46,15 @@ export default function Login() {
     setIsLoading(true);
     try {
       const user = await loginAdmin(values.email, values.password);
-      console.log("Login successful:", user);
       
-      // Check if user is admin
       const allowedAdminEmails = (import.meta.env.VITE_ADMIN_EMAILS || 'asaphis.org@gmail.com')
         .split(',')
         .map(email => email.trim().toLowerCase())
         .filter(Boolean);
       
-      console.log('[Login] User email:', user.email.toLowerCase());
-      console.log('[Login] User is_admin:', user.is_admin);
-      console.log('[Login] User role:', user.role);
-      console.log('[Login] Allowed admin emails:', allowedAdminEmails);
-      
       const isAdmin = user.is_admin || user.role === 'admin' || allowedAdminEmails.includes(user.email.toLowerCase());
       
-      console.log('[Login] Is admin check result:', isAdmin);
-      
       if (!isAdmin) {
-        console.log('[Login] Admin check failed, logging out');
         await logout();
         toast({
           variant: "destructive",
@@ -73,20 +65,18 @@ export default function Login() {
         return;
       }
 
-      console.log('[Login] Admin check passed, redirecting to dashboard');
       toast({
         title: "Access Granted",
         description: "Welcome to the administration bridge.",
       });
       
-      // Immediate redirect without timeout
-      window.location.href = '/';
+      window.location.href = "/";
+      
     } catch (error: any) {
-      console.error("Login error:", error);
-      toast({ 
-        variant: "destructive", 
-        title: "Access Denied", 
-        description: error.message || "Invalid credentials or unauthorized access." 
+      toast({
+        variant: "destructive",
+        title: "Access Denied",
+        description: error.message || "Invalid credentials or unauthorized access."
       });
     } finally {
       setIsLoading(false);
@@ -124,10 +114,10 @@ export default function Login() {
                       <FormControl>
                         <div className="relative group">
                           <Mail className="absolute left-4 top-4 h-4 w-4 text-slate-300 group-focus-within:text-primary transition-colors" />
-                          <Input 
-                            className="h-14 pl-12 bg-slate-50 border-0 rounded-2xl font-bold text-slate-900 placeholder:text-slate-300 focus-visible:ring-primary/20 focus-visible:ring-offset-0 focus-visible:bg-white transition-all" 
-                            placeholder="admin@AsaforVTU.com" 
-                            {...field} 
+                          <Input
+                            className="h-14 pl-12 bg-slate-50 border-0 rounded-2xl font-bold text-slate-900 placeholder:text-slate-300 focus-visible:ring-primary/20 focus-visible:ring-offset-0 focus-visible:bg-white transition-all"
+                            placeholder="admin@AsaforVTU.com"
+                            {...field}
                           />
                         </div>
                       </FormControl>
@@ -144,11 +134,11 @@ export default function Login() {
                       <FormControl>
                         <div className="relative group">
                           <Lock className="absolute left-4 top-4 h-4 w-4 text-slate-300 group-focus-within:text-primary transition-colors" />
-                          <Input 
-                            className="h-14 pl-12 bg-slate-50 border-0 rounded-2xl font-bold text-slate-900 placeholder:text-slate-300 focus-visible:ring-primary/20 focus-visible:ring-offset-0 focus-visible:bg-white transition-all" 
-                            type="password" 
-                            placeholder="••••••••" 
-                            {...field} 
+                          <Input
+                            className="h-14 pl-12 bg-slate-50 border-0 rounded-2xl font-bold text-slate-900 placeholder:text-slate-300 focus-visible:ring-primary/20 focus-visible:ring-offset-0 focus-visible:bg-white transition-all"
+                            type="password"
+                            placeholder="••••••••"
+                            {...field}
                           />
                         </div>
                       </FormControl>
@@ -156,9 +146,9 @@ export default function Login() {
                     </FormItem>
                   )}
                 />
-                <Button 
-                  type="submit" 
-                  className="w-full h-14 rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/20 transition-all hover:shadow-primary/40 active:scale-95" 
+                <Button
+                  type="submit"
+                  className="w-full h-14 rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/20 transition-all hover:shadow-primary/40 active:scale-95"
                   disabled={isLoading}
                 >
                   {isLoading ? (

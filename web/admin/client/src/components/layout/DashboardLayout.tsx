@@ -1,65 +1,37 @@
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
-import { useEffect, useState } from "react";
-import { isAuthenticated, getUser } from "@/lib/auth";
 import { useLocation } from "wouter";
+import { useEffect, useState } from "react";
+import { isAuthenticated } from "@/lib/auth";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const [location, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuth, setIsAuth] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [, setLocation] = useLocation();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      console.log('[DashboardLayout] Starting auth check...');
+    const checkAuth = () => {
+      const authenticated = isAuthenticated();
+      setIsAuth(authenticated);
       
-      try {
-        const token = localStorage.getItem('access_token');
-        const user = localStorage.getItem('user');
-        
-        console.log('[DashboardLayout] Token exists:', !!token);
-        console.log('[DashboardLayout] User exists:', !!user);
-        console.log('[DashboardLayout] Token value:', token?.substring(0, 20) + '...');
-        console.log('[DashboardLayout] User value:', user);
-        
-        const authenticated = await isAuthenticated();
-        
-        console.log('[DashboardLayout] isAuthenticated() returned:', authenticated);
-        
-        setIsAuthenticated(authenticated);
-        
-        if (!authenticated) {
-          console.log('[DashboardLayout] Not authenticated, redirecting to login');
-          // Clear invalid tokens
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('user');
-          // Redirect to login
-          window.location.href = '/login';
-          return;
-        }
-        
-        console.log('[DashboardLayout] Auth check passed, showing dashboard');
-      } catch (error) {
-        console.error('[DashboardLayout] Auth check error:', error);
-        setIsAuthenticated(false);
-        console.log('[DashboardLayout] Error, redirecting to login');
-        window.location.href = '/login';
-      } finally {
-        setIsLoading(false);
+      if (!authenticated && location !== "/login") {
+        setLocation("/login");
+      } else if (authenticated && location === "/login") {
+        setLocation("/");
       }
+      
+      setIsLoading(false);
     };
     
     checkAuth();
-  }, []);
+  }, [location, setLocation]);
 
   if (isLoading) {
-    console.log('[DashboardLayout] Still loading...');
     return (
       <div className="flex items-center justify-center h-screen bg-slate-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -67,12 +39,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  if (!isAuthenticated) {
-    console.log('[DashboardLayout] Not authenticated, returning null');
-    return null; // Will redirect via useEffect
+  if (!isAuth) {
+    return null;
   }
 
-  console.log('[DashboardLayout] Rendering dashboard');
   return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />

@@ -1,9 +1,10 @@
-import express from "express";
-import fs from "fs";
-import path from "path";
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
 
-export function serveStatic(app) {
-  const distPath = path.resolve(process.cwd(), "dist/public");
+function serveStatic(app) {
+  const distPath = path.resolve(__dirname, "../dist/public");
+  console.log("Looking for static files at:", distPath);
   if (!fs.existsSync(distPath)) {
     throw new Error(`Could not find the build directory: ${distPath}, make sure to build the client first`);
   }
@@ -12,3 +13,5 @@ export function serveStatic(app) {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
+
+module.exports = serveStatic;
