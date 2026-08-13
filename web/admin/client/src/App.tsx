@@ -88,6 +88,11 @@ function App() {
               <Dashboard />
             </DashboardLayout>
           </Route>
+          <Route path="/dashboard">
+            <DashboardLayout>
+              <Dashboard />
+            </DashboardLayout>
+          </Route>
           <Route path="/">
             <DashboardLayout>
               <Dashboard />

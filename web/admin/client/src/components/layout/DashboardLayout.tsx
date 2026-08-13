@@ -22,7 +22,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       if (!authenticated && location !== "/login") {
         setLocation("/login");
       } else if (authenticated && location === "/login") {
-        setLocation("/");
+        setLocation("/dashboard");
       }
       
       setIsLoading(false);
