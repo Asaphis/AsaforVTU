@@ -52,9 +52,17 @@ export default function Login() {
         .map(email => email.trim().toLowerCase())
         .filter(Boolean);
       
+      console.log('[Login] User email:', user.email.toLowerCase());
+      console.log('[Login] User is_admin:', user.is_admin);
+      console.log('[Login] User role:', user.role);
+      console.log('[Login] Allowed admin emails:', allowedAdminEmails);
+      
       const isAdmin = user.is_admin || user.role === 'admin' || allowedAdminEmails.includes(user.email.toLowerCase());
       
+      console.log('[Login] Is admin check result:', isAdmin);
+      
       if (!isAdmin) {
+        console.log('[Login] Admin check failed, logging out');
         await logout();
         toast({
           variant: "destructive",
@@ -65,15 +73,14 @@ export default function Login() {
         return;
       }
 
+      console.log('[Login] Admin check passed, redirecting to dashboard');
       toast({
         title: "Access Granted",
         description: "Welcome to the administration bridge.",
       });
       
-      // Use full page reload to redirect
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 500);
+      // Immediate redirect without timeout
+      window.location.href = '/';
     } catch (error: any) {
       console.error("Login error:", error);
       toast({ 
