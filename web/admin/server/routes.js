@@ -1,1 +1,0 @@
-function getBackendUrl() { return 'https://vtuapi.ferixas.com'; }
