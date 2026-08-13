@@ -29,7 +29,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     };
     
     checkAuth();
-  }, [location, setLocation]);
+  }, []);
 
   if (isLoading) {
     return (
