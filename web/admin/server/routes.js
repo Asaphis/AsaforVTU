@@ -1,3 +1,5 @@
+import { storage } from "./storage.js";
+
 function getBackendUrl() {
   const prodUrl = process.env.VITE_VTU_BACKEND_URL || process.env.BACKEND_URL || "https://vtuapi.ferixas.com";
   const localUrl = process.env.VITE_VTU_BACKEND_URL_LOCAL || "http://localhost:5000";
