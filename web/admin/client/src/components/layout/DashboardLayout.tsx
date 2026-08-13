@@ -1,37 +1,49 @@
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
-import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, getUser } from "@/lib/auth";
+import { useLocation } from "wouter";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [location, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const authenticated = await isAuthenticated();
-        console.log("Auth state:", authenticated ? "authenticated" : "not authenticated");
-        setIsAuthenticated(authenticated);
-        if (authenticated && (location === "/login" || location === "/forgot-password")) {
-          setLocation("/");
+        const user = getUser();
+        
+        console.log("Auth check:", { authenticated, hasUser: !!user });
+        
+        setIsAuthenticated(authenticated && !!user);
+        
+        if (!authenticated || !user) {
+          // Clear invalid tokens
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          // Redirect to login
+          window.location.href = '/login';
+          return;
         }
       } catch (error) {
         console.error("Auth check error:", error);
         setIsAuthenticated(false);
+        window.location.href = '/login';
       } finally {
         setIsLoading(false);
       }
     };
+    
     checkAuth();
-  }, [location, setLocation]);
+  }, []);
 
   if (isLoading) {
     return (
@@ -42,10 +54,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   if (!isAuthenticated) {
-    if (location !== "/login") {
-      setLocation("/login");
-    }
-    return null;
+    return null; // Will redirect via useEffect
   }
 
   return (

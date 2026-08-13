@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -30,7 +29,6 @@ const formSchema = z.object({
 });
 
 export default function Login() {
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,7 +44,7 @@ export default function Login() {
     setIsLoading(true);
     try {
       const user = await loginAdmin(values.email, values.password);
-      console.log("User:", user);
+      console.log("Login successful:", user);
       
       // Check if user is admin
       const allowedAdminEmails = (import.meta.env.VITE_ADMIN_EMAILS || 'asaphis.org@gmail.com')
@@ -72,9 +70,10 @@ export default function Login() {
         description: "Welcome to the administration bridge.",
       });
       
-      // Force redirect to dashboard
-      console.log("Redirecting to dashboard...");
-      window.location.href = "/";
+      // Use full page reload to redirect
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
     } catch (error: any) {
       console.error("Login error:", error);
       toast({ 
