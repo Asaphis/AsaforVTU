@@ -127,7 +127,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await registerRoutes(app, httpServer);
+  await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

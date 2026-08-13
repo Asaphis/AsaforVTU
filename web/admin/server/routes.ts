@@ -1,5 +1,4 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import { createServer, type Server } from "http";
 import { storage } from "./storage";
 
 function getBackendUrl(): string {
@@ -86,7 +85,7 @@ async function adminAuth(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-export function registerRoutes(app: Express, httpServer: Server): void {
+export function registerRoutes(app: Express): void {
 
   // Health check
   app.get("/api/health", (_req: Request, res: Response) => {
