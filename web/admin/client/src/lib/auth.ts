@@ -107,6 +107,9 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}): Promise<
 
 // Login
 export const loginAdmin = async (email: string, password: string): Promise<User> => {
+  console.log('[loginAdmin] Attempting login for:', email);
+  console.log('[loginAdmin] Backend URL:', API_BASE_URL);
+  
   const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: {
@@ -115,16 +118,22 @@ export const loginAdmin = async (email: string, password: string): Promise<User>
     body: JSON.stringify({ email, password }),
   });
 
+  console.log('[loginAdmin] Response status:', response.status);
+
   if (!response.ok) {
     const error = await response.json();
+    console.error('[loginAdmin] Login failed:', error);
     throw new Error(error.error || 'Login failed');
   }
 
   const data: LoginResponse = await response.json();
+  console.log('[loginAdmin] Login successful, user:', data.user);
   
   // Store tokens and user
   setTokens(data.tokens.access_token, data.tokens.refresh_token);
   setUser(data.user);
+  
+  console.log('[loginAdmin] Tokens stored in localStorage');
   
   return data.user;
 };

@@ -425,6 +425,8 @@ const getUserById = async (userId) => {
   }
 
   const user = result.rows[0];
+  
+  console.log('[getUserById] User from DB:', { id: user.id, email: user.email, is_admin: user.is_admin, role: user.role });
 
   // Get user wallet
   const walletResult = await pool.query(

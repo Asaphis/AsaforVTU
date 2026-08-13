@@ -16,15 +16,25 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   useEffect(() => {
     const checkAuth = async () => {
+      console.log('[DashboardLayout] Starting auth check...');
+      
       try {
+        const token = localStorage.getItem('access_token');
+        const user = localStorage.getItem('user');
+        
+        console.log('[DashboardLayout] Token exists:', !!token);
+        console.log('[DashboardLayout] User exists:', !!user);
+        console.log('[DashboardLayout] Token value:', token?.substring(0, 20) + '...');
+        console.log('[DashboardLayout] User value:', user);
+        
         const authenticated = await isAuthenticated();
-        const user = getUser();
         
-        console.log("Auth check:", { authenticated, hasUser: !!user });
+        console.log('[DashboardLayout] isAuthenticated() returned:', authenticated);
         
-        setIsAuthenticated(authenticated && !!user);
+        setIsAuthenticated(authenticated);
         
-        if (!authenticated || !user) {
+        if (!authenticated) {
+          console.log('[DashboardLayout] Not authenticated, redirecting to login');
           // Clear invalid tokens
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
@@ -33,9 +43,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           window.location.href = '/login';
           return;
         }
+        
+        console.log('[DashboardLayout] Auth check passed, showing dashboard');
       } catch (error) {
-        console.error("Auth check error:", error);
+        console.error('[DashboardLayout] Auth check error:', error);
         setIsAuthenticated(false);
+        console.log('[DashboardLayout] Error, redirecting to login');
         window.location.href = '/login';
       } finally {
         setIsLoading(false);
@@ -46,6 +59,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }, []);
 
   if (isLoading) {
+    console.log('[DashboardLayout] Still loading...');
     return (
       <div className="flex items-center justify-center h-screen bg-slate-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -54,9 +68,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   if (!isAuthenticated) {
+    console.log('[DashboardLayout] Not authenticated, returning null');
     return null; // Will redirect via useEffect
   }
 
+  console.log('[DashboardLayout] Rendering dashboard');
   return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />

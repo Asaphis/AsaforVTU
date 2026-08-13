@@ -6,9 +6,8 @@ function getBackendUrl(): string {
   const prodUrl = process.env.VITE_VTU_BACKEND_URL || process.env.BACKEND_URL || "https://vtuapi.ferixas.com";
   const localUrl = process.env.VITE_VTU_BACKEND_URL_LOCAL || "http://localhost:5000";
   
-  // Check if we're in development
-  const isDev = process.env.NODE_ENV === "development";
-  return isDev ? localUrl : prodUrl;
+  // Always use production URL for admin panel
+  return prodUrl;
 }
 
 // Helper to proxy requests to backend
@@ -17,6 +16,8 @@ async function proxyRequest<T>(req: Request, res: Response, method: string, path
   const url = `${backendUrl}${path}`;
   
   const token = req.headers.authorization || "";
+  
+  console.log(`[Proxy] ${method} ${url} - Token: ${token ? 'present' : 'missing'}`);
   
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -32,6 +33,8 @@ async function proxyRequest<T>(req: Request, res: Response, method: string, path
 
     const text = await response.text();
     const data = text ? JSON.parse(text) : null;
+    
+    console.log(`[Proxy] Response status: ${response.status}, data:`, data);
 
     res.status(response.status).json(data);
   } catch (error: any) {
