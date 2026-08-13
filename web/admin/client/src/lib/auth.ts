@@ -227,19 +227,31 @@ export const isAuthenticated = async (): Promise<boolean> => {
   
   // Check if we have a valid user in localStorage
   const user = getUser();
-  if (user) return true;
+  if (user) {
+    console.log('[isAuthenticated] User found in localStorage, considering authenticated');
+    return true;
+  }
   
   // If no user data, try to fetch it
   try {
+    console.log('[isAuthenticated] No user in localStorage, fetching from backend');
     const response = await apiRequest('/api/auth/me');
     if (response.ok) {
       const userData = await response.json();
       setUser(userData);
+      console.log('[isAuthenticated] User fetched from backend successfully');
       return true;
     }
+    console.log('[isAuthenticated] Backend returned non-OK response:', response.status);
     return false;
   } catch (error) {
     console.error('[Auth] Token validation failed:', error);
+    // If the API call fails, but we have a token, consider it valid
+    // This prevents redirect loops due to network issues
+    if (token) {
+      console.log('[isAuthenticated] API call failed but token exists, considering authenticated to prevent redirect loop');
+      return true;
+    }
     return false;
   }
 };

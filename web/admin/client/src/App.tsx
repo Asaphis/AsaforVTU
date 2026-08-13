@@ -28,28 +28,67 @@ function App() {
         <Toaster />
         <Switch>
           <Route path="/login" component={Login} />
-          <Route path="/login">
-            <Login />
+          <Route path="/users/:uid">
+            <DashboardLayout>
+              <UserProfilePage />
+            </DashboardLayout>
+          </Route>
+          <Route path="/users">
+            <DashboardLayout>
+              <UsersPage />
+            </DashboardLayout>
+          </Route>
+          <Route path="/wallet">
+            <DashboardLayout>
+              <WalletPage />
+            </DashboardLayout>
+          </Route>
+          <Route path="/transactions/:id">
+            <DashboardLayout>
+              <TransactionDetailsPage />
+            </DashboardLayout>
+          </Route>
+          <Route path="/transactions">
+            <DashboardLayout>
+              <TransactionsPage />
+            </DashboardLayout>
+          </Route>
+          <Route path="/services">
+            <DashboardLayout>
+              <ServicesPage />
+            </DashboardLayout>
+          </Route>
+          <Route path="/finance">
+            <DashboardLayout>
+              <FinancePage />
+            </DashboardLayout>
+          </Route>
+          <Route path="/settings/api">
+            <DashboardLayout>
+              <ApiSettingsPage />
+            </DashboardLayout>
+          </Route>
+          <Route path="/profile">
+            <DashboardLayout>
+              <ProfilePage />
+            </DashboardLayout>
+          </Route>
+          <Route path="/support">
+            <DashboardLayout>
+              <SupportPage />
+            </DashboardLayout>
+          </Route>
+          <Route path="/logs">
+            <DashboardLayout>
+              <LogsPage />
+            </DashboardLayout>
           </Route>
           <Route path="/">
             <DashboardLayout>
-              <Switch>
-                <Route path="/" component={Dashboard} />
-                <Route path="/users" component={UsersPage} />
-                <Route path="/users/:uid" component={UserProfilePage} />
-                <Route path="/wallet" component={WalletPage} />
-                <Route path="/transactions" component={TransactionsPage} />
-                <Route path="/transactions/:id" component={TransactionDetailsPage} />
-                <Route path="/services" component={ServicesPage} />
-                <Route path="/finance" component={FinancePage} />
-                <Route path="/settings/api" component={ApiSettingsPage} />
-                <Route path="/profile" component={ProfilePage} />
-                <Route path="/support" component={SupportPage} />
-                <Route path="/logs" component={LogsPage} />
-                <Route component={NotFound} />
-              </Switch>
+              <Dashboard />
             </DashboardLayout>
           </Route>
+          <Route component={NotFound} />
         </Switch>
       </TooltipProvider>
     </QueryClientProvider>
