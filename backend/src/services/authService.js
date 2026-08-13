@@ -162,6 +162,8 @@ const registerUser = async (userData) => {
 
 // Login user
 const loginUser = async (email, password) => {
+  console.log('[loginUser] Login attempt for email:', email);
+  
   const client = await pool.connect();
   
   try {
@@ -171,21 +173,28 @@ const loginUser = async (email, password) => {
       [email.toLowerCase()]
     );
 
+    console.log('[loginUser] User found:', userResult.rows.length > 0);
+
     if (userResult.rows.length === 0) {
+      console.log('[loginUser] User not found');
       throw new Error('Invalid credentials');
     }
 
     const user = userResult.rows[0];
-
+    console.log('[loginUser] User ID:', user.id, 'is_active:', user.is_active, 'is_admin:', user.is_admin);
+    
     // Check if user is active
     if (!user.is_active) {
+      console.log('[loginUser] User account deactivated');
       throw new Error('Account is deactivated');
     }
 
     // Verify password
     const isValidPassword = await comparePassword(password, user.password_hash);
+    console.log('[loginUser] Password valid:', isValidPassword);
 
     if (!isValidPassword) {
+      console.log('[loginUser] Invalid password');
       throw new Error('Invalid credentials');
     }
 
@@ -195,9 +204,13 @@ const loginUser = async (email, password) => {
       [user.id]
     );
 
+    console.log('[loginUser] Last login updated');
+
     // Generate tokens
     const accessToken = generateToken(user.id, user.email, user.role);
     const refreshToken = await generateRefreshToken(user.id);
+    
+    console.log('[loginUser] Tokens generated');
 
     // Get user wallet
     const walletResult = await client.query(
@@ -207,7 +220,7 @@ const loginUser = async (email, password) => {
 
     const wallet = walletResult.rows[0] || null;
 
-    return {
+    const result = {
       user: {
         id: user.id,
         email: user.email,
@@ -231,6 +244,9 @@ const loginUser = async (email, password) => {
         refresh_token: refreshToken
       }
     };
+    
+    console.log('[loginUser] Returning result with user:', result.user.email, 'is_admin:', result.user.is_admin);
+    return result;
   } finally {
     client.release();
   }
