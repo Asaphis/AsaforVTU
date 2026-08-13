@@ -79,7 +79,7 @@ function log(message, source = "express") {
     second: "2-digit",
     hour12: true,
   });
-  console.log(`${formattedTime} [${source]} ${message}`);
+  console.log(`${formattedTime} [${source}] ${message}`);
 }
 
 app.use((req, res, next) => {
