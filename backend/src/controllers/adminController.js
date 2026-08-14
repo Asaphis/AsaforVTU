@@ -62,6 +62,39 @@ const getStats = async (req, res) => {
   }
 };
 
+const getWalletLogs = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT wt.*, u.email, u.full_name
+       FROM wallet_transactions wt
+       LEFT JOIN users u ON wt.user_id = u.id
+       ORDER BY wt.created_at DESC
+       LIMIT 200`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('[Admin Controller] Wallet logs error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getWalletDeposits = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT p.*, u.email, u.full_name
+       FROM payments p
+       LEFT JOIN users u ON p.user_id = u.id
+       WHERE p.payment_method = 'flutterwave'
+       ORDER BY p.created_at DESC
+       LIMIT 100`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('[Admin Controller] Wallet deposits error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const updateSettings = async (req, res) => {
   try {
     const body = req.body || {};
@@ -776,6 +809,59 @@ const fixGhostWallets = async (req, res) => {
   }
 };
 
+const getPlans = async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM service_plans ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('[Admin Controller] Get plans error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const createPlan = async (req, res) => {
+  try {
+    const { network, name, price_user, price_api, active, metadata } = req.body;
+    const result = await pool.query(
+      `INSERT INTO service_plans (network, name, price_user, price_api, active, metadata, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+       RETURNING *`,
+      [network, name, price_user, price_api, active, JSON.stringify(metadata)]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('[Admin Controller] Create plan error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const updatePlan = async (req, res) => {
+  try {
+    const { network, name, price_user, price_api, active, metadata } = req.body;
+    const result = await pool.query(
+      `UPDATE service_plans 
+       SET network = $1, name = $2, price_user = $3, price_api = $4, active = $5, metadata = $6, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $7
+       RETURNING *`,
+      [network, name, price_user, price_api, active, JSON.stringify(metadata), req.params.id]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('[Admin Controller] Update plan error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deletePlan = async (req, res) => {
+  try {
+    await pool.query('DELETE FROM service_plans WHERE id = $1', [req.params.id]);
+    res.json({ success: true, id: req.params.id });
+  } catch (error) {
+    console.error('[Admin Controller] Delete plan error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getStats,
   updateSettings,
@@ -808,5 +894,11 @@ module.exports = {
   updateAdminProfile,
   changeAdminPassword,
   generateVerificationLink,
-  fixGhostWallets
+  fixGhostWallets,
+  getWalletLogs,
+  getWalletDeposits,
+  getPlans,
+  createPlan,
+  updatePlan,
+  deletePlan
 };

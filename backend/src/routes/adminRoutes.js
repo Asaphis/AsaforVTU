@@ -150,38 +150,15 @@ router.get('/stats', async (req, res) => {
 });
 
 // Wallet logs
-router.get('/wallet/logs', async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT wt.*, u.email, u.full_name
-       FROM wallet_transactions wt
-       LEFT JOIN users u ON wt.user_id = u.id
-       ORDER BY wt.created_at DESC
-       LIMIT 200`
-    );
-    res.json(result.rows);
-  } catch (error) {
-    console.error('[Admin Routes] Wallet logs error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+router.get('/wallet/logs', adminController.getWalletLogs);
 
 // Wallet deposits
-router.get('/wallet/deposits', async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT p.*, u.email, u.full_name
-       FROM payments p
-       LEFT JOIN users u ON p.user_id = u.id
-       WHERE p.payment_method = 'flutterwave'
-       ORDER BY p.created_at DESC
-       LIMIT 100`
-    );
-    res.json(result.rows);
-  } catch (error) {
-    console.error('[Admin Routes] Wallet deposits error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+router.get('/wallet/deposits', adminController.getWalletDeposits);
+
+// Plans management
+router.get('/plans', adminController.getPlans);
+router.post('/plans', adminController.createPlan);
+router.put('/plans/:id', adminController.updatePlan);
+router.delete('/plans/:id', adminController.deletePlan);
 
 module.exports = router;

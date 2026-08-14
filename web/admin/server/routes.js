@@ -114,9 +114,36 @@ function registerRoutes(app) {
     await proxyRequest(req, res, "GET", `/api/announcements/${req.params.id}`);
   });
   app.use("/api/admin", adminAuth);
+  
+  // VTU Services (no auth required for basic service info)
+  app.get("/api/vtu/providers", async (req, res) => {
+    await proxyRequest(req, res, "GET", "/api/vtu/providers");
+  });
+  
+  app.get("/api/vtu/data/plans", async (req, res) => {
+    await proxyRequest(req, res, "GET", "/api/vtu/data/plans");
+  });
+  
+  app.get("/api/vtu/cable/plans", async (req, res) => {
+    await proxyRequest(req, res, "GET", "/api/vtu/cable/plans");
+  });
+  
+  app.get("/api/vtu/electricity/plans", async (req, res) => {
+    await proxyRequest(req, res, "GET", "/api/vtu/electricity/plans");
+  });
+  
+  app.post("/api/vtu/verify", async (req, res) => {
+    await proxyRequest(req, res, "POST", "/api/vtu/verify", req.body);
+  });
+  
+  app.post("/api/vtu/purchase", async (req, res) => {
+    await proxyRequest(req, res, "POST", "/api/vtu/purchase", req.body);
+  });
+  
   app.get("/api/admin/stats", async (req, res) => {
     await proxyRequest(req, res, "GET", "/api/admin/stats");
   });
+  
   app.get("/api/admin/users", async (req, res) => {
     await proxyRequest(req, res, "GET", "/api/admin/users");
   });
@@ -140,6 +167,14 @@ function registerRoutes(app) {
   });
   app.put("/api/admin/settings", async (req, res) => {
     await proxyRequest(req, res, "PUT", "/api/admin/settings", req.body);
+  });
+  
+  app.get("/api/admin/wallet/logs", async (req, res) => {
+    await proxyRequest(req, res, "GET", "/api/admin/wallet/logs");
+  });
+  
+  app.get("/api/admin/wallet/deposits", async (req, res) => {
+    await proxyRequest(req, res, "GET", "/api/admin/wallet/deposits");
   });
 }
 
