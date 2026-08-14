@@ -119,15 +119,15 @@ const registerUser = async (userData) => {
       }
     }
 
-    // Generate email verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    // Skip email verification for now - auto-verify users
+    // const verificationToken = crypto.randomBytes(32).toString('hex');
+    // const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    await client.query(
-      `INSERT INTO email_verification_tokens (user_id, token, expires_at)
-       VALUES ($1, $2, $3)`,
-      [user.id, verificationToken, verificationExpiresAt]
-    );
+    // await client.query(
+    //   `INSERT INTO email_verification_tokens (user_id, token, expires_at)
+    //    VALUES ($1, $2, $3)`,
+    //   [user.id, verificationToken, verificationExpiresAt]
+    // );
 
     await client.query('COMMIT');
 
@@ -143,14 +143,13 @@ const registerUser = async (userData) => {
         username: user.username,
         phone: user.phone,
         referral_code: user.referral_code,
-        email_verified: false,
+        email_verified: true, // Auto-verify for now
         created_at: user.created_at
       },
       tokens: {
         access_token: accessToken,
         refresh_token: refreshToken
-      },
-      verification_token: verificationToken
+      }
     };
   } catch (error) {
     await client.query('ROLLBACK');
