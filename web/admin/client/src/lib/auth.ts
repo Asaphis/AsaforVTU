@@ -89,7 +89,21 @@ export const isAuthenticated = (): boolean => {
   return !!token;
 };
 
-export const logout = (): void => {
+export const logout = async (): Promise<void> => {
+  const token = getRefreshToken();
+  
+  if (token) {
+    try {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: token }),
+      });
+    } catch (error) {
+      console.error('[Auth] Logout request failed:', error);
+    }
+  }
+  
   clearTokens();
   window.location.href = "/login";
 };

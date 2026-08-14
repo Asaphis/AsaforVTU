@@ -20,9 +20,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       setIsAuth(authenticated);
       
       if (!authenticated && location !== "/login") {
-        setLocation("/login");
+        window.location.href = "/login";
       } else if (authenticated && location === "/login") {
-        setLocation("/dashboard");
+        window.location.href = "/dashboard";
       }
       
       setIsLoading(false);
