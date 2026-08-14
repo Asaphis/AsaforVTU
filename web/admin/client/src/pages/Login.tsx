@@ -70,7 +70,7 @@ export default function Login() {
         description: "Welcome to the administration bridge.",
       });
       
-      window.location.href = "/dashboard";
+      setLocation("/dashboard");
       
     } catch (error: any) {
       toast({
