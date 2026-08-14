@@ -4,6 +4,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
+import { useEffect } from "react";
+import { isAuthenticated } from "@/lib/auth";
 
 // Pages
 import Login from "@/pages/Login";
@@ -22,6 +24,18 @@ import FinancePage from "@/pages/Finance";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
 function App() {
+  useEffect(() => {
+    // Handle root route authentication
+    const authenticated = isAuthenticated();
+    if (window.location.pathname === "/") {
+      if (authenticated) {
+        window.location.href = "/dashboard";
+      } else {
+        window.location.href = "/login";
+      }
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -84,16 +98,6 @@ function App() {
             </DashboardLayout>
           </Route>
           <Route path="/dashboard">
-            <DashboardLayout>
-              <Dashboard />
-            </DashboardLayout>
-          </Route>
-          <Route path="/dashboard">
-            <DashboardLayout>
-              <Dashboard />
-            </DashboardLayout>
-          </Route>
-          <Route path="/">
             <DashboardLayout>
               <Dashboard />
             </DashboardLayout>
