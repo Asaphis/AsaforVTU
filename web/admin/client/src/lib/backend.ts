@@ -2,34 +2,13 @@ import { apiRequest } from "./auth";
 import { getAccessToken, getUser } from "./auth";
 
 function getBaseUrl(): string {
-  const prodUrlRaw = import.meta.env.VITE_VTU_BACKEND_URL as string | undefined;
-  const localUrlRaw = import.meta.env.VITE_VTU_BACKEND_URL_LOCAL as string | undefined;
-  const strip = (s?: string) => (s && typeof s === "string" ? s.trim().replace(/^`|`$/g, "") : "");
-  const trimSlash = (s: string) => s.replace(/\/+$/, "");
-  const prodUrl = trimSlash(strip(prodUrlRaw || ""));
-  const localUrl = trimSlash(strip(localUrlRaw || ""));
-  
-  let origin = "";
-  try {
-    origin = window.location.origin;
-  } catch {}
-  const isLocal = origin.includes("localhost") || origin.includes("127.0.0.1");
-
-  if (isLocal) {
-    return localUrl || "http://localhost:3001";
-  }
-  
-  return prodUrl || "https://vtuapi.ferixas.com";
-}
-
-async function getToken(): Promise<string> {
-  return getAccessToken() || "";
+  return ''; // Use relative URLs since admin panel proxies through its own server
 }
 
 async function request<T>(method: string, path: string, data?: unknown): Promise<T> {
   const baseUrl = getBaseUrl();
   const url = `${baseUrl}${path}`;
-  const token = await getToken();
+  const token = getAccessToken();
   const envAdmins = String(import.meta.env.VITE_ADMIN_EMAILS || "")
     .split(",")
     .map((s) => s.trim().toLowerCase())

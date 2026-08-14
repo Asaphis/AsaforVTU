@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_VTU_BACKEND_URL || 'https://vtuapi.ferixas.com';
+const API_BASE_URL = ''; // Use relative URLs since admin panel is on same domain
 
 interface User {
   id: string;
@@ -57,7 +57,7 @@ export const clearTokens = (): void => {
 
 export const loginAdmin = async (email: string, password: string): Promise<User> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -94,7 +94,7 @@ export const logout = async (): Promise<void> => {
   
   if (token) {
     try {
-      await fetch(`${API_BASE_URL}/api/auth/logout`, {
+      await fetch('/api/auth/logout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: token }),
@@ -105,7 +105,7 @@ export const logout = async (): Promise<void> => {
   }
   
   clearTokens();
-  window.location.href = "/login";
+  window.location.href = '/login';
 };
 
 export const isAdmin = (): boolean => {
