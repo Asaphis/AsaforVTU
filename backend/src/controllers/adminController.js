@@ -4,6 +4,64 @@ const flutterwaveService = require('../services/flutterwaveService');
 const transactionService = require('../services/transactionService');
 const paymentService = require('../services/paymentService');
 
+const getStats = async (req, res) => {
+  try {
+    // Get total users
+    const usersResult = await pool.query('SELECT COUNT(*) as count FROM users WHERE is_active = true');
+    const totalUsers = parseInt(usersResult.rows[0].count);
+
+    // Get total wallet balance
+    const walletResult = await pool.query('SELECT COALESCE(SUM(main_balance), 0) as total FROM wallets');
+    const walletBalance = parseFloat(walletResult.rows[0].total);
+
+    // Get total transactions
+    const transactionsResult = await pool.query('SELECT COUNT(*) as count FROM transactions');
+    const totalTransactions = parseInt(transactionsResult.rows[0].count);
+
+    // Get today's sales
+    const todaySalesResult = await pool.query(`
+      SELECT COALESCE(SUM(amount), 0) as total 
+      FROM transactions 
+      WHERE DATE(created_at) = CURRENT_DATE 
+      AND status = 'completed'
+    `);
+    const todaySales = parseFloat(todaySalesResult.rows[0].total);
+
+    // Get daily totals for the last 7 days
+    const dailyTotalsResult = await pool.query(`
+      SELECT 
+        DATE(created_at) as day,
+        COALESCE(SUM(amount), 0) as total
+      FROM transactions 
+      WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+      AND status = 'completed'
+      GROUP BY DATE(created_at)
+      ORDER BY day ASC
+    `);
+
+    // Get recent transactions
+    const recentTransactionsResult = await pool.query(`
+      SELECT t.*, u.email, u.full_name
+      FROM transactions t
+      JOIN users u ON t.user_id = u.id
+      ORDER BY t.created_at DESC
+      LIMIT 6
+    `);
+
+    res.json({
+      totalUsers,
+      walletBalance,
+      totalTransactions,
+      todaySales,
+      dailyTotals: dailyTotalsResult.rows,
+      recentTransactions: recentTransactionsResult.rows
+    });
+  } catch (error) {
+    console.error('[Admin Controller] Get stats error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const updateSettings = async (req, res) => {
   try {
     const body = req.body || {};
@@ -719,6 +777,7 @@ const fixGhostWallets = async (req, res) => {
 };
 
 module.exports = {
+  getStats,
   updateSettings,
   getSettings,
   getAllTransactions,

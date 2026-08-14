@@ -91,6 +91,7 @@ export const isAuthenticated = (): boolean => {
 
 export const logout = (): void => {
   clearTokens();
+  window.location.href = "/login";
 };
 
 export const isAdmin = (): boolean => {

@@ -114,6 +114,9 @@ function registerRoutes(app) {
     await proxyRequest(req, res, "GET", `/api/announcements/${req.params.id}`);
   });
   app.use("/api/admin", adminAuth);
+  app.get("/api/admin/stats", async (req, res) => {
+    await proxyRequest(req, res, "GET", "/api/admin/stats");
+  });
   app.get("/api/admin/users", async (req, res) => {
     await proxyRequest(req, res, "GET", "/api/admin/users");
   });

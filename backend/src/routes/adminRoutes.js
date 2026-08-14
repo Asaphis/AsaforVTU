@@ -11,6 +11,9 @@ const router = express.Router();
 router.use(authenticate);
 router.use(requireAdmin);
 
+// Stats
+router.get('/stats', adminController.getStats);
+
 // Settings
 router.post('/settings', adminController.updateSettings);
 router.get('/settings', adminController.getSettings);
