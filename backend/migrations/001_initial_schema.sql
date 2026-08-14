@@ -316,6 +316,9 @@ CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
 CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
 CREATE INDEX IF NOT EXISTS idx_transactions_reference ON transactions(reference);
 CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_transactions_user_request_id
+  ON transactions (user_id, ((metadata->>'requestId')))
+  WHERE metadata ? 'requestId';
 
 CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);

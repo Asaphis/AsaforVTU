@@ -19,6 +19,10 @@ const createNotification = async (notificationData) => {
   }
 };
 
+const sendNotification = async (userId, title, message, type = 'transaction', metadata = {}) => {
+  return createNotification({ user_id: userId, type, title, message, metadata });
+};
+
 // Get notifications by user ID
 const getNotificationsByUserId = async (userId, unreadOnly = false, limit = 50, offset = 0) => {
   try {
@@ -154,6 +158,7 @@ const createBulkNotifications = async (userIds, notificationData) => {
 
 module.exports = {
   createNotification,
+  sendNotification,
   getNotificationsByUserId,
   markNotificationAsRead,
   markAllNotificationsAsRead,

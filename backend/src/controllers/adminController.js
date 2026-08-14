@@ -23,7 +23,7 @@ const getStats = async (req, res) => {
       SELECT COALESCE(SUM(amount), 0) as total 
       FROM transactions 
       WHERE DATE(created_at) = CURRENT_DATE 
-      AND status = 'completed'
+      AND status = 'success'
     `);
     const todaySales = parseFloat(todaySalesResult.rows[0].total);
 
@@ -34,7 +34,7 @@ const getStats = async (req, res) => {
         COALESCE(SUM(amount), 0) as total
       FROM transactions 
       WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
-      AND status = 'completed'
+      AND status = 'success'
       GROUP BY DATE(created_at)
       ORDER BY day ASC
     `);
@@ -61,6 +61,72 @@ const getStats = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+const financeSummary = async ({ userId = null, start = null, end = null } = {}) => {
+  const params = [];
+  const filters = ['t.status = \'success\''];
+  if (userId) { params.push(userId); filters.push(`t.user_id = $${params.length}`); }
+  if (start) { params.push(start); filters.push(`t.created_at >= $${params.length}`); }
+  if (end) { params.push(end); filters.push(`t.created_at <= $${params.length}`); }
+  const summary = await pool.query(
+    `SELECT COALESCE(SUM(t.amount), 0) AS deposits,
+            COALESCE(SUM(COALESCE(NULLIF(t.metadata->>'provider_cost', '')::numeric, 0)), 0) AS provider_cost,
+            COUNT(*) AS transaction_count
+     FROM transactions t WHERE ${filters.join(' AND ')}`,
+    params
+  );
+  return summary.rows[0];
+};
+
+const resolveFinanceUser = async (req) => {
+  const target = req.query.uid || req.query.email;
+  if (!target) return null;
+  const result = await pool.query('SELECT id FROM users WHERE id::text = $1 OR lower(email) = lower($1) LIMIT 1', [String(target)]);
+  return result.rows[0]?.id || null;
+};
+
+const getFinanceAnalytics = async (req, res) => {
+  try {
+    const userId = await resolveFinanceUser(req);
+    if ((req.query.uid || req.query.email) && !userId) return res.status(404).json({ error: 'User not found' });
+    const now = new Date();
+    const startOfDay = new Date(now); startOfDay.setHours(0, 0, 0, 0);
+    const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - 6); startOfWeek.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [daily, weekly, monthly, total, wallet] = await Promise.all([
+      financeSummary({ userId, start: startOfDay }),
+      financeSummary({ userId, start: startOfWeek }),
+      financeSummary({ userId, start: startOfMonth }),
+      financeSummary({ userId }),
+      userId ? pool.query('SELECT main_balance FROM wallets WHERE user_id = $1', [userId]) : pool.query('SELECT COALESCE(SUM(main_balance), 0) AS main_balance FROM wallets')
+    ]);
+    const recent = await pool.query(
+      `SELECT t.id, t.user_id AS "userId", COALESCE(u.email, '') AS "user", t.amount AS "userPrice",
+              COALESCE(NULLIF(t.metadata->>'provider_cost', '')::numeric, 0) AS "providerCost",
+              t.type, t.type AS "serviceType", true AS "isService", t.status, t.created_at AS "createdAt",
+              t.metadata->>'failure_source' AS "failureSource", t.metadata->>'failure_reason' AS "failureReason"
+       FROM transactions t LEFT JOIN users u ON u.id = t.user_id
+       ${userId ? 'WHERE t.user_id = $1' : ''} ORDER BY t.created_at DESC LIMIT 100`,
+      userId ? [userId] : []
+    );
+    const shape = (row) => ({ deposits: Number(row.deposits || 0), providerCost: Number(row.provider_cost || 0), smsCost: 0, netProfit: Number(row.deposits || 0) - Number(row.provider_cost || 0) });
+    res.json({
+      scope: userId ? 'user' : 'system',
+      providerBalanceRequired: Number(total.rows[0]?.provider_cost || 0),
+      walletBalance: Number(wallet.rows[0]?.main_balance || 0),
+      totalWalletBalance: Number(wallet.rows[0]?.main_balance || 0),
+      daily: shape(daily.rows[0]), weekly: shape(weekly.rows[0]), monthly: shape(monthly.rows[0]),
+      totals: { depositsTotal: Number(total.rows[0]?.deposits || 0), providerCostTotal: Number(total.rows[0]?.provider_cost || 0), smsCostTotal: 0, netProfitTotal: Number(total.rows[0]?.deposits || 0) - Number(total.rows[0]?.provider_cost || 0) },
+      transactions: recent.rows
+    });
+  } catch (error) {
+    console.error('[Admin Controller] Finance analytics error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getFinanceSystem = async (req, res) => getFinanceAnalytics({ ...req, query: { ...(req.query || {}) } }, res);
+const getFinanceUser = async (req, res) => getFinanceAnalytics(req, res);
 
 const getWalletLogs = async (req, res) => {
   try {
@@ -97,9 +163,16 @@ const getWalletDeposits = async (req, res) => {
 
 const updateSettings = async (req, res) => {
   try {
-    const body = req.body || {};
-    
-    // Process each setting key
+    const incoming = req.body || {};
+    const body = { ...incoming };
+    if (incoming.airtimeNetworks !== undefined) body.airtime_networks = incoming.airtimeNetworks;
+    if (incoming.cashbackEnabled !== undefined) body.cashback_settings = { enabled: Boolean(incoming.cashbackEnabled) };
+    if (incoming.dailyReferralBudget !== undefined) body.referral_settings = { daily_budget: Number(incoming.dailyReferralBudget) };
+    delete body.airtimeNetworks;
+    delete body.cashbackEnabled;
+    delete body.dailyReferralBudget;
+
+    // Process each normalized setting key
     for (const [key, value] of Object.entries(body)) {
       const existing = await pool.query(
         'SELECT id FROM settings WHERE key = $1',
@@ -348,7 +421,9 @@ const listUsers = async (req, res) => {
 
 const createUser = async (req, res) => {
   try {
-    const { email, password, full_name, username, phone, is_admin } = req.body;
+    const { email, password, full_name, displayName, username, phone, phoneNumber, is_admin, requireVerification = true } = req.body;
+    const normalizedFullName = full_name ?? displayName ?? '';
+    const normalizedPhone = phone ?? phoneNumber ?? '';
     
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
@@ -358,9 +433,9 @@ const createUser = async (req, res) => {
     const user = await registerUser({
       email,
       password,
-      full_name: full_name || '',
+      full_name: normalizedFullName,
       username: username || email.split('@')[0],
-      phone: phone || ''
+      phone: normalizedPhone
     });
     
     // Set admin if requested
@@ -380,16 +455,15 @@ const createUser = async (req, res) => {
 
 const promoteToAdmin = async (req, res) => {
   try {
-    const { userId } = req.body;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'userId is required' });
-    }
-    
-    await pool.query(
-      'UPDATE users SET is_admin = true, role = $1 WHERE id = $2',
-      ['admin', userId]
+    const { userId, uid, email } = req.body || {};
+    const target = userId || uid || email;
+    if (!target) return res.status(400).json({ error: 'userId, uid, or email is required' });
+    const result = await pool.query(
+      `UPDATE users SET is_admin = true, role = 'admin', email_verified = true
+       WHERE id::text = $1 OR lower(email) = lower($1) RETURNING id, email`,
+      [String(target)]
     );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     
     res.json({ success: true, message: 'User promoted to admin' });
   } catch (error) {
@@ -400,16 +474,14 @@ const promoteToAdmin = async (req, res) => {
 
 const suspendUser = async (req, res) => {
   try {
-    const { userId, suspend } = req.body;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'userId is required' });
-    }
-    
-    await pool.query(
-      'UPDATE users SET is_active = $1 WHERE id = $2',
-      [!suspend, userId]
+    const { userId, uid, email, suspend } = req.body || {};
+    const target = userId || uid || email;
+    if (!target) return res.status(400).json({ error: 'userId, uid, or email is required' });
+    const result = await pool.query(
+      `UPDATE users SET is_active = $1 WHERE id::text = $2 OR lower(email) = lower($2) RETURNING id, email, is_active`,
+      [!suspend, String(target)]
     );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     
     res.json({ success: true, message: suspend ? 'User suspended' : 'User activated' });
   } catch (error) {
@@ -592,9 +664,9 @@ const reconcilePaymentAdmin = async (req, res) => {
 
 const getServices = async (req, res) => {
   try {
-    const { getServicePlans } = require('../services/serviceService');
-    const services = await getServicePlans();
-    res.json(services);
+    const { getAllServices } = require('../services/serviceService');
+    const services = await getAllServices(false);
+    res.json(services.map(service => ({ ...service, enabled: Boolean(service.is_active) })));
   } catch (error) {
     console.error('[Admin Controller] Get services error:', error);
     res.status(500).json({ error: error.message });
@@ -603,17 +675,13 @@ const getServices = async (req, res) => {
 
 const createService = async (req, res) => {
   try {
-    const { name, slug, category, description, icon, is_active } = req.body;
-    
-    if (!name || !slug || !category) {
-      return res.status(400).json({ error: 'Name, slug, and category are required' });
-    }
-    
+    const { name, slug, id, category, description = '', icon, is_active, enabled } = req.body || {};
+    const normalizedSlug = String(slug || id || '').trim().toLowerCase();
+    if (!name || !normalizedSlug || !category) return res.status(400).json({ error: 'Name, slug, and category are required' });
     const result = await pool.query(
       `INSERT INTO services (name, slug, icon, category, description, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [name, slug, icon, category, description, is_active !== false]
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [name.trim(), normalizedSlug, icon || null, category, description, enabled !== undefined ? Boolean(enabled) : is_active !== false]
     );
     
     res.status(201).json(result.rows[0]);
@@ -625,14 +693,14 @@ const createService = async (req, res) => {
 
 const updateService = async (req, res) => {
   try {
-    const { name, slug, category, description, icon, is_active } = req.body;
-    
+    const existing = await pool.query('SELECT * FROM services WHERE id = $1', [req.params.id]);
+    if (existing.rows.length === 0) return res.status(404).json({ error: 'Service not found' });
+    const current = existing.rows[0];
+    const { name, slug, id, category, description, icon, is_active, enabled } = req.body || {};
     const result = await pool.query(
-      `UPDATE services 
-       SET name = $1, slug = $2, icon = $3, category = $4, description = $5, is_active = $6, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $7
-       RETURNING *`,
-      [name, slug, icon, category, description, is_active !== false, req.params.id]
+      `UPDATE services SET name = $1, slug = $2, icon = $3, category = $4, description = $5, is_active = $6, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $7 RETURNING *`,
+      [name ?? current.name, String(slug || id || current.slug).toLowerCase(), icon ?? current.icon, category ?? current.category, description ?? current.description, enabled !== undefined ? Boolean(enabled) : (is_active !== undefined ? Boolean(is_active) : current.is_active), req.params.id]
     );
     
     if (result.rows.length === 0) {
@@ -680,19 +748,19 @@ const createAdmin = async (req, res) => {
     }
     
     const { registerUser } = require('../services/authService');
-    const user = await registerUser({
+    const registration = await registerUser({
       email,
       password,
       full_name: full_name || '',
       username: email.split('@')[0]
     });
-    
+    const createdUser = registration.user;
     await pool.query(
-      'UPDATE users SET is_admin = true, role = $1, email_verified = true WHERE id = $2',
-      ['admin', user.id]
+      `UPDATE users SET is_admin = true, role = 'admin', email_verified = true WHERE id = $1`,
+      [createdUser.id]
     );
-    
-    res.json({ success: true, user });
+    await pool.query('UPDATE email_verification_tokens SET verified_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND verified_at IS NULL', [createdUser.id]);
+    res.json({ success: true, user: { ...createdUser, is_admin: true, role: 'admin', email_verified: true } });
   } catch (error) {
     console.error('[Admin Controller] Create admin error:', error);
     res.status(500).json({ error: error.message });
@@ -756,16 +824,16 @@ const changeAdminPassword = async (req, res) => {
 
 const generateVerificationLink = async (req, res) => {
   try {
-    const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
+    const { email, uid, redirectUrl } = req.body || {};
+    if (!email && !uid) return res.status(400).json({ error: 'Email or uid is required' });
+    const { resendVerificationEmail } = require('../services/authService');
+    let targetEmail = email;
+    if (!targetEmail && uid) {
+      const userResult = await pool.query('SELECT email FROM users WHERE id = $1', [uid]);
+      targetEmail = userResult.rows[0]?.email;
     }
-    
-    const { requestPasswordReset } = require('../services/authService');
-    const result = await requestPasswordReset(email);
-    
-    res.json(result);
+    const result = await resendVerificationEmail(targetEmail);
+    res.json({ ...result, redirectUrl });
   } catch (error) {
     console.error('[Admin Controller] Generate verification link error:', error);
     res.status(500).json({ error: error.message });
@@ -809,26 +877,58 @@ const fixGhostWallets = async (req, res) => {
   }
 };
 
+const serializePlan = (plan) => ({
+  ...plan,
+  priceUser: Number(plan.price_user),
+  priceApi: Number(plan.price_api),
+  active: Boolean(plan.is_active),
+  networkKey: plan.network_key,
+  serviceId: plan.service_id
+});
+
 const getPlans = async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM service_plans ORDER BY created_at DESC');
-    res.json(result.rows);
+    const result = await pool.query(
+      `SELECT sp.*, s.name AS service_name, s.slug AS service_slug
+       FROM service_plans sp JOIN services s ON s.id = sp.service_id
+       ORDER BY sp.created_at DESC`
+    );
+    res.json(result.rows.map(serializePlan));
   } catch (error) {
     console.error('[Admin Controller] Get plans error:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
+const resolveServiceId = async (body) => {
+  if (body.service_id || body.serviceId) return body.service_id || body.serviceId;
+  const type = String(body.type || body.metadata?.type || '').toLowerCase();
+  const slug = type === 'exam' ? 'exam-pins' : type;
+  if (!slug) return null;
+  const result = await pool.query('SELECT id FROM services WHERE slug = $1 LIMIT 1', [slug]);
+  return result.rows[0]?.id || null;
+};
+
 const createPlan = async (req, res) => {
   try {
-    const { network, name, price_user, price_api, active, metadata } = req.body;
+    const body = req.body || {};
+    const serviceId = await resolveServiceId(body);
+    const metadata = body.metadata || {};
+    const type = String(body.type || metadata.type || '').toLowerCase();
+    const network = String(body.network || body.network_key || '').trim();
+    const networkKey = String(body.network_key || body.networkKey || network).trim().toLowerCase();
+    const name = String(body.name || '').trim();
+    const priceUser = Number(body.price_user ?? body.priceUser);
+    const priceApi = Number(body.price_api ?? body.priceApi);
+    if (!serviceId || !type || !network || !networkKey || !name || !Number.isFinite(priceUser) || !Number.isFinite(priceApi)) {
+      return res.status(400).json({ error: 'serviceId, type, network, name, priceUser, and priceApi are required' });
+    }
     const result = await pool.query(
-      `INSERT INTO service_plans (network, name, price_user, price_api, active, metadata, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
-       RETURNING *`,
-      [network, name, price_user, price_api, active, JSON.stringify(metadata)]
+      `INSERT INTO service_plans (service_id, network, network_key, name, type, sub_type, price_user, price_api, is_active, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [serviceId, network, networkKey, name, type, body.sub_type || body.subType || null, priceUser, priceApi, body.is_active ?? body.active !== false, JSON.stringify(metadata)]
     );
-    res.json(result.rows[0]);
+    res.status(201).json(serializePlan(result.rows[0]));
   } catch (error) {
     console.error('[Admin Controller] Create plan error:', error);
     res.status(500).json({ error: error.message });
@@ -837,15 +937,18 @@ const createPlan = async (req, res) => {
 
 const updatePlan = async (req, res) => {
   try {
-    const { network, name, price_user, price_api, active, metadata } = req.body;
+    const currentResult = await pool.query('SELECT * FROM service_plans WHERE id = $1', [req.params.id]);
+    if (currentResult.rows.length === 0) return res.status(404).json({ error: 'Service plan not found' });
+    const current = currentResult.rows[0];
+    const body = req.body || {};
+    const metadata = body.metadata ?? current.metadata ?? {};
     const result = await pool.query(
-      `UPDATE service_plans 
-       SET network = $1, name = $2, price_user = $3, price_api = $4, active = $5, metadata = $6, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $7
-       RETURNING *`,
-      [network, name, price_user, price_api, active, JSON.stringify(metadata), req.params.id]
+      `UPDATE service_plans SET network = $1, network_key = $2, name = $3, type = $4, sub_type = $5,
+       price_user = $6, price_api = $7, is_active = $8, metadata = $9, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $10 RETURNING *`,
+      [body.network ?? current.network, String(body.network_key ?? body.networkKey ?? current.network_key).toLowerCase(), body.name ?? current.name, body.type ?? current.type, body.sub_type ?? body.subType ?? current.sub_type, Number(body.price_user ?? body.priceUser ?? current.price_user), Number(body.price_api ?? body.priceApi ?? current.price_api), body.is_active ?? body.active ?? current.is_active, JSON.stringify(metadata), req.params.id]
     );
-    res.json(result.rows[0]);
+    res.json(serializePlan(result.rows[0]));
   } catch (error) {
     console.error('[Admin Controller] Update plan error:', error);
     res.status(500).json({ error: error.message });
@@ -854,7 +957,8 @@ const updatePlan = async (req, res) => {
 
 const deletePlan = async (req, res) => {
   try {
-    await pool.query('DELETE FROM service_plans WHERE id = $1', [req.params.id]);
+    const result = await pool.query('DELETE FROM service_plans WHERE id = $1 RETURNING id', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Service plan not found' });
     res.json({ success: true, id: req.params.id });
   } catch (error) {
     console.error('[Admin Controller] Delete plan error:', error);
@@ -864,6 +968,9 @@ const deletePlan = async (req, res) => {
 
 module.exports = {
   getStats,
+  getFinanceAnalytics,
+  getFinanceSystem,
+  getFinanceUser,
   updateSettings,
   getSettings,
   getAllTransactions,

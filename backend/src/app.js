@@ -72,15 +72,34 @@ app.use(morgan('dev'));
 app.get('/', (req, res) => {
   res.status(200).json({ message: 'Asafor VTU Backend is running' });
 });
+app.get('/api/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', service: 'asaforvtu-backend', time: new Date().toISOString() });
+});
 // Public services endpoint for user frontend
 app.get('/api/services', async (_req, res) => {
   try {
     const { getAllServices } = require('./services/serviceService');
     const services = await getAllServices(true);
-    res.json(services);
+    res.json(services.map(service => ({
+      ...service,
+      enabled: Boolean(service.is_active),
+      isActive: Boolean(service.is_active)
+    })));
   } catch (e) {
     console.error('Error fetching services:', e);
     res.json([]);
+  }
+});
+
+app.get('/api/services/:slug', async (req, res) => {
+  try {
+    const { getServiceBySlug } = require('./services/serviceService');
+    const service = await getServiceBySlug(req.params.slug);
+    if (!service || !service.is_active) return res.status(404).json({ error: 'Service not found' });
+    res.json({ ...service, enabled: Boolean(service.is_active), isActive: Boolean(service.is_active) });
+  } catch (e) {
+    console.error('Error fetching service:', e);
+    res.status(500).json({ error: e.message });
   }
 });
 
@@ -187,6 +206,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const supportRoutes = require('./routes/supportRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const vtuRoutes = require('./routes/vtuRoutes');
 
 app.use('/api/auth', authRoutes);
@@ -198,6 +218,7 @@ app.use('/api/webhooks', webhookRoutes);
 // Backward-compat alias (some dashboards use singular)
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/vtu', vtuRoutes);
 
 // Error Handling Middleware

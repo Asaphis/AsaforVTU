@@ -1,4 +1,3 @@
-import { apiRequest } from "./auth";
 import { getAccessToken, getUser } from "./auth";
 
 function getBaseUrl(): string {
@@ -9,7 +8,8 @@ async function request<T>(method: string, path: string, data?: unknown): Promise
   const baseUrl = getBaseUrl();
   const url = `${baseUrl}${path}`;
   const token = getAccessToken();
-  const envAdmins = String(import.meta.env.VITE_ADMIN_EMAILS || "")
+  const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
+  const envAdmins = String(env.VITE_ADMIN_EMAILS || "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
@@ -49,6 +49,7 @@ export async function getAdminSettings(): Promise<any> {
 export async function updateAdminSettings(payload: {
   dailyReferralBudget?: number;
   cashbackEnabled?: boolean;
+  airtimeNetworks?: Record<string, { enabled: boolean; discount?: number }>;
   pricing?: Record<string, unknown>;
 }): Promise<{ message: string }> {
   return await request<{ message: string }>("POST", "/api/admin/settings", payload);
@@ -67,11 +68,11 @@ export async function promoteAdmin(input: { uid?: string; email?: string }): Pro
   return await request<{ success: boolean; uid: string; email: string }>("POST", "/api/admin/users/promote", input);
 }
 
-export async function creditWallet(payload: { userId: string; amount: number; walletType?: "main" | "cashback" | "referral"; description?: string }): Promise<{ success: boolean; userId: string; newBalance: number; walletType: string }> {
+export async function creditWallet(payload: { userId: string; amount: number; walletType?: "main" | "cashback" | "referral"; description?: string }): Promise<{ success: boolean; userId: string; newBalance: number; walletType: string; error?: string }> {
   return await request<{ success: boolean; userId: string; newBalance: number; walletType: string }>("POST", "/api/admin/wallet/credit", payload);
 }
 
-export async function debitWallet(payload: { userId: string; amount: number; walletType?: "main" | "cashback" | "referral"; description?: string }): Promise<{ success: boolean; userId: string; newBalance: number; walletType: string }> {
+export async function debitWallet(payload: { userId: string; amount: number; walletType?: "main" | "cashback" | "referral"; description?: string }): Promise<{ success: boolean; userId: string; newBalance: number; walletType: string; error?: string }> {
   return await request<{ success: boolean; userId: string; newBalance: number; walletType: string }>("POST", "/api/admin/wallet/debit", payload);
 }
 
@@ -87,11 +88,11 @@ export async function getServices(): Promise<any[]> {
   return await request<any[]>("GET", "/api/admin/services");
 }
 
-export async function createService(data: { id?: string; name: string; icon?: string; category?: string }): Promise<{ success: boolean; id: string }> {
+export async function createService(data: { id?: string; name: string; slug?: string; icon?: string; category?: string; description?: string; enabled?: boolean; is_active?: boolean }): Promise<any> {
   return await request<{ success: boolean; id: string }>("POST", "/api/admin/services", data);
 }
 
-export async function updateService(id: string, data: { name: string; icon?: string; category?: string }): Promise<{ success: boolean }> {
+export async function updateService(id: string, data: { name?: string; slug?: string; icon?: string; category?: string; description?: string; enabled?: boolean; is_active?: boolean }): Promise<any> {
   return await request<{ success: boolean }>("PUT", `/api/admin/services/${id}`, data);
 }
 
@@ -112,11 +113,11 @@ export async function getAllPlans(): Promise<any[]> {
   return await request<any[]>("GET", "/api/admin/plans");
 }
 
-export async function createPlan(payload: { network: string; name: string; priceUser: number; priceApi: number; active?: boolean; metadata?: Record<string, unknown> }): Promise<any> {
+export async function createPlan(payload: { serviceId?: string; type?: string; network: string; name: string; priceUser: number; priceApi: number; active?: boolean; metadata?: Record<string, unknown> }): Promise<any> {
   return await request<any>("POST", "/api/admin/plans", payload);
 }
 
-export async function updatePlan(id: string, payload: { network?: string; name?: string; priceUser?: number; priceApi?: number; active?: boolean; metadata?: Record<string, unknown> }): Promise<any> {
+export async function updatePlan(id: string, payload: { serviceId?: string; type?: string; network?: string; name?: string; priceUser?: number; priceApi?: number; active?: boolean; metadata?: Record<string, unknown> }): Promise<any> {
   return await request<any>("PUT", `/api/admin/plans/${encodeURIComponent(id)}`, payload);
 }
 
@@ -203,9 +204,12 @@ export async function getFinanceAnalytics(input?: { uid?: string; email?: string
   weekly: { deposits: number; providerCost: number; smsCost: number; netProfit: number };
   monthly: { deposits: number; providerCost: number; smsCost: number; netProfit: number };
   totals: { depositsTotal: number; providerCostTotal: number; smsCostTotal: number; netProfitTotal: number };
+  totalWalletBalance?: number;
   transactions: Array<{
     id: string;
     userId: string;
+    isService?: boolean;
+    type?: string;
     user: string;
     userPrice: number;
     providerCost: number;
@@ -278,6 +282,3 @@ export async function getFinanceUser(input: { uid?: string; email?: string }): P
 export async function reconcilePaymentAdmin(input: { ref?: string; tx_ref?: string; transaction_id?: string; force?: boolean }): Promise<any> {
   return await request<any>("POST", "/api/admin/payments/reconcile", input);
 }
-
-export { db };
-

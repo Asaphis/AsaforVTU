@@ -1,0 +1,22 @@
+
+> rest-express@1.0.0 check
+> tsc
+
+client/src/lib/backend.ts(1,10): error TS2614: Module '"./auth"' has no exported member 'apiRequest'. Did you mean to use 'import apiRequest from "./auth"' instead?
+client/src/lib/backend.ts(12,40): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+client/src/lib/backend.ts(282,10): error TS2304: Cannot find name 'db'.
+client/src/pages/Finance.tsx(122,63): error TS2551: Property 'totalWalletBalance' does not exist on type '{ scope: "user" | "system"; providerBalanceRequired: number; walletBalance?: number | undefined; daily: { deposits: number; providerCost: number; smsCost: number; netProfit: number; }; weekly: { ...; }; monthly: { ...; }; totals: { ...; }; transactions: { ...; }[]; }'. Did you mean 'walletBalance'?
+client/src/pages/Finance.tsx(183,39): error TS2339: Property 'isService' does not exist on type '{ id: string; userId: string; user: string; userPrice: number; providerCost: number; smsCost: number; serviceType: string; status: string; createdAt: number; failureSource?: string | undefined; failureReason?: string | undefined; }'.
+client/src/pages/Finance.tsx(183,147): error TS2339: Property 'type' does not exist on type '{ id: string; userId: string; user: string; userPrice: number; providerCost: number; smsCost: number; serviceType: string; status: string; createdAt: number; failureSource?: string | undefined; failureReason?: string | undefined; }'.
+client/src/pages/Finance.tsx(194,45): error TS2339: Property 'type' does not exist on type '{ id: string; userId: string; user: string; userPrice: number; providerCost: number; smsCost: number; serviceType: string; status: string; createdAt: number; failureSource?: string | undefined; failureReason?: string | undefined; }'.
+client/src/pages/Finance.tsx(319,37): error TS2339: Property 'isService' does not exist on type '{ id: string; userId: string; user: string; userPrice: number; providerCost: number; smsCost: number; serviceType: string; status: string; createdAt: number; failureSource?: string | undefined; failureReason?: string | undefined; }'.
+client/src/pages/Finance.tsx(319,145): error TS2339: Property 'type' does not exist on type '{ id: string; userId: string; user: string; userPrice: number; providerCost: number; smsCost: number; serviceType: string; status: string; createdAt: number; failureSource?: string | undefined; failureReason?: string | undefined; }'.
+client/src/pages/Finance.tsx(326,52): error TS2339: Property 'type' does not exist on type '{ id: string; userId: string; user: string; userPrice: number; providerCost: number; smsCost: number; serviceType: string; status: string; createdAt: number; failureSource?: string | undefined; failureReason?: string | undefined; }'.
+client/src/pages/Login.tsx(50,47): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+client/src/pages/Profile.tsx(33,36): error TS2339: Property 'phone' does not exist on type 'User'.
+client/src/pages/Profile.tsx(43,53): error TS2353: Object literal may only specify known properties, and 'phone' does not exist in type 'Partial<User>'.
+client/src/pages/Services.tsx(210,59): error TS2353: Object literal may only specify known properties, and 'airtimeNetworks' does not exist in type '{ dailyReferralBudget?: number | undefined; cashbackEnabled?: boolean | undefined; pricing?: Record<string, unknown> | undefined; }'.
+client/src/pages/Services.tsx(241,59): error TS2353: Object literal may only specify known properties, and 'airtimeNetworks' does not exist in type '{ dailyReferralBudget?: number | undefined; cashbackEnabled?: boolean | undefined; pricing?: Record<string, unknown> | undefined; }'.
+client/src/pages/Transactions.tsx(25,31): error TS2307: Cannot find module '@/lib/useEffectOnce' or its corresponding type declarations.
+client/src/pages/Wallet.tsx(234,75): error TS2339: Property 'error' does not exist on type '{ success: boolean; userId: string; newBalance: number; walletType: string; }'.
+client/src/pages/Wallet.tsx(283,74): error TS2339: Property 'error' does not exist on type '{ success: boolean; userId: string; newBalance: number; walletType: string; }'.

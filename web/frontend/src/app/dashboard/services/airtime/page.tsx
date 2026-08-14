@@ -68,12 +68,12 @@ export default function AirtimePage() {
     setShowPinModal(true);
   };
 
-  const onPinSuccess = async () => {
+  const onPinSuccess = async (transactionPin: string) => {
     if (!user || !service) return;
     
     setProcessing(true);
     try {
-      const result = await purchaseAirtime(user.uid, Number(amount), { network, phone });
+      const result = await purchaseAirtime(user.uid, Number(amount), { network, phone, transactionPin });
 
       if (result.success) {
         addNotification('success', 'Airtime purchase successful', `₦${Number(amount).toLocaleString()} on ${network}`);

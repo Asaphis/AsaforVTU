@@ -45,7 +45,7 @@ export default function WalletPage() {
   }, [showReferral]);
   
   const format = (n?: number) => `₦${(n || 0).toLocaleString()}`;
-  const referralCode = user?.referral || user?.username || user?.uid || 'N/A';
+  const referralCode = user?.username || user?.uid || 'N/A';
   const [processing, setProcessing] = useState<'cashback' | 'referral' | null>(null);
   const [fundAmount, setFundAmount] = useState<number>(1000);
   const [funding, setFunding] = useState(false);
@@ -56,9 +56,7 @@ export default function WalletPage() {
     setFunding(true);
     try {
       const result = await initiateFunding(fundAmount);
-      if (result.error) {
-        alert(result.error);
-      } else if (result.link) {
+      if (result.link) {
         window.location.href = result.link;
       } else {
         alert('No checkout link returned');

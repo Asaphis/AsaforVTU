@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { SignUpData, LoginCredentials } from '@/types/auth';
-import { requestPasswordReset } from '@/lib/auth';
+import { requestPasswordReset, resendVerification } from '@/lib/auth';
 
 // Validation schemas
 const baseSignUpSchema = z.object({
@@ -54,7 +54,7 @@ type FormErrors<T> = Partial<Record<keyof T | 'general', string>>;
 export function useAuthForm() {
   const { addNotification } = useNotifications();
   const router = useRouter();
-  const { signUp, signIn, verifyEmail } = useAuth();
+  const { signUp, signIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors<SignUpData & LoginCredentials>>({});
   const [needsVerification, setNeedsVerification] = useState<boolean>(false);
@@ -87,7 +87,7 @@ export function useAuthForm() {
 
     setIsLoading(true);
     try {
-      await signUp({
+      const result = await signUp({
         email: data.email,
         password: data.password,
         fullName: data.fullName,
@@ -97,7 +97,11 @@ export function useAuthForm() {
         referralUsername: data.referralUsername,
       });
 
-      addNotification('success', 'Account created!', 'Please check your inbox for the verification email.');
+      const deliveryMessage = result.verification_sent
+        ? 'Please check your inbox for the verification email.'
+        : 'Account created. Email delivery is not configured in this environment; request a verification link after mail is enabled.';
+      addNotification(result.verification_sent ? 'success' : 'warning', 'Account created!', deliveryMessage);
+      router.push(`/verify-email-sent?email=${encodeURIComponent(data.email)}&sent=${result.verification_sent ? '1' : '0'}`);
     } catch (error: any) {
       addNotification('error', 'Error', error.message || 'Failed to create account. Please try again.');
     } finally {
@@ -115,7 +119,6 @@ export function useAuthForm() {
       await signIn({
         email: data.email,
         password: data.password,
-        rememberMe: data.rememberMe,
       });
 
       addNotification('success', 'Welcome back!', 'You have been successfully logged in.');
@@ -159,7 +162,7 @@ export function useAuthForm() {
 
     setIsLoading(true);
     try {
-      await verifyEmail();
+      await resendVerification(email);
       addNotification('success', 'Email sent', 'Verification email has been resent. Please check your inbox.');
     } catch (error: any) {
       addNotification('error', 'Error', error.message || 'Failed to resend verification email. Please try again.');

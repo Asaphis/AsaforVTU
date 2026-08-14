@@ -1,0 +1,19 @@
+
+> rest-express@1.0.0 build
+> vite build
+
+vite v7.1.12 building for production...
+transforming...
+✓ 2516 modules transformed.
+rendering chunks...
+[meta-images] no Replit deployment domain found, skipping meta tag updates
+computing gzip size...
+../dist/public/index.html                     1.17 kB │ gzip:   0.50 kB
+../dist/public/assets/index-CUOSlxzz.css    111.57 kB │ gzip:  18.35 kB
+../dist/public/assets/index-BeJThFDU.js   1,258.78 kB │ gzip: 346.38 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 7.34s

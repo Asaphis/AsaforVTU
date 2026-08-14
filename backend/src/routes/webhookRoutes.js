@@ -9,90 +9,46 @@ router.post('/flutterwave', express.json({ type: '*/*' }), async (req, res) => {
   try {
     const signature = req.headers['verif-hash'];
     const secret = process.env.FLW_SECRET_HASH || '';
-    if (secret && signature !== secret) {
-      return res.status(403).json({ error: 'Invalid signature' });
+    if (process.env.NODE_ENV === 'production' && !secret) {
+      return res.status(503).json({ error: 'Webhook verification is not configured' });
+    }
+    if (secret && signature !== secret) return res.status(403).json({ error: 'Invalid signature' });
+
+    const event = req.body || {};
+    const eventStatus = String(event?.data?.status || event?.event || '').toLowerCase();
+    if (eventStatus && !['successful', 'success', 'charge.completed'].some(value => eventStatus.includes(value))) {
+      return res.json({ success: true, ignored: true });
     }
 
-    const event = req.body;
-    const id = event?.data?.id;
-    const tx_ref = event?.data?.tx_ref;
-    const amount = event?.data?.amount;
-    const meta = event?.data?.meta || {};
-    let userId = meta.userId;
+    const txRef = String(event?.data?.tx_ref || '').trim();
+    const amount = Number(event?.data?.amount);
+    const userId = event?.data?.meta?.userId || event?.data?.meta?.user_id;
+    if (!txRef || !Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Missing or invalid payment reference/amount' });
 
-    if (!amount) {
-      return res.status(400).json({ error: 'Missing amount' });
-    }
-
-    // If userId is missing from webhook metadata, try to find it in our records using tx_ref
-    if (!userId && tx_ref) {
-      try {
-        const paymentResult = await pool.query(
-          'SELECT user_id FROM payments WHERE tx_ref = $1 LIMIT 1',
-          [tx_ref]
-        );
-        if (paymentResult.rows.length > 0) {
-          userId = paymentResult.rows[0].user_id;
-        }
-      } catch (err) {
-        console.error('Error fetching payment for webhook recovery:', err);
-      }
-    }
-
-    if (!userId) {
-      return res.status(400).json({ error: 'Missing userId' });
-    }
-
-    // Check if payment already exists
-    const existingPayment = await pool.query(
-      'SELECT * FROM payments WHERE tx_ref = $1 LIMIT 1',
-      [tx_ref]
-    );
-
-    if (existingPayment.rows.length > 0) {
-      const payment = existingPayment.rows[0];
-      
-      // Only process if payment is still pending
-      if (payment.status === 'pending') {
-        const result = await flutterwaveService.creditIfValid(id || tx_ref, amount, userId);
-        return res.json(result);
-      }
-      
-      return res.json({ success: true, message: 'Payment already processed', status: payment.status });
-    }
-
-    // Create new payment record
-    const newPayment = await paymentService.createPayment({
-      user_id: userId,
-      amount: Number(amount),
-      payment_method: 'flutterwave',
-      provider: 'flutterwave',
-      metadata: {
-        flutterwave_event: event
-      }
-    });
-
-    // Update with Flutterwave reference
-    await paymentService.updatePaymentStatus(newPayment.id, 'pending', {
-      provider_reference: tx_ref,
-      flw_ref: event?.data?.flw_ref
-    });
-
-    // Process payment
-    if (!process.env.FLW_SECRET_KEY) {
-      // Development mode - auto-credit
-      await paymentService.processSuccessfulPayment(newPayment.id, {
-        flw_ref: event?.data?.flw_ref
+    let payment = await paymentService.getPaymentByTxRef(txRef);
+    if (!payment) {
+      if (!userId) return res.status(400).json({ error: 'Payment record and userId are missing' });
+      payment = await paymentService.createPayment({
+        user_id: userId,
+        amount,
+        payment_method: 'flutterwave',
+        provider: 'flutterwave',
+        tx_ref: txRef,
+        metadata: { flutterwave_event: event }
       });
-      return res.json({ success: true, data: event?.data || {} });
-    } else {
-      // Production mode - verify with Flutterwave
-      const result = await flutterwaveService.creditIfValid(id || tx_ref, amount, userId);
-      return res.json(result);
     }
-  } catch (e) {
-    console.error('[Webhook] Flutterwave webhook error:', e);
-    res.status(500).json({ error: e.message });
+    if (payment.status === 'success') return res.json({ success: true, alreadyProcessed: true });
+
+    await paymentService.updatePaymentStatus(payment.id, 'pending', {
+      provider_reference: txRef,
+      flw_ref: event?.data?.flw_ref,
+      metadata: { flutterwave_event: event }
+    });
+    const result = await flutterwaveService.creditIfValid(txRef, Number(payment.amount), payment.user_id);
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    console.error('[Webhook] Flutterwave webhook error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

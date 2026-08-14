@@ -1,0 +1,553 @@
+Repository: AsaforVTU
+## [32mmain[m...[31morigin/main[m
+[31m??[m audit/
+
+--- Directory tree (depth 4) ---
+.
+./audit
+./backend
+./backend/migrations
+./backend/scripts
+./backend/src
+./backend/src/config
+./backend/src/controllers
+./backend/src/cron
+./backend/src/middleware
+./backend/src/routes
+./backend/src/services
+./mobile
+./mobile/webview_app
+./mobile/webview_app/android
+./mobile/webview_app/android/app
+./mobile/webview_app/android/gradle
+./mobile/webview_app/assets
+./mobile/webview_app/ios
+./mobile/webview_app/ios/Flutter
+./mobile/webview_app/ios/Runner
+./mobile/webview_app/ios/Runner.xcodeproj
+./mobile/webview_app/ios/Runner.xcworkspace
+./mobile/webview_app/ios/RunnerTests
+./mobile/webview_app/lib
+./mobile/webview_app/lib/services
+./mobile/webview_app/linux
+./mobile/webview_app/linux/flutter
+./mobile/webview_app/linux/runner
+./mobile/webview_app/macos
+./mobile/webview_app/macos/Flutter
+./mobile/webview_app/macos/Runner
+./mobile/webview_app/macos/Runner.xcodeproj
+./mobile/webview_app/macos/Runner.xcworkspace
+./mobile/webview_app/macos/RunnerTests
+./mobile/webview_app/web
+./mobile/webview_app/web/icons
+./mobile/webview_app/web/splash
+./mobile/webview_app/windows
+./mobile/webview_app/windows/flutter
+./mobile/webview_app/windows/runner
+./scripts
+./web
+./web/admin
+./web/admin/client
+./web/admin/client/public
+./web/admin/client/src
+./web/admin/script
+./web/admin/server
+./web/frontend
+./web/frontend/public
+./web/frontend/public/assets
+./web/frontend/src
+./web/frontend/src/app
+./web/frontend/src/components
+./web/frontend/src/contexts
+./web/frontend/src/hooks
+./web/frontend/src/lib
+./web/frontend/src/types
+
+--- Tracked files by top-level component ---
+root	.gitignore
+root	MIGRATION_GUIDE.md
+root	PUSH_TO_GITHUB.sh
+root	README.md
+backend	backend/.env.example
+backend	backend/README.md
+backend	backend/migrations/001_initial_schema.sql
+backend	backend/package-lock.json
+backend	backend/package.json
+backend	backend/scripts/createAdminUser.js
+backend	backend/scripts/create_admin_user.js
+backend	backend/scripts/reprocess_payment.js
+backend	backend/scripts/runMigration.js
+backend	backend/src/app.js
+backend	backend/src/config/database.js
+backend	backend/src/controllers/adminController.js
+backend	backend/src/controllers/transactionController.js
+backend	backend/src/controllers/walletController.js
+backend	backend/src/cron/index.js
+backend	backend/src/cron/paymentReconciler.js
+backend	backend/src/middleware/auth.js
+backend	backend/src/routes/adminRoutes.js
+backend	backend/src/routes/authRoutes.js
+backend	backend/src/routes/paymentRoutes.js
+backend	backend/src/routes/supportRoutes.js
+backend	backend/src/routes/transactionRoutes.js
+backend	backend/src/routes/vtuRoutes.js
+backend	backend/src/routes/walletRoutes.js
+backend	backend/src/routes/webhookRoutes.js
+backend	backend/src/server.js
+backend	backend/src/services/authService.js
+backend	backend/src/services/cashbackService.js
+backend	backend/src/services/flutterwaveService.js
+backend	backend/src/services/notificationService.js
+backend	backend/src/services/paymentService.js
+backend	backend/src/services/providerService.js
+backend	backend/src/services/referralService.js
+backend	backend/src/services/serviceService.js
+backend	backend/src/services/transactionService.js
+backend	backend/src/services/walletService.js
+mobile	mobile/webview_app/.gitignore
+mobile	mobile/webview_app/.metadata
+mobile	mobile/webview_app/README.md
+mobile	mobile/webview_app/analysis_options.yaml
+mobile	mobile/webview_app/android/.gitignore
+mobile	mobile/webview_app/android/app/build.gradle.kts
+mobile	mobile/webview_app/android/app/src/debug/AndroidManifest.xml
+mobile	mobile/webview_app/android/app/src/main/AndroidManifest.xml
+mobile	mobile/webview_app/android/app/src/main/kotlin/com/osghubvtu/webview_app/MainActivity.kt
+mobile	mobile/webview_app/android/app/src/main/res/drawable-hdpi/android12splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-hdpi/splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-mdpi/android12splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-mdpi/splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-night-hdpi/android12splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-night-mdpi/android12splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-night-xhdpi/android12splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-night-xxhdpi/android12splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-night-xxxhdpi/android12splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-v21/background.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-v21/launch_background.xml
+mobile	mobile/webview_app/android/app/src/main/res/drawable-xhdpi/android12splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-xhdpi/splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-xxhdpi/android12splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-xxhdpi/splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-xxxhdpi/android12splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable-xxxhdpi/splash.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable/background.png
+mobile	mobile/webview_app/android/app/src/main/res/drawable/launch_background.xml
+mobile	mobile/webview_app/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+mobile	mobile/webview_app/android/app/src/main/res/mipmap-hdpi/launcher_icon.png
+mobile	mobile/webview_app/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+mobile	mobile/webview_app/android/app/src/main/res/mipmap-mdpi/launcher_icon.png
+mobile	mobile/webview_app/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+mobile	mobile/webview_app/android/app/src/main/res/mipmap-xhdpi/launcher_icon.png
+mobile	mobile/webview_app/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+mobile	mobile/webview_app/android/app/src/main/res/mipmap-xxhdpi/launcher_icon.png
+mobile	mobile/webview_app/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+mobile	mobile/webview_app/android/app/src/main/res/mipmap-xxxhdpi/launcher_icon.png
+mobile	mobile/webview_app/android/app/src/main/res/values-night-v31/styles.xml
+mobile	mobile/webview_app/android/app/src/main/res/values-night/styles.xml
+mobile	mobile/webview_app/android/app/src/main/res/values-v31/styles.xml
+mobile	mobile/webview_app/android/app/src/main/res/values/styles.xml
+mobile	mobile/webview_app/android/app/src/profile/AndroidManifest.xml
+mobile	mobile/webview_app/android/build.gradle.kts
+mobile	mobile/webview_app/android/gradle.properties
+mobile	mobile/webview_app/android/gradle/wrapper/gradle-wrapper.properties
+mobile	mobile/webview_app/android/settings.gradle.kts
+mobile	mobile/webview_app/assets/logo.png
+mobile	mobile/webview_app/build_android.bat
+mobile	mobile/webview_app/build_ios.sh
+mobile	mobile/webview_app/ios/.gitignore
+mobile	mobile/webview_app/ios/Flutter/AppFrameworkInfo.plist
+mobile	mobile/webview_app/ios/Flutter/Debug.xcconfig
+mobile	mobile/webview_app/ios/Flutter/Release.xcconfig
+mobile	mobile/webview_app/ios/Runner.xcodeproj/project.pbxproj
+mobile	mobile/webview_app/ios/Runner.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+mobile	mobile/webview_app/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+mobile	mobile/webview_app/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+mobile	mobile/webview_app/ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
+mobile	mobile/webview_app/ios/Runner.xcworkspace/contents.xcworkspacedata
+mobile	mobile/webview_app/ios/Runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+mobile	mobile/webview_app/ios/Runner.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+mobile	mobile/webview_app/ios/Runner/AppDelegate.swift
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@1x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@2x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@3x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@1x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@2x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@3x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@1x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@2x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@3x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-50x50@1x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-50x50@2x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-57x57@1x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-57x57@2x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@2x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@3x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-72x72@1x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-72x72@2x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@1x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@2x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-83.5x83.5@2x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/LaunchBackground.imageset/Contents.json
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/LaunchBackground.imageset/background.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/LaunchImage.imageset/Contents.json
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@2x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png
+mobile	mobile/webview_app/ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md
+mobile	mobile/webview_app/ios/Runner/Base.lproj/LaunchScreen.storyboard
+mobile	mobile/webview_app/ios/Runner/Base.lproj/Main.storyboard
+mobile	mobile/webview_app/ios/Runner/Info.plist
+mobile	mobile/webview_app/ios/Runner/Runner-Bridging-Header.h
+mobile	mobile/webview_app/ios/Runner/Runner.entitlements
+mobile	mobile/webview_app/ios/RunnerTests/RunnerTests.swift
+mobile	mobile/webview_app/lib/main.dart
+mobile	mobile/webview_app/lib/services/api_service.dart
+mobile	mobile/webview_app/linux/.gitignore
+mobile	mobile/webview_app/linux/CMakeLists.txt
+mobile	mobile/webview_app/linux/flutter/CMakeLists.txt
+mobile	mobile/webview_app/linux/flutter/generated_plugin_registrant.cc
+mobile	mobile/webview_app/linux/flutter/generated_plugin_registrant.h
+mobile	mobile/webview_app/linux/flutter/generated_plugins.cmake
+mobile	mobile/webview_app/linux/runner/CMakeLists.txt
+mobile	mobile/webview_app/linux/runner/main.cc
+mobile	mobile/webview_app/linux/runner/my_application.cc
+mobile	mobile/webview_app/linux/runner/my_application.h
+mobile	mobile/webview_app/macos/.gitignore
+mobile	mobile/webview_app/macos/Flutter/Flutter-Debug.xcconfig
+mobile	mobile/webview_app/macos/Flutter/Flutter-Release.xcconfig
+mobile	mobile/webview_app/macos/Flutter/GeneratedPluginRegistrant.swift
+mobile	mobile/webview_app/macos/Runner.xcodeproj/project.pbxproj
+mobile	mobile/webview_app/macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+mobile	mobile/webview_app/macos/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
+mobile	mobile/webview_app/macos/Runner.xcworkspace/contents.xcworkspacedata
+mobile	mobile/webview_app/macos/Runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+mobile	mobile/webview_app/macos/Runner/AppDelegate.swift
+mobile	mobile/webview_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+mobile	mobile/webview_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png
+mobile	mobile/webview_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_128.png
+mobile	mobile/webview_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_16.png
+mobile	mobile/webview_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_256.png
+mobile	mobile/webview_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_32.png
+mobile	mobile/webview_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png
+mobile	mobile/webview_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_64.png
+mobile	mobile/webview_app/macos/Runner/Base.lproj/MainMenu.xib
+mobile	mobile/webview_app/macos/Runner/Configs/AppInfo.xcconfig
+mobile	mobile/webview_app/macos/Runner/Configs/Debug.xcconfig
+mobile	mobile/webview_app/macos/Runner/Configs/Release.xcconfig
+mobile	mobile/webview_app/macos/Runner/Configs/Warnings.xcconfig
+mobile	mobile/webview_app/macos/Runner/DebugProfile.entitlements
+mobile	mobile/webview_app/macos/Runner/Info.plist
+mobile	mobile/webview_app/macos/Runner/MainFlutterWindow.swift
+mobile	mobile/webview_app/macos/Runner/Release.entitlements
+mobile	mobile/webview_app/macos/RunnerTests/RunnerTests.swift
+mobile	mobile/webview_app/pubspec.lock
+mobile	mobile/webview_app/pubspec.yaml
+mobile	mobile/webview_app/web/favicon.png
+mobile	mobile/webview_app/web/icons/Icon-192.png
+mobile	mobile/webview_app/web/icons/Icon-512.png
+mobile	mobile/webview_app/web/icons/Icon-maskable-192.png
+mobile	mobile/webview_app/web/icons/Icon-maskable-512.png
+mobile	mobile/webview_app/web/index.html
+mobile	mobile/webview_app/web/manifest.json
+mobile	mobile/webview_app/web/splash/img/dark-1x.png
+mobile	mobile/webview_app/web/splash/img/dark-2x.png
+mobile	mobile/webview_app/web/splash/img/dark-3x.png
+mobile	mobile/webview_app/web/splash/img/dark-4x.png
+mobile	mobile/webview_app/web/splash/img/light-1x.png
+mobile	mobile/webview_app/web/splash/img/light-2x.png
+mobile	mobile/webview_app/web/splash/img/light-3x.png
+mobile	mobile/webview_app/web/splash/img/light-4x.png
+mobile	mobile/webview_app/windows/.gitignore
+mobile	mobile/webview_app/windows/CMakeLists.txt
+mobile	mobile/webview_app/windows/flutter/CMakeLists.txt
+mobile	mobile/webview_app/windows/flutter/generated_plugin_registrant.cc
+mobile	mobile/webview_app/windows/flutter/generated_plugin_registrant.h
+mobile	mobile/webview_app/windows/flutter/generated_plugins.cmake
+mobile	mobile/webview_app/windows/runner/CMakeLists.txt
+mobile	mobile/webview_app/windows/runner/Runner.rc
+mobile	mobile/webview_app/windows/runner/flutter_window.cpp
+mobile	mobile/webview_app/windows/runner/flutter_window.h
+mobile	mobile/webview_app/windows/runner/main.cpp
+mobile	mobile/webview_app/windows/runner/resource.h
+mobile	mobile/webview_app/windows/runner/resources/app_icon.ico
+mobile	mobile/webview_app/windows/runner/runner.exe.manifest
+mobile	mobile/webview_app/windows/runner/utils.cpp
+mobile	mobile/webview_app/windows/runner/utils.h
+mobile	mobile/webview_app/windows/runner/win32_window.cpp
+mobile	mobile/webview_app/windows/runner/win32_window.h
+root	package-lock.json
+root	package.json
+root	render.yaml
+root	replit.md
+scripts	scripts/test_provider_raw.js
+web	web/admin/.gitignore
+web	web/admin/ENV_SETUP.md
+web	web/admin/client/index.html
+web	web/admin/client/public/favicon.ico
+web	web/admin/client/public/favicon.jpg
+web	web/admin/client/public/logo.png
+web	web/admin/client/public/opengraph.jpg
+web	web/admin/client/src/App.tsx
+web	web/admin/client/src/components/TransactionReceiptModal.tsx
+web	web/admin/client/src/components/layout/DashboardLayout.tsx
+web	web/admin/client/src/components/layout/Sidebar.tsx
+web	web/admin/client/src/components/layout/Topbar.tsx
+web	web/admin/client/src/components/ui/accordion.tsx
+web	web/admin/client/src/components/ui/alert-dialog.tsx
+web	web/admin/client/src/components/ui/alert.tsx
+web	web/admin/client/src/components/ui/aspect-ratio.tsx
+web	web/admin/client/src/components/ui/avatar.tsx
+web	web/admin/client/src/components/ui/badge.tsx
+web	web/admin/client/src/components/ui/breadcrumb.tsx
+web	web/admin/client/src/components/ui/button-group.tsx
+web	web/admin/client/src/components/ui/button.tsx
+web	web/admin/client/src/components/ui/calendar.tsx
+web	web/admin/client/src/components/ui/card.tsx
+web	web/admin/client/src/components/ui/carousel.tsx
+web	web/admin/client/src/components/ui/chart.tsx
+web	web/admin/client/src/components/ui/checkbox.tsx
+web	web/admin/client/src/components/ui/collapsible.tsx
+web	web/admin/client/src/components/ui/command.tsx
+web	web/admin/client/src/components/ui/context-menu.tsx
+web	web/admin/client/src/components/ui/dialog.tsx
+web	web/admin/client/src/components/ui/drawer.tsx
+web	web/admin/client/src/components/ui/dropdown-menu.tsx
+web	web/admin/client/src/components/ui/empty.tsx
+web	web/admin/client/src/components/ui/field.tsx
+web	web/admin/client/src/components/ui/form.tsx
+web	web/admin/client/src/components/ui/hover-card.tsx
+web	web/admin/client/src/components/ui/input-group.tsx
+web	web/admin/client/src/components/ui/input-otp.tsx
+web	web/admin/client/src/components/ui/input.tsx
+web	web/admin/client/src/components/ui/item.tsx
+web	web/admin/client/src/components/ui/kbd.tsx
+web	web/admin/client/src/components/ui/label.tsx
+web	web/admin/client/src/components/ui/menubar.tsx
+web	web/admin/client/src/components/ui/navigation-menu.tsx
+web	web/admin/client/src/components/ui/pagination.tsx
+web	web/admin/client/src/components/ui/popover.tsx
+web	web/admin/client/src/components/ui/progress.tsx
+web	web/admin/client/src/components/ui/radio-group.tsx
+web	web/admin/client/src/components/ui/resizable.tsx
+web	web/admin/client/src/components/ui/scroll-area.tsx
+web	web/admin/client/src/components/ui/select.tsx
+web	web/admin/client/src/components/ui/separator.tsx
+web	web/admin/client/src/components/ui/sheet.tsx
+web	web/admin/client/src/components/ui/sidebar.tsx
+web	web/admin/client/src/components/ui/skeleton.tsx
+web	web/admin/client/src/components/ui/slider.tsx
+web	web/admin/client/src/components/ui/sonner.tsx
+web	web/admin/client/src/components/ui/spinner.tsx
+web	web/admin/client/src/components/ui/switch.tsx
+web	web/admin/client/src/components/ui/table.tsx
+web	web/admin/client/src/components/ui/tabs.tsx
+web	web/admin/client/src/components/ui/textarea.tsx
+web	web/admin/client/src/components/ui/toast.tsx
+web	web/admin/client/src/components/ui/toaster.tsx
+web	web/admin/client/src/components/ui/toggle-group.tsx
+web	web/admin/client/src/components/ui/toggle.tsx
+web	web/admin/client/src/components/ui/tooltip.tsx
+web	web/admin/client/src/hooks/use-mobile.tsx
+web	web/admin/client/src/hooks/use-toast.ts
+web	web/admin/client/src/index.css
+web	web/admin/client/src/lib/auth.ts
+web	web/admin/client/src/lib/backend.ts
+web	web/admin/client/src/lib/queryClient.ts
+web	web/admin/client/src/lib/utils.ts
+web	web/admin/client/src/main.tsx
+web	web/admin/client/src/pages/Dashboard.tsx
+web	web/admin/client/src/pages/Finance.tsx
+web	web/admin/client/src/pages/Login.tsx
+web	web/admin/client/src/pages/Logs.tsx
+web	web/admin/client/src/pages/Profile.tsx
+web	web/admin/client/src/pages/Services.tsx
+web	web/admin/client/src/pages/Settings.tsx
+web	web/admin/client/src/pages/Support.tsx
+web	web/admin/client/src/pages/TransactionDetails.tsx
+web	web/admin/client/src/pages/Transactions.tsx
+web	web/admin/client/src/pages/UserProfile.tsx
+web	web/admin/client/src/pages/Users.tsx
+web	web/admin/client/src/pages/Wallet.tsx
+web	web/admin/client/src/pages/not-found.tsx
+web	web/admin/components.json
+web	web/admin/package-lock.json
+web	web/admin/package.json
+web	web/admin/postcss.config.js
+web	web/admin/script/build.ts
+web	web/admin/server/index.js
+web	web/admin/server/routes.js
+web	web/admin/server/static.cjs
+web	web/admin/server/vite.js
+web	web/admin/tsconfig.json
+web	web/admin/vite-plugin-meta-images.ts
+web	web/admin/vite.config.ts
+web	web/frontend/.gitignore
+web	web/frontend/next-env.d.ts
+web	web/frontend/next.config.js
+web	web/frontend/package-lock.json
+web	web/frontend/package.json
+web	web/frontend/postcss.config.js
+web	web/frontend/public/assets/images/hero-placeholder.png
+web	web/frontend/public/favicon.ico
+web	web/frontend/public/google022119806abb2e96.html
+web	web/frontend/public/logo.png
+web	web/frontend/src/app/api/payments/initiate/route.ts
+web	web/frontend/src/app/api/payments/verify/route.ts
+web	web/frontend/src/app/api/transactions/purchase/route.ts
+web	web/frontend/src/app/api/wallet/history/route.ts
+web	web/frontend/src/app/api/wallet/route.ts
+web	web/frontend/src/app/api/wallet/transfer/route.ts
+web	web/frontend/src/app/dashboard/layout.tsx
+web	web/frontend/src/app/dashboard/page.tsx
+web	web/frontend/src/app/dashboard/profile/page.tsx
+web	web/frontend/src/app/dashboard/security/page.tsx
+web	web/frontend/src/app/dashboard/services/airtime/page.tsx
+web	web/frontend/src/app/dashboard/services/cable/page.tsx
+web	web/frontend/src/app/dashboard/services/data/page.tsx
+web	web/frontend/src/app/dashboard/services/electricity/page.tsx
+web	web/frontend/src/app/dashboard/services/exam-pins/page.tsx
+web	web/frontend/src/app/dashboard/services/tv/page.tsx
+web	web/frontend/src/app/dashboard/settings/page.tsx
+web	web/frontend/src/app/dashboard/support/page.tsx
+web	web/frontend/src/app/dashboard/transactions/[id]/page.tsx
+web	web/frontend/src/app/dashboard/transactions/page.tsx
+web	web/frontend/src/app/dashboard/wallet/page.tsx
+web	web/frontend/src/app/forgot-password/page.tsx
+web	web/frontend/src/app/globals.css
+web	web/frontend/src/app/layout.tsx
+web	web/frontend/src/app/login/page.tsx
+web	web/frontend/src/app/page.tsx
+web	web/frontend/src/app/payment-complete/page.tsx
+web	web/frontend/src/app/payment-complete/payment-complete/page.tsx
+web	web/frontend/src/app/register/page.tsx
+web	web/frontend/src/app/reset-password/[token]/page.tsx
+web	web/frontend/src/app/signup/page.tsx
+web	web/frontend/src/app/verify-email-sent/page.tsx
+web	web/frontend/src/app/verify-email/page.tsx
+web	web/frontend/src/components/ErrorBoundary.tsx
+web	web/frontend/src/components/Footer.tsx
+web	web/frontend/src/components/Navbar.tsx
+web	web/frontend/src/components/Notification.tsx
+web	web/frontend/src/components/ServiceSlider.tsx
+web	web/frontend/src/components/auth/AuthLayout.tsx
+web	web/frontend/src/components/auth/ProtectedRoute.tsx
+web	web/frontend/src/components/dashboard/DashboardGuard.tsx
+web	web/frontend/src/components/dashboard/DashboardLayout.tsx
+web	web/frontend/src/components/dashboard/TransactionPinModal.tsx
+web	web/frontend/src/components/dashboard/TransactionReceiptModal.tsx
+web	web/frontend/src/components/dashboard/TransactionResultModal.tsx
+web	web/frontend/src/components/forms/SignInForm.tsx
+web	web/frontend/src/components/forms/SignUpForm.tsx
+web	web/frontend/src/components/layout/Footer.tsx
+web	web/frontend/src/components/layout/Navbar.tsx
+web	web/frontend/src/components/ui/badge.tsx
+web	web/frontend/src/components/ui/button.tsx
+web	web/frontend/src/components/ui/card.tsx
+web	web/frontend/src/components/ui/checkbox.tsx
+web	web/frontend/src/components/ui/input.tsx
+web	web/frontend/src/components/ui/label.tsx
+web	web/frontend/src/components/ui/toast.tsx
+web	web/frontend/src/contexts/AuthContext.tsx
+web	web/frontend/src/contexts/NotificationContext.tsx
+web	web/frontend/src/hooks/useAuthForm.ts
+web	web/frontend/src/hooks/useServices.ts
+web	web/frontend/src/hooks/useWalletListener.ts
+web	web/frontend/src/lib/auth.ts
+web	web/frontend/src/lib/crypto.ts
+web	web/frontend/src/lib/errorHandler.ts
+web	web/frontend/src/lib/logger.ts
+web	web/frontend/src/lib/services.ts
+web	web/frontend/src/lib/utils.ts
+web	web/frontend/src/types/auth.ts
+web	web/frontend/src/types/index.ts
+web	web/frontend/tailwind.config.ts
+web	web/frontend/tsconfig.json
+web	web/frontend/tsconfig.tsbuildinfo
+
+--- File counts by extension ---
+127 tsx
+76 png
+38 js
+27 ts
+16 json
+9 xml
+9 gitignore
+8 xcconfig
+8 h
+7 plist
+7 md
+6 txt
+6 swift
+4 cpp
+4 cc
+3 yaml
+3 xcworkspacedata
+3 kts
+3 ico
+3 html
+3 entitlements
+2 xcsettings
+2 xcscheme
+2 storyboard
+2 sh
+2 properties
+2 pbxproj
+2 jpg
+2 dart
+2 css
+2 cmake
+1 xib
+1 tsbuildinfo
+1 sql
+1 rc
+1 metadata
+1 manifest
+1 lock
+1 kt
+1 example
+1 cjs
+1 bat
+
+--- Largest tracked files ---
+956769	web/admin/client/public/favicon.jpg
+266071	web/admin/package-lock.json
+252868	mobile/webview_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png
+163077	mobile/webview_app/web/splash/img/light-4x.png
+163077	mobile/webview_app/web/splash/img/dark-4x.png
+163077	mobile/webview_app/android/app/src/main/res/drawable-xxxhdpi/splash.png
+163077	mobile/webview_app/android/app/src/main/res/drawable-xxxhdpi/android12splash.png
+163077	mobile/webview_app/android/app/src/main/res/drawable-night-xxxhdpi/android12splash.png
+157935	web/frontend/public/assets/images/hero-placeholder.png
+138043	web/frontend/package-lock.json
+122434	web/frontend/tsconfig.tsbuildinfo
+106796	mobile/webview_app/web/splash/img/light-3x.png
+106796	mobile/webview_app/web/splash/img/dark-3x.png
+106796	mobile/webview_app/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png
+106796	mobile/webview_app/android/app/src/main/res/drawable-xxhdpi/splash.png
+106796	mobile/webview_app/android/app/src/main/res/drawable-xxhdpi/android12splash.png
+106796	mobile/webview_app/android/app/src/main/res/drawable-night-xxhdpi/android12splash.png
+102994	mobile/webview_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png
+90608	backend/package-lock.json
+79388	web/frontend/public/logo.png
+79388	web/frontend/public/favicon.ico
+79388	web/admin/client/public/logo.png
+79388	web/admin/client/public/favicon.ico
+79388	mobile/webview_app/assets/logo.png
+61169	mobile/webview_app/web/splash/img/light-2x.png
+61169	mobile/webview_app/web/splash/img/dark-2x.png
+61169	mobile/webview_app/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@2x.png
+61169	mobile/webview_app/android/app/src/main/res/drawable-xhdpi/splash.png
+61169	mobile/webview_app/android/app/src/main/res/drawable-xhdpi/android12splash.png
+61169	mobile/webview_app/android/app/src/main/res/drawable-night-xhdpi/android12splash.png
+39421	mobile/webview_app/android/app/src/main/res/drawable-night-hdpi/android12splash.png
+39421	mobile/webview_app/android/app/src/main/res/drawable-hdpi/splash.png
+39421	mobile/webview_app/android/app/src/main/res/drawable-hdpi/android12splash.png
+36406	mobile/webview_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png
+36402	web/admin/client/src/pages/Services.tsx
+33772	mobile/webview_app/windows/runner/resources/app_icon.ico
+27822	backend/src/controllers/adminController.js
+26894	web/admin/client/public/opengraph.jpg
+26401	mobile/webview_app/macos/Runner.xcodeproj/project.pbxproj
+23857	mobile/webview_app/ios/Runner.xcodeproj/project.pbxproj

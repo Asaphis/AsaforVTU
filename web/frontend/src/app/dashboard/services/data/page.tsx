@@ -105,7 +105,7 @@ export default function DataPage() {
     setShowPinModal(true);
   };
 
-  const onPinSuccess = async () => {
+  const onPinSuccess = async (transactionPin: string) => {
     if (!user || !service || !selectedPlan) return;
     
     setProcessing(true);
@@ -115,10 +115,13 @@ export default function DataPage() {
       const result = await purchaseData(
         user.uid,
         selectedPlan.price,
-        {
+          {
           planId,
+          providerPlanId: selectedPlan.variation_id,
           phone,
-          networkId: network.id
+          network: network.value,
+          networkId: network.id,
+          transactionPin
         }
       );
       if (result.success) {

@@ -21,11 +21,13 @@ export function useWalletListener(enabled = true) {
       const data = await getWalletBalance();
       if (data) {
         setBalance({
-          mainBalance: data.mainBalance ?? 0,
-          cashbackBalance: data.cashbackBalance ?? 0,
-          referralBalance: data.referralBalance ?? 0,
+          mainBalance: Number(data.main_balance ?? 0),
+          cashbackBalance: Number(data.cashback_balance ?? 0),
+          referralBalance: Number(data.referral_balance ?? 0),
         });
         setError(null);
+      } else {
+        setBalance(null);
       }
     } catch (err: any) {
       console.error('Failed to fetch wallet balance:', err);

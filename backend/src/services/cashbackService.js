@@ -26,14 +26,18 @@ class CashbackService {
         await walletService.creditWallet(
           userId, 
           cashbackAmount, 
-          'cashback', 
-          `Cashback for transaction ${transactionId}`
+          'cashback',
+          `Cashback for transaction ${transactionId}`,
+          `CASHBACK_${transactionId}`,
+          { transactionId }
         );
-        
+
         await notificationService.sendNotification(
           userId,
           'Cashback Received',
-          `You received ₦${cashbackAmount.toFixed(2)} cashback!`
+          `You received ₦${cashbackAmount.toFixed(2)} cashback!`,
+          'wallet',
+          { transactionId }
         );
       }
     } catch (error) {

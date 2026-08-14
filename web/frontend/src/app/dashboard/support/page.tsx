@@ -50,18 +50,18 @@ export default function SupportPage() {
 
   const handleCreateTicket = async () => {
     if (!subject || !message) {
-      toast({ title: 'Error', description: 'Subject and message are required', variant: 'destructive' });
+      toast({ type: 'destructive', title: 'Error', description: 'Subject and message are required' });
       return;
     }
     setSubmitting(true);
     try {
       await createTicket(subject, message);
-      toast({ title: 'Success', description: 'Ticket created successfully' });
+      toast({ type: 'default', title: 'Success', description: 'Ticket created successfully' });
       setSubject('');
       setMessage('');
       loadTickets();
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      toast({ type: 'destructive', title: 'Error', description: e.message });
     } finally {
       setSubmitting(false);
     }
@@ -72,11 +72,11 @@ export default function SupportPage() {
     setSendingReply(true);
     try {
       await replyToTicket(selectedTicket.id, replyMessage);
-      toast({ title: 'Success', description: 'Reply sent successfully' });
+      toast({ type: 'default', title: 'Success', description: 'Reply sent successfully' });
       setReplyMessage('');
       loadTicketMessages(selectedTicket.id);
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      toast({ type: 'destructive', title: 'Error', description: e.message });
     } finally {
       setSendingReply(false);
     }

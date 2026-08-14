@@ -1,0 +1,103 @@
+--- admin client endpoint references ---
+"/api/admin/admins
+"/api/admin/announcements
+"/api/admin/finance/system
+"/api/admin/payments/reconcile
+"/api/admin/plans
+"/api/admin/plans/sync
+"/api/admin/profile
+"/api/admin/profile/password
+"/api/admin/profile/update
+"/api/admin/providers
+"/api/admin/services
+"/api/admin/settings
+"/api/admin/stats
+"/api/admin/support/tickets
+"/api/admin/transactions
+"/api/admin/users/create
+"/api/admin/users/delete
+"/api/admin/users/password
+"/api/admin/users/promote
+"/api/admin/users/suspend
+"/api/admin/users/verification-link
+"/api/admin/wallet/credit
+"/api/admin/wallet/debit
+"/api/admin/wallet/deposits
+"/api/admin/wallet/fix-ghosts
+"/api/admin/wallet/logs
+"/api/admin/wallet/requests
+--- admin proxy route literals ---
+delete "/api/admin/users/:id"
+get "/api/admin/settings"
+get "/api/admin/stats"
+get "/api/admin/transactions"
+get "/api/admin/users"
+get "/api/admin/users/:id"
+get "/api/admin/wallet/deposits"
+get "/api/admin/wallet/logs"
+get "/api/admin/wallets"
+get "/api/announcements"
+get "/api/announcements/:id"
+get "/api/auth/me"
+get "/api/health"
+get "/api/plans"
+get "/api/plans/:id"
+get "/api/services"
+get "/api/services/:slug"
+get "/api/vtu/cable/plans"
+get "/api/vtu/data/plans"
+get "/api/vtu/electricity/plans"
+get "/api/vtu/providers"
+post "/api/auth/change-password"
+post "/api/auth/forgot-password"
+post "/api/auth/login"
+post "/api/auth/logout"
+post "/api/auth/refresh"
+post "/api/auth/register"
+post "/api/auth/reset-password"
+post "/api/auth/verify-email"
+post "/api/vtu/purchase"
+post "/api/vtu/verify"
+put "/api/admin/settings"
+put "/api/admin/users/:id"
+put "/api/auth/profile"
+use "/api/admin"
+--- backend admin route literals ---
+delete '/announcements/:id'
+delete '/plans/:id'
+delete '/services/:id'
+get '/admins'
+get '/announcements'
+get '/plans'
+get '/profile'
+get '/services'
+get '/settings'
+get '/stats'
+get '/support/tickets'
+get '/support/tickets/:id/messages'
+get '/transactions'
+get '/users'
+get '/wallet/deposits'
+get '/wallet/logs'
+post '/admins'
+post '/announcements'
+post '/payments/reconcile'
+post '/plans'
+post '/profile/password'
+post '/profile/update'
+post '/services'
+post '/settings'
+post '/support/tickets/:id/delete'
+post '/support/tickets/:id/reply'
+post '/support/tickets/:id/status'
+post '/support/tickets/create'
+post '/users/create'
+post '/users/promote'
+post '/users/suspend'
+post '/users/verification-link'
+post '/wallet/credit'
+post '/wallet/debit'
+post '/wallet/fix-ghosts'
+post '/wallet/reverify'
+put '/plans/:id'
+put '/services/:id'

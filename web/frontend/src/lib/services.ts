@@ -1,418 +1,84 @@
-const resolveBackendUrl = (): string => {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname.toLowerCase();
-    console.log('[Backend Resolve] Current Host:', host);
-    
-    if (host.includes('localhost') || host.includes('127.0.0.1')) {
-      const url = envUrl || 'http://localhost:5000';
-      console.log('[Backend Resolve] Using Local URL:', url);
-      return url;
-    }
-  }
-  
-  const url = envUrl || 'https://vtuapi.ferixas.com';
-  console.log('[Backend Resolve] Using Production URL:', url);
-  return url;
+import { apiRequest } from '@/lib/auth';
+
+export interface Announcement { id: string; title: string; content: string; priority?: string; target_audience?: string; created_at: string; }
+export interface ServiceDoc { id: string; name: string; slug: string; category: string; description?: string; icon?: string; enabled?: boolean; is_active?: boolean; created_at?: string; updated_at?: string; }
+export interface ServicePlan { id: string; service_id?: string; network: string; network_key?: string; networkKey?: string; name: string; type?: string; sub_type?: string; price_user: number; price_api?: number; priceUser?: number; priceApi?: number; is_active?: boolean; active?: boolean; metadata?: { variation_id?: string; networkId?: number; [key: string]: any }; }
+export interface TransactionResult { success: boolean; status?: string; message: string; transactionId?: string; data?: any; }
+
+const parse = async (response: Response) => {
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error || data?.message || 'Request failed');
+  return data;
 };
 
-// Announcement interface
-export interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  type: 'info' | 'warning' | 'success' | 'error';
-  active: boolean;
-  created_at: string;
-}
-
 export const getAnnouncements = async (): Promise<Announcement[]> => {
-  const backendUrl = resolveBackendUrl();
-  try {
-    const res = await fetch(`${backendUrl}/api/announcements`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    const data = await res.json();
-    if (Array.isArray(data)) return data as Announcement[];
-    throw new Error('Invalid response');
-  } catch (e) {
-    console.error('Error fetching announcements:', e);
-    return [];
-  }
+  try { const data = await parse(await apiRequest('/api/announcements')); return Array.isArray(data) ? data : []; }
+  catch (_) { return []; }
 };
 
 export const createTicket = async (subject: string, message: string): Promise<{ success: boolean; message: string; ticketId?: string }> => {
-  const backendUrl = resolveBackendUrl();
-  const token = localStorage.getItem('access_token');
   try {
-    const res = await fetch(`${backendUrl}/api/support/tickets`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ subject, category: 'general' }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to create ticket');
+    const data = await parse(await apiRequest('/api/support/tickets', { method: 'POST', body: JSON.stringify({ subject, message, category: 'general' }) }));
     return { success: true, message: 'Ticket created successfully', ticketId: data.id };
-  } catch (error: any) {
-    console.error('Error creating ticket:', error);
-    return { success: false, message: error?.message || 'Failed to create ticket' };
-  }
+  } catch (error: any) { return { success: false, message: error.message || 'Failed to create ticket' }; }
 };
 
-export const replyToTicket = async (ticketId: string, message: string): Promise<{ success: boolean; message: string }> => {
-  const backendUrl = resolveBackendUrl();
-  const token = localStorage.getItem('access_token');
+export const replyToTicket = async (ticketId: string, message: string) => {
+  try { await parse(await apiRequest(`/api/support/tickets/${ticketId}/reply`, { method: 'POST', body: JSON.stringify({ message }) })); return { success: true, message: 'Reply sent successfully' }; }
+  catch (error: any) { return { success: false, message: error.message || 'Failed to send reply' }; }
+};
+export const getTickets = async (): Promise<any[]> => { try { const data = await parse(await apiRequest('/api/support/tickets')); return Array.isArray(data) ? data : []; } catch (_) { return []; } };
+export const getTicketMessages = async (ticketId: string): Promise<any[]> => { try { const data = await parse(await apiRequest(`/api/support/tickets/${ticketId}/messages`)); return Array.isArray(data) ? data : []; } catch (_) { return []; } };
+
+export const getWalletBalance = async (): Promise<{ main_balance: number; cashback_balance: number; referral_balance: number } | null> => {
   try {
-    const res = await fetch(`${backendUrl}/api/support/tickets/${ticketId}/reply`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ message }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to send reply');
-    return { success: true, message: 'Reply sent successfully' };
-  } catch (error: any) {
-    console.error('Error replying to ticket:', error);
-    return { success: false, message: error?.message || 'Failed to send reply' };
-  }
+    const data = await parse(await apiRequest('/api/wallet'));
+    return { main_balance: Number(data.main_balance || 0), cashback_balance: Number(data.cashback_balance || 0), referral_balance: Number(data.referral_balance || 0) };
+  } catch (_) { return null; }
 };
-
-export const getTickets = async (): Promise<any[]> => {
-  const backendUrl = resolveBackendUrl();
-  const token = localStorage.getItem('access_token');
-  try {
-    const res = await fetch(`${backendUrl}/api/support/tickets`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-    if (!res.ok) throw new Error('Failed to fetch tickets');
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Error fetching tickets:', error);
-    return [];
-  }
-};
-
-export const getTicketMessages = async (ticketId: string): Promise<any[]> => {
-  const backendUrl = resolveBackendUrl();
-  const token = localStorage.getItem('access_token');
-  try {
-    const res = await fetch(`${backendUrl}/api/support/tickets/${ticketId}/messages`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-    if (!res.ok) throw new Error('Failed to fetch messages');
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Error fetching ticket messages:', error);
-    return [];
-  }
-};
-
-export interface ServiceDoc {
-  id: string;
-  name: string;
-  slug: string;
-  category: string;
-  description?: string;
-  icon?: string;
-  enabled?: boolean;
-  config?: Record<string, any>;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface TransactionResult {
-  success: boolean;
-  message: string;
-  transactionId?: string;
-}
-
-export const getWalletBalance = async (token?: string): Promise<{ main_balance: number; cashback_balance: number; referral_balance: number } | null> => {
-  const backendUrl = resolveBackendUrl();
-  console.log('[API Request] Fetching wallet balance from:', `${backendUrl}/api/wallet`);
-  
-  try {
-    const idToken = token || localStorage.getItem('access_token');
-    const res = await fetch(`${backendUrl}/api/wallet`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
-      },
-    });
-
-    if (!res.ok) {
-      console.error('[API Error] Wallet balance fetch failed with status:', res.status);
-      throw new Error(`Failed to fetch balance: ${res.status}`);
-    }
-    const data = await res.json();
-    console.log('[API Success] Wallet balance received:', data);
-    return data;
-  } catch (error) {
-    console.error('[API Network Error] getWalletBalance failed:', error);
-    return null;
-  }
-};
-
-export const getWalletHistory = async (): Promise<any[]> => {
-  const backendUrl = resolveBackendUrl();
-  try {
-    const token = localStorage.getItem('access_token');
-    const res = await fetch(`${backendUrl}/api/wallet/history`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-    if (!res.ok) throw new Error('Failed to fetch wallet history');
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Get Wallet History Error:', error);
-    return [];
-  }
-};
-
-export interface ServicePlan {
-  id: string;
-  network: string;
-  name: string;
-  price_user: number;
-  price_api?: number;
-  metadata?: { variation_id?: string; networkId?: number };
-}
+export const getWalletHistory = async (): Promise<any[]> => { try { const data = await parse(await apiRequest('/api/wallet/history')); return Array.isArray(data) ? data : []; } catch (_) { return []; } };
 
 export const getServicePlans = async (): Promise<ServicePlan[]> => {
-  const backendUrl = resolveBackendUrl();
   try {
-    const res = await fetch(`${backendUrl}/api/plans`, { method: 'GET' });
-    if (!res.ok) throw new Error('Failed to fetch service plans');
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Get Service Plans Error:', error);
-    return [];
-  }
+    const data = await parse(await apiRequest('/api/plans'));
+    return (Array.isArray(data) ? data : []).map((plan: any) => ({ ...plan, price_user: Number(plan.price_user ?? plan.priceUser ?? 0), price_api: Number(plan.price_api ?? plan.priceApi ?? 0), priceUser: Number(plan.price_user ?? plan.priceUser ?? 0), priceApi: Number(plan.price_api ?? plan.priceApi ?? 0), active: Boolean(plan.is_active ?? plan.active) }));
+  } catch (_) { return []; }
 };
 
-export const initiatePayment = async (amount: number): Promise<{ tx_ref: string; link: string }> => {
-  const backendUrl = resolveBackendUrl();
-  const token = localStorage.getItem('access_token');
-  
-  try {
-    const res = await fetch(`${backendUrl}/api/payments/initiate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ amount }),
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Failed to initiate payment');
-    }
-    
-    return await res.json();
-  } catch (error: any) {
-    console.error('Initiate Payment Error:', error);
-    throw error;
-  }
-};
+export const initiatePayment = async (amount: number): Promise<{ tx_ref: string; link: string; payment_id?: string }> => parse(await apiRequest('/api/payments/initiate', { method: 'POST', body: JSON.stringify({ amount }) }));
+export const verifyPayment = async (tx_ref: string): Promise<{ success: boolean; message: string }> => parse(await apiRequest('/api/payments/verify', { method: 'POST', body: JSON.stringify({ tx_ref }) }));
 
-export const verifyPayment = async (tx_ref: string): Promise<{ success: boolean; message: string }> => {
-  const backendUrl = resolveBackendUrl();
-  const token = localStorage.getItem('access_token');
-  
-  try {
-    const res = await fetch(`${backendUrl}/api/payments/verify`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ tx_ref }),
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Failed to verify payment');
-    }
-    
-    return await res.json();
-  } catch (error: any) {
-    console.error('Verify Payment Error:', error);
-    throw error;
-  }
-};
-
-export const processTransaction = async (
-  userId: string,
-  amount: number,
-  type: string,
-  details: any
-): Promise<TransactionResult> => {
-  const backendUrl = resolveBackendUrl();
-  const token = localStorage.getItem('access_token');
-  
-  try {
-    const res = await fetch(`${backendUrl}/api/vtu/purchase`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ type, amount, details }),
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Transaction failed');
-    }
-    
-    return await res.json();
-  } catch (error: any) {
-    console.error('Process Transaction Error:', error);
-    throw error;
-  }
+export const processTransaction = async (_userId: string, amount: number, type: string, details: any): Promise<TransactionResult> => {
+  return parse(await apiRequest('/api/vtu/purchase', { method: 'POST', body: JSON.stringify({ type, amount, details }) }));
 };
 
 export const getServices = async (): Promise<ServiceDoc[]> => {
-  const backendUrl = resolveBackendUrl();
   try {
-    const res = await fetch(`${backendUrl}/api/services`, { method: 'GET' });
-    if (!res.ok) throw new Error('Failed to fetch services');
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Get Services Error:', error);
-    return [];
-  }
+    const data = await parse(await apiRequest('/api/services'));
+    return (Array.isArray(data) ? data : []).map((service: any) => ({ ...service, enabled: Boolean(service.enabled ?? service.is_active), is_active: Boolean(service.is_active ?? service.enabled) }));
+  } catch (_) { return []; }
 };
+export const transferToMain = async (amount: number, fromWalletType: 'cashback' | 'referral') => parse(await apiRequest('/api/wallet/transfer', { method: 'POST', body: JSON.stringify({ amount, fromWalletType }) }));
+export const getAdminSettings = async (): Promise<any> => { try { return await parse(await apiRequest('/api/settings')); } catch (_) { return {}; } };
 
-export const transferToMain = async (amount: number, fromWalletType: 'cashback' | 'referral'): Promise<{ success: boolean; message: string }> => {
-  const backendUrl = resolveBackendUrl();
-  const token = localStorage.getItem('access_token');
-  
-  try {
-    const res = await fetch(`${backendUrl}/api/wallet/transfer`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ amount, fromWalletType }),
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Transfer failed');
-    }
-    
-    return await res.json();
-  } catch (error: any) {
-    console.error('Transfer to Main Error:', error);
-    throw error;
-  }
+export const purchaseAirtime = async (userIdOrData: any, amount?: number, details?: any): Promise<TransactionResult> => {
+  const payload = typeof userIdOrData === 'string' ? { userId: userIdOrData, amount: Number(amount), details: details || {} } : userIdOrData;
+  return processTransaction(payload.userId || '', Number(payload.amount), 'airtime', payload.details || payload);
 };
-
-// Additional exports for compatibility
-export const getAdminSettings = async (): Promise<any> => {
-  const backendUrl = resolveBackendUrl();
-  try {
-    const res = await fetch(`${backendUrl}/api/admin/settings`, { method: 'GET' });
-    if (!res.ok) throw new Error('Failed to fetch admin settings');
-    return await res.json();
-  } catch (error) {
-    console.error('Get Admin Settings Error:', error);
-    return {};
-  }
+export const purchaseData = async (userIdOrData: any, amount?: number, details?: any): Promise<TransactionResult> => {
+  const payload = typeof userIdOrData === 'string' ? { userId: userIdOrData, amount: Number(amount), details: details || {} } : userIdOrData;
+  return processTransaction(payload.userId || '', Number(payload.amount), 'data', payload.details || payload);
 };
-
-export const purchaseAirtime = async (data: any): Promise<TransactionResult> => {
-  const backendUrl = resolveBackendUrl();
-  const token = localStorage.getItem('access_token');
-  
-  try {
-    const res = await fetch(`${backendUrl}/api/vtu/airtime`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(data),
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Airtime purchase failed');
-    }
-    
-    return await res.json();
-  } catch (error: any) {
-    console.error('Purchase Airtime Error:', error);
-    throw error;
-  }
+export const purchaseCable = async (userIdOrData: any, amount?: number, details?: any): Promise<TransactionResult> => {
+  const payload = typeof userIdOrData === 'string' ? { userId: userIdOrData, amount: Number(amount), details: details || {} } : userIdOrData;
+  return processTransaction(payload.userId || '', Number(payload.amount), 'cable', payload.details || payload);
 };
-
-export const purchaseData = async (data: any): Promise<TransactionResult> => {
-  const backendUrl = resolveBackendUrl();
-  const token = localStorage.getItem('access_token');
-  
-  try {
-    const res = await fetch(`${backendUrl}/api/vtu/data`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(data),
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Data purchase failed');
-    }
-    
-    return await res.json();
-  } catch (error: any) {
-    console.error('Purchase Data Error:', error);
-    throw error;
-  }
+export const purchaseElectricity = async (userIdOrData: any, amount?: number, details?: any): Promise<TransactionResult> => {
+  const payload = typeof userIdOrData === 'string' ? { userId: userIdOrData, amount: Number(amount), details: details || {} } : userIdOrData;
+  return processTransaction(payload.userId || '', Number(payload.amount), 'electricity', payload.details || payload);
 };
 
 export const initiateFunding = initiatePayment;
 export const transferWallet = transferToMain;
 export const verifyFunding = verifyPayment;
-
-export const getServiceBySlug = async (slug: string): Promise<ServiceDoc | null> => {
-  const backendUrl = resolveBackendUrl();
-  try {
-    const res = await fetch(`${backendUrl}/api/services/${slug}`, { method: 'GET' });
-    if (!res.ok) throw new Error('Failed to fetch service');
-    const data = await res.json();
-    return data || null;
-  } catch (error) {
-    console.error('Get Service By Slug Error:', error);
-    return null;
-  }
-};
+export const getServiceBySlug = async (slug: string): Promise<ServiceDoc | null> => { try { return await parse(await apiRequest(`/api/services/${encodeURIComponent(slug)}`)); } catch (_) { return null; } };

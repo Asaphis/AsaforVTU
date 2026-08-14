@@ -1,0 +1,131 @@
+--- TODO/placeholder markers ---
+web/frontend/src/app/dashboard/services/airtime/page.tsx:193:                        placeholder="080 0000 0000" 
+web/frontend/src/app/dashboard/services/airtime/page.tsx:194:                        className="w-full pl-16 pr-6 py-5 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0B4F6C]/20 focus:bg-white focus:outline-none transition-all font-black text-[#0B4F6C] text-xl tracking-[0.2em] placeholder:text-gray-200 shadow-inner"
+web/frontend/src/app/dashboard/services/cable/page.tsx:113:                      placeholder="Enter number" 
+web/frontend/src/app/dashboard/services/cable/page.tsx:131:                      placeholder="e.g. 3500"
+web/frontend/src/app/dashboard/services/data/page.tsx:232:                         placeholder="080 0000 0000" 
+web/frontend/src/app/dashboard/services/data/page.tsx:233:                         className="w-full pl-16 pr-6 py-5 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0B4F6C]/20 focus:bg-white focus:outline-none transition-all font-black text-[#0B4F6C] text-xl tracking-[0.2em] placeholder:text-gray-200 shadow-inner"
+web/frontend/src/app/dashboard/services/electricity/page.tsx:59:          variationId: 'electricity', // This would come from API
+web/frontend/src/app/dashboard/services/electricity/page.tsx:126:              placeholder="Enter meter number"
+web/frontend/src/app/dashboard/services/electricity/page.tsx:138:              placeholder="Enter amount"
+web/frontend/src/app/dashboard/services/tv/page.tsx:37:              <input type="text" placeholder="Enter smart card number" className="input-field" />
+web/frontend/src/app/dashboard/services/tv/page.tsx:50:              {service.enabled ? 'Subscribe' : 'Coming soon'}
+web/frontend/src/app/dashboard/settings/page.tsx:52:                  placeholder="080..." 
+web/frontend/src/app/dashboard/support/page.tsx:101:                <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Enter subject" />
+web/frontend/src/app/dashboard/support/page.tsx:110:                  placeholder="Describe your issue"
+web/frontend/src/app/dashboard/support/page.tsx:154:                  placeholder="Type your reply..."
+web/frontend/src/app/dashboard/wallet/page.tsx:8:import { useToast } from '@/components/ui/toast'; // Assuming we have toast, otherwise use alert
+web/frontend/src/app/dashboard/wallet/page.tsx:134:                  placeholder="0.00"
+web/frontend/src/app/forgot-password/page.tsx:82:                  placeholder="name@example.com"
+web/frontend/src/app/login/page.tsx:80:                  placeholder="name@company.com"
+web/frontend/src/app/login/page.tsx:108:                  placeholder="••••••••"
+web/frontend/src/app/page.tsx:11:// Using a placeholder image from the public directory
+web/frontend/src/app/page.tsx:12:const heroImage = "/assets/images/hero-placeholder.png";
+web/frontend/src/app/register/page.tsx:143:                placeholder="John Doe"
+web/frontend/src/app/register/page.tsx:154:                placeholder="johndoe"
+web/frontend/src/app/register/page.tsx:168:                placeholder="Username"
+web/frontend/src/app/register/page.tsx:178:                placeholder="08012345678"
+web/frontend/src/app/register/page.tsx:191:                  placeholder="4-6 digits"
+web/frontend/src/app/register/page.tsx:209:              placeholder="name@company.com"
+web/frontend/src/app/register/page.tsx:224:                  placeholder="••••••••"
+web/frontend/src/app/register/page.tsx:241:                  placeholder="••••••••"
+web/frontend/src/app/reset-password/[token]/page.tsx:153:                  placeholder="••••••••"
+web/frontend/src/app/reset-password/[token]/page.tsx:183:                  placeholder="••••••••"
+web/frontend/src/components/ServiceSlider.tsx:20:const placeholder = '/assets/images/hero-placeholder.png';
+web/frontend/src/components/ServiceSlider.tsx:32:        icon: d.icon || placeholder,
+web/frontend/src/components/ServiceSlider.tsx:100:                  console.log(`Selected service: ${service.name}`);
+web/frontend/src/components/ServiceSlider.tsx:114:                      target.src = placeholder;
+web/frontend/src/components/auth/ProtectedRoute.tsx:27:    return null; // or a loading spinner
+web/frontend/src/components/dashboard/TransactionPinModal.tsx:82:                placeholder="••••"
+web/frontend/src/components/forms/SignInForm.tsx:61:              className="appearance-none block w-full h-14 px-5 border-2 border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 font-medium"
+web/frontend/src/components/forms/SignInForm.tsx:62:              placeholder="name@company.com"
+web/frontend/src/components/forms/SignInForm.tsx:77:              className="appearance-none block w-full h-14 px-5 border-2 border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 font-medium"
+web/frontend/src/components/forms/SignInForm.tsx:78:              placeholder="••••••••"
+web/frontend/src/components/forms/SignUpForm.tsx:45:              className="appearance-none block w-full h-14 px-5 border-2 border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 font-medium"
+web/frontend/src/components/forms/SignUpForm.tsx:46:              placeholder="John Doe"
+web/frontend/src/components/forms/SignUpForm.tsx:61:              className="appearance-none block w-full h-14 px-5 border-2 border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 font-medium"
+web/frontend/src/components/forms/SignUpForm.tsx:62:              placeholder="name@company.com"
+web/frontend/src/components/forms/SignUpForm.tsx:77:              className="appearance-none block w-full h-14 px-5 border-2 border-slate-100 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 font-medium"
+web/frontend/src/components/forms/SignUpForm.tsx:78:              placeholder="••••••••"
+web/frontend/src/components/ui/input.tsx:14:          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+web/admin/client/src/components/layout/Topbar.tsx:44:            placeholder="Search ecosystem..."
+web/admin/client/src/components/layout/Topbar.tsx:52:            placeholder="Search…"
+web/admin/client/src/components/ui/command.tsx:47:        "flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+web/admin/client/src/components/ui/input.tsx:11:          "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+web/admin/client/src/components/ui/select.tsx:22:      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+web/admin/client/src/components/ui/textarea.tsx:12:        "flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+web/admin/client/src/pages/Login.tsx:118:                            className="h-14 pl-12 bg-slate-50 border-0 rounded-2xl font-bold text-slate-900 placeholder:text-slate-300 focus-visible:ring-primary/20 focus-visible:ring-offset-0 focus-visible:bg-white transition-all"
+web/admin/client/src/pages/Login.tsx:119:                            placeholder="admin@AsaforVTU.com"
+web/admin/client/src/pages/Login.tsx:138:                            className="h-14 pl-12 bg-slate-50 border-0 rounded-2xl font-bold text-slate-900 placeholder:text-slate-300 focus-visible:ring-primary/20 focus-visible:ring-offset-0 focus-visible:bg-white transition-all"
+web/admin/client/src/pages/Login.tsx:140:                            placeholder="••••••••"
+web/admin/client/src/pages/Profile.tsx:121:                <Input className="h-12 rounded-xl bg-white border border-slate-200 focus:ring-2 focus:ring-primary/30 transition-all font-medium text-slate-900 px-4 outline-none" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Admin User" />
+web/admin/client/src/pages/Profile.tsx:125:                <Input className="h-12 rounded-xl bg-white border border-slate-200 focus:ring-2 focus:ring-primary/30 transition-all font-medium text-slate-900 px-4 outline-none" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="08012345678" />
+web/admin/client/src/pages/Services.tsx:589:      <Input placeholder="https://..." value={icon} onChange={e => setIcon(e.target.value)} />
+web/admin/client/src/pages/Services.tsx:593:          <SelectValue placeholder="Select Category" />
+web/admin/client/src/pages/Services.tsx:641:      <Input placeholder={type === 'electricity' ? 'IKEDC / EKEDC' : type === 'cable' ? 'DSTV / GOTV' : 'MTN / Glo / Airtel / 9mobile'} value={network} onChange={e => setNetwork(e.target.value)} />
+web/admin/client/src/pages/Services.tsx:643:      <Input placeholder={type === 'cable' ? 'DSTV Compact' : '1GB SME'} value={name} onChange={e => setName(e.target.value)} />
+web/admin/client/src/pages/Services.tsx:647:          <Input type="number" placeholder="0" value={priceUser} onChange={e => setPriceUser(e.target.value)} />
+web/admin/client/src/pages/Services.tsx:651:          <Input type="number" placeholder="0" value={priceApi} onChange={e => setPriceApi(e.target.value)} />
+web/admin/client/src/pages/Services.tsx:657:          <Input placeholder="e.g. 349" value={variationId} onChange={e => setVariationId(e.target.value)} />
+web/admin/client/src/pages/Services.tsx:661:          <Input type="number" placeholder={type === 'electricity' ? 'e.g. 1' : type === 'cable' ? 'e.g. 1' : '1=MTN,2=Glo,4=Airtel,3=9mobile'} value={networkId} onChange={e => setNetworkId(e.target.value)} />
+web/admin/client/src/pages/Services.tsx:718:      <Input placeholder="e.g. MTN" value={name} onChange={e => {
+web/admin/client/src/pages/Services.tsx:724:      <Input placeholder="e.g. mtn-data" value={id} onChange={e => setId(e.target.value)} />
+web/admin/client/src/pages/Services.tsx:727:      <Input placeholder="https://..." value={icon} onChange={e => setIcon(e.target.value)} />
+web/admin/client/src/pages/Services.tsx:732:          <SelectValue placeholder="Select Category" />
+web/admin/client/src/pages/Settings.tsx:133:                <Input value={reconRef} onChange={e => setReconRef(e.target.value)} placeholder="DEP-XXXXX or numeric transaction_id" className="h-12 rounded-xl bg-white border border-slate-200" />
+web/admin/client/src/pages/Support.tsx:160:                  placeholder="Announcement title"
+web/admin/client/src/pages/Support.tsx:168:                  placeholder="Announcement content"
+web/admin/client/src/pages/Support.tsx:322:                placeholder="Type your reply..."
+web/admin/client/src/pages/Transactions.tsx:96:              <Input placeholder="Search Transaction ID..." className="pl-11 h-11 bg-white border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus-visible:ring-primary/20 transition-all" />
+web/admin/client/src/pages/Transactions.tsx:101:                  <SelectValue placeholder="All Services" />
+web/admin/client/src/pages/Transactions.tsx:114:                  <SelectValue placeholder="All Status" />
+web/admin/client/src/pages/Users.tsx:118:                  placeholder="Search users..."
+web/admin/client/src/pages/Users.tsx:119:                  className="pl-10 h-10 bg-white border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus-visible:ring-primary/20 transition-all"
+web/admin/client/src/pages/Users.tsx:233:        <Input placeholder="user@example.com" value={email} onChange={e => setEmail(e.target.value)} />
+web/admin/client/src/pages/Users.tsx:237:        <Input type="password" placeholder="At least 6 characters" value={password} onChange={e => setPassword(e.target.value)} />
+web/admin/client/src/pages/Users.tsx:241:        <Input placeholder="Full name" value={displayName} onChange={e => setDisplayName(e.target.value)} />
+web/admin/client/src/pages/Users.tsx:245:        <Input placeholder="+234..." value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} />
+web/admin/client/src/pages/Users.tsx:254:          <RawInput placeholder="https://asaforvtu.onrender.com/login" value={redirectUrl} onChange={e => setRedirectUrl(e.target.value)} />
+web/admin/client/src/pages/Users.tsx:317:        <Input placeholder="admin@example.com" value={email} onChange={e => setEmail(e.target.value)} />
+web/admin/client/src/pages/Users.tsx:321:        <Input type="password" placeholder="At least 6 characters" value={password} onChange={e => setPassword(e.target.value)} />
+web/admin/client/src/pages/Users.tsx:325:        <Input placeholder="Admin name" value={displayName} onChange={e => setDisplayName(e.target.value)} />
+web/admin/client/src/pages/Wallet.tsx:208:                  <Input placeholder="Enter user email..." value={creditForm.userId} onChange={e => setCreditForm(prev => ({ ...prev, userId: e.target.value }))} />
+web/admin/client/src/pages/Wallet.tsx:212:                  <Input type="number" placeholder="0.00" value={creditForm.amount} onChange={e => setCreditForm(prev => ({ ...prev, amount: e.target.value }))} />
+web/admin/client/src/pages/Wallet.tsx:216:                  <Input placeholder="Bonus / Refund / Correction" value={creditForm.reason} onChange={e => setCreditForm(prev => ({ ...prev, reason: e.target.value }))} />
+web/admin/client/src/pages/Wallet.tsx:256:                  <Input placeholder="Enter user email..." value={debitForm.userId} onChange={e => setDebitForm(prev => ({ ...prev, userId: e.target.value }))} />
+web/admin/client/src/pages/Wallet.tsx:260:                  <Input type="number" placeholder="0.00" value={debitForm.amount} onChange={e => setDebitForm(prev => ({ ...prev, amount: e.target.value }))} />
+web/admin/client/src/pages/Wallet.tsx:264:                  <Input placeholder="Correction / Penalty" value={debitForm.reason} onChange={e => setDebitForm(prev => ({ ...prev, reason: e.target.value }))} />
+--- unimplemented alert/console handlers ---
+web/frontend/src/app/dashboard/page.tsx:238:                    onClick={() => {
+web/frontend/src/app/dashboard/page.tsx:263:                      onClick={() => {
+web/frontend/src/app/dashboard/page.tsx:294:                      onClick={() => {
+web/frontend/src/app/dashboard/services/data/page.tsx:202:                            onClick={() => {
+web/frontend/src/app/login/page.tsx:42:      console.log(`Login with ${provider}`);
+web/frontend/src/app/register/page.tsx:111:      console.log(`Register with ${provider}`);
+web/admin/client/src/pages/Services.tsx:148:                            onClick={() => {
+web/admin/client/src/pages/Services.tsx:159:                            onClick={async () => {
+web/admin/client/src/pages/Services.tsx:222:                          onClick={async () => {
+web/admin/client/src/pages/Services.tsx:319:                            onClick={async () => {
+web/admin/client/src/pages/Services.tsx:340:                            onClick={async () => {
+web/admin/client/src/pages/Services.tsx:425:                            onClick={async () => {
+web/admin/client/src/pages/Services.tsx:446:                            onClick={async () => {
+web/admin/client/src/pages/Services.tsx:529:                            onClick={async () => {
+web/admin/client/src/pages/Services.tsx:548:                            onClick={async () => {
+web/admin/client/src/pages/Services.tsx:609:          onClick={async () => {
+web/admin/client/src/pages/Services.tsx:671:          onClick={async () => {
+web/admin/client/src/pages/Services.tsx:749:           onClick={async () => {
+web/admin/client/src/pages/Settings.tsx:88:            <Button className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl uppercase tracking-widest text-[11px]" onClick={async () => {
+web/admin/client/src/pages/Settings.tsx:109:                  <Button variant="outline" className="h-12 rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-bold text-[10px] px-6 uppercase tracking-widest" onClick={() => {
+web/admin/client/src/pages/Settings.tsx:136:                <Button className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl uppercase tracking-widest text-[11px]" onClick={async () => {
+web/admin/client/src/pages/Transactions.tsx:183:                        onClick={() => { setSelectedTx(t); setIsReceiptOpen(true); }}
+web/admin/client/src/pages/Users.tsx:45:      console.log("UsersPage: Starting to load users...");
+web/admin/client/src/pages/Users.tsx:49:        console.log("UsersPage: Data received:", data);
+web/admin/client/src/pages/Users.tsx:183:                        <DropdownMenuItem className="px-4 py-2.5 hover:bg-slate-50 cursor-pointer" onClick={() => {
+web/admin/client/src/pages/Users.tsx:188:                        <DropdownMenuItem className="px-4 py-2.5 hover:bg-slate-50 cursor-pointer" onClick={() => {
+web/admin/client/src/pages/Users.tsx:194:                        <DropdownMenuItem className="px-4 py-2.5 text-red-600 hover:bg-red-50 cursor-pointer font-bold" onClick={async () => {
+web/admin/client/src/pages/Users.tsx:264:              onClick={() => {
+web/admin/client/src/pages/Users.tsx:277:          onClick={async () => {
+web/admin/client/src/pages/Users.tsx:330:          onClick={async () => {
+web/admin/client/src/pages/Wallet.tsx:221:                  onClick={async () => {
+web/admin/client/src/pages/Wallet.tsx:270:                  onClick={async () => {
+web/admin/client/src/pages/Wallet.tsx:306:                  onClick={async () => {

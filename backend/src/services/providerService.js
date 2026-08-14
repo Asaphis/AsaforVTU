@@ -442,6 +442,30 @@ class ProviderService {
     }
   }
 
+  async purchaseExamPins(requestId, examType, quantity, amount) {
+    if (!this.apiKey) return { success: false, message: 'Provider API Key missing' };
+    const endpoint = process.env.VTU_EXAM_PINS_PATH || '/exam-pins';
+    try {
+      const response = await axios.post(`${this.baseUrl}${endpoint}`, {
+        request_id: requestId,
+        exam_type: examType,
+        quantity: Number(quantity || 1),
+        amount: Number(amount)
+      }, { headers: this._getHeaders(), timeout: 30000 });
+      const data = response.data || {};
+      const txData = data.data || {};
+      return {
+        success: data.code === 'success' || data.success === true,
+        transactionId: txData.order_id || txData.transaction_id || requestId,
+        pins: txData.pins || txData.pin || null,
+        message: data.message || 'Exam PIN purchase completed',
+        apiResponse: data
+      };
+    } catch (error) {
+      const body = error.response?.data || {};
+      return { success: false, message: body.message || body.error?.message || error.message, apiResponse: body };
+    }
+  }
 }
 
 module.exports = new ProviderService();

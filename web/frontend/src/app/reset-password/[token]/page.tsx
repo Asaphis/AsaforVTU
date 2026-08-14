@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
 import { Lock, Eye, EyeOff, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,9 @@ interface ResetPasswordFormData {
   confirmPassword: string;
 }
 
-function ResetPasswordContent({ params }: { params: { token: string } }) {
+function ResetPasswordContent() {
   const router = useRouter();
+  const params = useParams<{ token: string }>();
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || '';
   const [formData, setFormData] = useState<ResetPasswordFormData>({
@@ -223,10 +224,10 @@ function ResetPasswordContent({ params }: { params: { token: string } }) {
   );
 }
 
-export default function ResetPasswordPage({ params }: { params: { token: string } }) {
+export default function ResetPasswordPage() {
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
-      <ResetPasswordContent params={params} />
+      <ResetPasswordContent />
     </Suspense>
   );
 }

@@ -1,0 +1,359 @@
+
+===== backend/src/services/authService.js:118,150 =====
+   118	        );
+   119	      }
+   120	    }
+   121	
+   122	    // Skip email verification for now - auto-verify users
+   123	    // const verificationToken = crypto.randomBytes(32).toString('hex');
+   124	    // const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+   125	
+   126	    // await client.query(
+   127	    //   `INSERT INTO email_verification_tokens (user_id, token, expires_at)
+   128	    //    VALUES ($1, $2, $3)`,
+   129	    //   [user.id, verificationToken, verificationExpiresAt]
+   130	    // );
+   131	
+   132	    await client.query('COMMIT');
+   133	
+   134	    // Generate tokens
+   135	    const accessToken = generateToken(user.id, user.email, 'user');
+   136	    const refreshToken = await generateRefreshToken(user.id);
+   137	
+   138	    return {
+   139	      user: {
+   140	        id: user.id,
+   141	        email: user.email,
+   142	        full_name: user.full_name,
+   143	        username: user.username,
+   144	        phone: user.phone,
+   145	        referral_code: user.referral_code,
+   146	        email_verified: true, // Auto-verify for now
+   147	        created_at: user.created_at
+   148	      },
+   149	      tokens: {
+   150	        access_token: accessToken,
+
+===== backend/src/middleware/auth.js:104,126 =====
+   104	// Admin authentication middleware
+   105	const authenticateAdmin = async (req, res, next) => {
+   106	  try {
+   107	    await authenticate(req, res, () => {});
+   108	
+   109	    const allowedAdminEmails = (process.env.ADMIN_EMAILS || 'asaphis.org@gmail.com')
+   110	      .split(',')
+   111	      .map(email => email.trim().toLowerCase())
+   112	      .filter(Boolean);
+   113	
+   114	    const isAdmin = req.user.role === 'admin' || 
+   115	                   req.user.is_admin || 
+   116	                   allowedAdminEmails.includes(req.user.email.toLowerCase());
+   117	
+   118	    if (!isAdmin) {
+   119	      return res.status(403).json({ 
+   120	        error: 'Forbidden',
+   121	        message: 'Admin access required' 
+   122	      });
+   123	    }
+   124	
+   125	    next();
+   126	  } catch (error) {
+
+===== backend/src/routes/vtuRoutes.js:189,231 =====
+   189	    // Get service ID based on type
+   190	    let serviceId = null;
+   191	    try {
+   192	      const services = await getServicePlans({ active_only: true });
+   193	      const service = services.find(s => s.category?.toLowerCase().includes(type));
+   194	      if (service) {
+   195	        serviceId = service.id;
+   196	      }
+   197	    } catch (e) {
+   198	      console.error('[VTU] Error getting service:', e);
+   199	    }
+   200	
+   201	    // Check user wallet balance FIRST - INSTANT DEBIT
+   202	    const walletResult = await client.query(
+   203	      'SELECT * FROM wallets WHERE user_id = $1',
+   204	      [req.user.id]
+   205	    );
+   206	    
+   207	    if (walletResult.rows.length === 0) {
+   208	      await client.query('ROLLBACK');
+   209	      return res.status(400).json({ success: false, message: 'Wallet not found' });
+   210	    }
+   211	    
+   212	    const wallet = walletResult.rows[0];
+   213	    if (wallet.main_balance < userPrice) {
+   214	      await client.query('ROLLBACK');
+   215	      return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
+   216	    }
+   217	
+   218	    // DEBIT WALLET INSTANTLY
+   219	    const newBalance = wallet.main_balance - userPrice;
+   220	    await client.query(
+   221	      'UPDATE wallets SET main_balance = $1, total_spent = total_spent + $2, updated_at = CURRENT_TIMESTAMP WHERE user_id = $3',
+   222	      [newBalance, userPrice, req.user.id]
+   223	    );
+   224	
+   225	    // Record wallet transaction
+   226	    const reference = `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+   227	    await client.query(
+   228	      `INSERT INTO wallet_transactions (user_id, wallet_id, type, amount, balance_after, description, reference)
+   229	       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+   230	      [req.user.id, wallet.id, 'debit', userPrice, newBalance, `Payment for ${type} transaction`, reference]
+   231	    );
+
+===== backend/src/routes/vtuRoutes.js:279,305 =====
+   279	    // Update transaction based on provider result
+   280	    if (providerResult.success) {
+   281	      await client.query(
+   282	        'UPDATE transactions SET status = $1, provider_reference = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+   283	        ['success', providerResult.transactionId, transaction.id]
+   284	      );
+   285	    } else {
+   286	      // FAILED - REFUND WALLET INSTANTLY
+   287	      await client.query(
+   288	        'UPDATE wallets SET main_balance = main_balance + $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
+   289	        [userPrice, req.user.id]
+   290	      );
+   291	      
+   292	      await client.query(
+   293	        'UPDATE transactions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+   294	        ['failed', transaction.id]
+   295	      );
+   296	      
+   297	      await client.query('ROLLBACK');
+   298	      return res.status(400).json({
+   299	        success: false,
+   300	        status: 'failed',
+   301	        transactionId: transaction.id,
+   302	        message: providerResult.message || 'Transaction failed. Wallet refunded.',
+   303	        data: providerResult
+   304	      });
+   305	    }
+
+===== backend/src/routes/vtuRoutes.js:343,351 =====
+   343	    // Find the transaction in our DB
+   344	    const result = await pool.query(
+   345	      `SELECT * FROM transactions 
+   346	       WHERE reference = $1 OR metadata->>'requestId' = $2 
+   347	       AND user_id = $3 
+   348	       LIMIT 1`,
+   349	      [requestId, requestId, req.user.id]
+   350	    );
+   351	    
+
+===== backend/src/services/walletService.js:40,86 =====
+    40	// Credit wallet
+    41	const creditWallet = async (userId, amount, walletType = 'main', description = null, reference = null) => {
+    42	  const client = await pool.connect();
+    43	  
+    44	  try {
+    45	    await client.query('BEGIN');
+    46	
+    47	    // Ensure wallet exists
+    48	    let wallet = await getWalletByUserId(userId);
+    49	    if (!wallet) {
+    50	      wallet = await createWallet(userId);
+    51	    }
+    52	
+    53	    // Determine which balance to update
+    54	    const balanceField = `${walletType}_balance`;
+    55	    const currentBalance = wallet[balanceField] || 0;
+    56	    const newBalance = parseFloat(currentBalance) + parseFloat(amount);
+    57	
+    58	    // Update wallet balance
+    59	    await client.query(
+    60	      `UPDATE wallets 
+    61	       SET ${balanceField} = $1, 
+    62	           total_earned = total_earned + $2,
+    63	           updated_at = CURRENT_TIMESTAMP 
+    64	       WHERE user_id = $3`,
+    65	      [newBalance, amount, userId]
+    66	    );
+    67	
+    68	    // Record transaction
+    69	    await client.query(
+    70	      `INSERT INTO wallet_transactions (user_id, wallet_id, type, amount, balance_after, description, reference)
+    71	       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    72	      [userId, wallet.id, 'credit', amount, newBalance, description, reference]
+    73	    );
+    74	
+    75	    await client.query('COMMIT');
+    76	
+    77	    // Return updated wallet
+    78	    const updatedWallet = await getWalletByUserId(userId);
+    79	    return updatedWallet;
+    80	  } catch (error) {
+    81	    await client.query('ROLLBACK');
+    82	    console.error('[Wallet Service] Error crediting wallet:', error);
+    83	    throw error;
+    84	  } finally {
+    85	    client.release();
+    86	  }
+
+===== backend/src/services/paymentService.js:162,206 =====
+   162	// Process successful payment
+   163	const processSuccessfulPayment = async (paymentId, providerData = {}) => {
+   164	  const client = await pool.connect();
+   165	  
+   166	  try {
+   167	    await client.query('BEGIN');
+   168	
+   169	    // Get payment
+   170	    const payment = await getPaymentById(paymentId);
+   171	    if (!payment) {
+   172	      throw new Error('Payment not found');
+   173	    }
+   174	
+   175	    if (payment.status === 'success') {
+   176	      throw new Error('Payment already processed');
+   177	    }
+   178	
+   179	    // Update payment status
+   180	    const updatedPayment = await updatePaymentStatus(paymentId, 'success', providerData);
+   181	
+   182	    // Credit wallet INSTANTLY
+   183	    await walletService.creditWallet(
+   184	      payment.user_id,
+   185	      payment.amount,
+   186	      'main',
+   187	      `Payment for wallet funding`,
+   188	      payment.tx_ref
+   189	    );
+   190	
+   191	    // If payment is linked to a transaction, process it
+   192	    if (payment.transaction_id) {
+   193	      await transactionService.completeTransaction(payment.transaction_id, providerData.provider_reference);
+   194	    }
+   195	
+   196	    await client.query('COMMIT');
+   197	
+   198	    return updatedPayment;
+   199	  } catch (error) {
+   200	    await client.query('ROLLBACK');
+   201	    console.error('[Payment Service] Error processing successful payment:', error);
+   202	    throw error;
+   203	  } finally {
+   204	    client.release();
+   205	  }
+   206	};
+
+===== backend/src/routes/paymentRoutes.js:10,87 =====
+    10	router.post('/initiate', async (req, res) => {
+    11	  try {
+    12	    const { amount } = req.body;
+    13	    if (!amount || isNaN(amount) || Number(amount) < 100) {
+    14	      return res.status(400).json({ error: 'Invalid amount. Minimum is ₦100.' });
+    15	    }
+    16	
+    17	    const payment = await paymentService.createPayment({
+    18	      user_id: req.user.id,
+    19	      amount: Number(amount),
+    20	      payment_method: 'flutterwave',
+    21	      provider: 'flutterwave',
+    22	      metadata: {
+    23	        email: req.user.email,
+    24	        name: req.user.full_name,
+    25	        phone: req.user.phone
+    26	      }
+    27	    });
+    28	
+    29	    // Generate Flutterwave payment link
+    30	    const redirectUrl = process.env.FLW_REDIRECT_URL || 'https://vtu.ferixas.com/payment-complete';
+    31	    
+    32	    const flutterwaveResult = await flutterwaveService.initiatePayment(
+    33	      req.user.id,
+    34	      Number(amount),
+    35	      {
+    36	        email: req.user.email,
+    37	        name: req.user.full_name,
+    38	        phone: req.user.phone
+    39	      },
+    40	      redirectUrl
+    41	    );
+    42	
+    43	    // Update payment with Flutterwave reference
+    44	    await paymentService.updatePaymentStatus(payment.id, 'pending', {
+    45	      provider_reference: flutterwaveResult.tx_ref,
+    46	      flw_ref: flutterwaveResult.flw_ref
+    47	    });
+    48	
+    49	    res.json({ 
+    50	      tx_ref: payment.tx_ref, 
+    51	      link: flutterwaveResult.link,
+    52	      payment_id: payment.id 
+    53	    });
+    54	  } catch (error) {
+    55	    console.error('[Payment Routes] Initiate error:', error);
+    56	    res.status(500).json({ error: error.message });
+    57	  }
+    58	});
+    59	
+    60	router.post('/verify', async (req, res) => {
+    61	  try {
+    62	    const { tx_ref } = req.body;
+    63	    if (!tx_ref) {
+    64	      return res.status(400).json({ error: 'tx_ref is required' });
+    65	    }
+    66	
+    67	    const payment = await paymentService.getPaymentByTxRef(tx_ref);
+    68	    if (!payment) {
+    69	      return res.status(404).json({ error: 'Payment not found' });
+    70	    }
+    71	
+    72	    if (payment.status === 'success') {
+    73	      return res.json({ success: true, message: 'Payment already processed' });
+    74	    }
+    75	
+    76	    // Verify with Flutterwave
+    77	    const verifyResult = await flutterwaveService.creditIfValid(tx_ref, payment.amount, req.user.id);
+    78	
+    79	    if (verifyResult.success) {
+    80	      res.json({ success: true, message: 'Payment verified and processed' });
+    81	    } else {
+    82	      res.status(400).json({ success: false, message: 'Payment verification failed' });
+    83	    }
+    84	  } catch (error) {
+    85	    console.error('[Payment Routes] Verify error:', error);
+    86	    res.status(500).json({ error: error.message });
+    87	  }
+
+===== backend/src/services/flutterwaveService.js:27,62 =====
+    27	  async initiatePayment(userId, amount, customer = {}, redirectUrl) {
+    28	    const tx_ref = this._genRef('DEP');
+    29	    const body = {
+    30	      tx_ref,
+    31	      amount,
+    32	      currency: 'NGN',
+    33	      redirect_url: redirectUrl || process.env.FLW_REDIRECT_URL || 'https://vtu.ferixas.com/payment-complete',
+    34	      customer: {
+    35	        email: customer.email || 'user@Asafor.com',
+    36	        name: customer.name || 'Asafor User',
+    37	        phonenumber: customer.phone || undefined,
+    38	      },
+    39	      meta: {
+    40	        userId,
+    41	        purpose: 'wallet_funding',
+    42	      },
+    43	      payment_options: 'card,banktransfer,ussd',
+    44	    };
+    45	    const res = await axios.post(`${FLW_API}/payments`, body, { headers: this._headers(), timeout: 15000 });
+    46	    const data = res.data || {};
+    47	
+    48	    // Create payment record in PostgreSQL
+    49	    await paymentService.createPayment({
+    50	      user_id: userId,
+    51	      amount,
+    52	      payment_method: 'flutterwave',
+    53	      provider: 'flutterwave',
+    54	      tx_ref,
+    55	      metadata: {
+    56	        link: data?.data?.link,
+    57	        flutterwave_data: data
+    58	      }
+    59	    });
+    60	
+    61	    return { tx_ref, link: data?.data?.link, flw_ref: data?.data?.flw_ref, data };
+    62	  }

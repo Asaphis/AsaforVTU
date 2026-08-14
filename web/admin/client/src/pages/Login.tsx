@@ -47,7 +47,8 @@ export default function Login() {
     try {
       const user = await loginAdmin(values.email, values.password);
       
-      const allowedAdminEmails = (import.meta.env.VITE_ADMIN_EMAILS || 'asaphis.org@gmail.com')
+      const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
+      const allowedAdminEmails = (env.VITE_ADMIN_EMAILS || 'asaphis.org@gmail.com')
         .split(',')
         .map(email => email.trim().toLowerCase())
         .filter(Boolean);

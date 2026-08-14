@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getServices, processTransaction } from '@/lib/services';
@@ -45,7 +45,7 @@ export default function ElectricityPage() {
     setShowPinModal(true);
   };
 
-  const onPinSuccess = async () => {
+  const onPinSuccess = async (transactionPin: string) => {
     if (!user) return;
     setProcessing(true);
     try {
@@ -56,8 +56,9 @@ export default function ElectricityPage() {
         { 
           customerId: meterNumber,
           serviceId: provider,
-          variationId: 'electricity', // This would come from API
+          variationId: 'prepaid',
           meterNumber,
+          transactionPin,
           requestId: `ELEC_${Date.now()}`
         }
       );

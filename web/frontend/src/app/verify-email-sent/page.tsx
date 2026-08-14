@@ -11,6 +11,7 @@ import { AuthLayout } from '@/components/auth/AuthLayout';
 function VerifyEmailSentContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || 'your email address';
+  const delivered = searchParams.get('sent') !== '0';
 
   return (
     <AuthLayout>
@@ -28,26 +29,32 @@ function VerifyEmailSentContent() {
             Verify Your Email
           </h1>
           <p className="text-lg text-slate-600 font-semibold">
-            We've sent a verification link to
+            {delivered ? "We've sent a verification link to" : "Your account was created for"}
           </p>
           <p className="text-lg font-bold text-primary break-all">
             {decodeURIComponent(email)}
           </p>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 space-y-3">
-          <div className="flex gap-3">
-            <CheckCircle className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-bold text-blue-900 mb-2">What's next?</h3>
-              <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-                <li>Check your inbox for an email from us</li>
-                <li>Click the verification link in the email</li>
-                <li>Return to the login page to sign in</li>
-              </ol>
-            </div>
+          <div className={`${delivered ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'} rounded-2xl p-6 space-y-3`}>
+            {!delivered && <p className="text-sm text-amber-800 font-semibold">Email delivery is not configured on this server. An administrator must configure `RESEND_API_KEY` and `EMAIL_FROM`, then resend the link from the sign-in page.</p>}
           </div>
-        </div>
+
+          {delivered && (
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 space-y-3">
+              <div className="flex gap-3">
+                <CheckCircle className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-blue-900 mb-2">What's next?</h3>
+                  <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                    <li>Check your inbox for an email from us</li>
+                    <li>Click the verification link in the email</li>
+                    <li>Return to the login page to sign in</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          )}
 
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 space-y-3">
           <div className="flex gap-3">

@@ -1,0 +1,16 @@
+
+URL https://asaforvtu.onrender.com
+status=000 final=https://asaforvtu.onrender.com/ content_type= time=11.162388
+
+
+URL https://asaforadmin.onrender.com
+status=000 final=https://asaforadmin.onrender.com/ content_type= time=11.197813
+
+
+URL https://asaforvtubackend.onrender.com/api/health
+status=000 final=https://asaforvtubackend.onrender.com/api/health content_type= time=10.873681
+
+
+URL https://asaforvtubackend.onrender.com/api/services
+status=000 final=https://asaforvtubackend.onrender.com/api/services content_type= time=11.239480
+

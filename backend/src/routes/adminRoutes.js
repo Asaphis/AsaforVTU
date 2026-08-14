@@ -5,14 +5,24 @@ const pool = require('../config/database');
 const walletService = require('../services/walletService');
 const transactionService = require('../services/transactionService');
 const paymentService = require('../services/paymentService');
+const providerService = require('../services/providerService');
 
 const router = express.Router();
 
 router.use(authenticate);
 router.use(requireAdmin);
 
+// Provider information
+router.get('/providers', async (_req, res) => {
+  try { res.json(await providerService.getProviders()); }
+  catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 // Stats
 router.get('/stats', adminController.getStats);
+router.get('/finance/analytics', adminController.getFinanceAnalytics);
+router.get('/finance/system', adminController.getFinanceSystem);
+router.get('/finance/user', adminController.getFinanceUser);
 
 // Settings
 router.post('/settings', adminController.updateSettings);
@@ -20,6 +30,13 @@ router.get('/settings', adminController.getSettings);
 
 // Transactions
 router.get('/transactions', adminController.getAllTransactions);
+router.get('/transactions/:id', async (req, res) => {
+  try {
+    const transaction = await transactionService.getTransactionById(req.params.id);
+    if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
+    res.json(transaction);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
 
 // Wallet Operations
 router.post('/wallet/credit', adminController.creditWallet);
@@ -32,6 +49,14 @@ router.get('/users', adminController.listUsers);
 router.post('/users/create', adminController.createUser);
 router.post('/users/promote', adminController.promoteToAdmin);
 router.post('/users/suspend', adminController.suspendUser);
+router.get('/users/transactions', async (req, res) => {
+  try {
+    const target = req.query.uid || req.query.email;
+    const userResult = await pool.query('SELECT id FROM users WHERE id::text = $1 OR lower(email) = lower($1) LIMIT 1', [String(target || '')]);
+    if (!userResult.rows[0]) return res.status(404).json({ error: 'User not found' });
+    res.json(await transactionService.getTransactionsByUserId(userResult.rows[0].id));
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
 
 // Admin Management
 router.get('/admins', adminController.listAdmins);
@@ -64,90 +89,6 @@ router.delete('/services/:id', adminController.deleteService);
 
 // Verification
 router.post('/users/verification-link', adminController.generateVerificationLink);
-
-// Financial Intelligence / Statistics
-router.get('/stats', async (req, res) => {
-  try {
-    const result = {
-      totalUsers: 0,
-      walletBalance: 0,
-      totalTransactions: 0,
-      todaySales: 0,
-      profit: 0,
-      spending: 0,
-      dailyTotals: [],
-      recentTransactions: [],
-      error: null
-    };
-    
-    // Get total users
-    const usersResult = await pool.query('SELECT COUNT(*) as count FROM users');
-    result.totalUsers = Number(usersResult.rows[0].count);
-    
-    // Get wallet balance
-    const walletResult = await pool.query('SELECT SUM(main_balance) as total FROM wallets');
-    result.walletBalance = Number(walletResult.rows[0].total || 0);
-    
-    // Get transactions
-    const transactionsResult = await pool.query(
-      `SELECT COUNT(*) as count, SUM(amount) as total 
-       FROM transactions 
-       WHERE status = 'success'`
-    );
-    result.totalTransactions = Number(transactionsResult.rows[0].count);
-    result.todaySales = Number(transactionsResult.rows[0].total || 0);
-    
-    // Calculate profit (revenue - cost)
-    const profitResult = await pool.query(
-      `SELECT 
-         SUM(CASE WHEN status = 'success' THEN amount ELSE 0 END) as revenue,
-         SUM(CASE WHEN status = 'success' THEN COALESCE(metadata->>'provider_cost', amount) ELSE 0 END) as cost
-       FROM transactions`
-    );
-    const revenue = Number(profitResult.rows[0].revenue || 0);
-    const cost = Number(profitResult.rows[0].cost || 0);
-    result.profit = revenue - cost;
-    result.spending = cost;
-    
-    // Daily totals for last 7 days
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dayStr = d.toISOString().split('T')[0];
-      const key = d.toLocaleDateString(undefined, { weekday: 'short' });
-      
-      const dayResult = await pool.query(
-        `SELECT COUNT(*) as count, SUM(amount) as total 
-         FROM transactions 
-         WHERE DATE(created_at) = $1 AND status = 'success'`,
-        [dayStr]
-      );
-      
-      days.push({ 
-        day: key, 
-        total: Number(dayResult.rows[0].total || 0),
-        count: Number(dayResult.rows[0].count || 0)
-      });
-    }
-    result.dailyTotals = days;
-    
-    // Recent transactions
-    const recentResult = await pool.query(
-      `SELECT t.*, u.email, u.full_name
-       FROM transactions t
-       LEFT JOIN users u ON t.user_id = u.id
-       ORDER BY t.created_at DESC
-       LIMIT 10`
-    );
-    result.recentTransactions = recentResult.rows;
-    
-    res.json(result);
-  } catch (error) {
-    console.error('[Admin Routes] Stats error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // Wallet logs
 router.get('/wallet/logs', adminController.getWalletLogs);

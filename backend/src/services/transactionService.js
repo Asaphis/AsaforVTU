@@ -89,7 +89,7 @@ const updateTransactionStatus = async (transactionId, status, providerReference 
 };
 
 // Get transaction by ID
-const getTransactionById = async (transactionId) => {
+const getTransactionById = async (transactionId, userId = null) => {
   try {
     const result = await pool.query(
       `SELECT t.*, 
@@ -100,8 +100,8 @@ const getTransactionById = async (transactionId) => {
        LEFT JOIN users u ON t.user_id = u.id
        LEFT JOIN services s ON t.service_id = s.id
        LEFT JOIN service_plans sp ON t.plan_id = sp.id
-       WHERE t.id = $1`,
-      [transactionId]
+       WHERE t.id = $1${userId ? ' AND t.user_id = $2' : ''}`,
+      userId ? [transactionId, userId] : [transactionId]
     );
 
     if (result.rows.length === 0) {
@@ -267,8 +267,14 @@ const completeTransaction = async (transactionId, providerReference = null, meta
       metadata
     );
 
-    // Process cashback if applicable
-    // This would be handled by a separate cashback service
+    try {
+      const cashbackService = require('./cashbackService');
+      const referralService = require('./referralService');
+      await cashbackService.processCashback(transaction.user_id, Number(transaction.amount), transaction.id);
+      await referralService.processReferral(transaction.user_id, transaction.id);
+    } catch (rewardError) {
+      console.error('[Transaction Service] Reward processing failed:', rewardError.message);
+    }
 
     return transaction;
   } catch (error) {
@@ -278,7 +284,7 @@ const completeTransaction = async (transactionId, providerReference = null, meta
 };
 
 // Fail transaction and refund wallet
-const failTransaction = async (transactionId, reason = null) => {
+const failTransaction = async (transactionId, reason = null, shouldRefund = false) => {
   const client = await pool.connect();
   
   try {
@@ -296,8 +302,9 @@ const failTransaction = async (transactionId, reason = null) => {
       failed_at: new Date().toISOString()
     });
 
-    // Refund wallet if payment was made
-    if (transaction.status === 'processing') {
+    // Refund only when the caller explicitly asks this helper to do it. The
+    // VTU route debits and refunds through the wallet service separately.
+    if (shouldRefund && transaction.status === 'processing') {
       await walletService.creditWallet(
         transaction.user_id,
         transaction.amount,

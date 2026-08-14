@@ -25,6 +25,7 @@ export interface SignUpData {
   transactionPin?: string;
   referralCode?: string;
   referralUsername?: string;
+  acceptTerms?: boolean;
 }
 
 export interface LoginCredentials {

@@ -1,0 +1,16 @@
+.next/types/app/reset-password/[token]/page.ts(36,29): error TS2344: Type '{ params: { token: string; }; }' does not satisfy the constraint 'PageProps'.
+  Types of property 'params' are incompatible.
+    Type '{ token: string; }' is missing the following properties from type 'Promise<any>': then, catch, finally, [Symbol.toStringTag]
+src/app/dashboard/security/page.tsx(53,5): error TS2349: This expression is not callable.
+  Type 'Boolean' has no call signatures.
+src/app/dashboard/support/page.tsx(53,80): error TS2353: Object literal may only specify known properties, and 'variant' does not exist in type 'Omit<ToastType, "id">'.
+src/app/dashboard/support/page.tsx(59,13): error TS2345: Argument of type '{ title: string; description: string; }' is not assignable to parameter of type 'Omit<ToastType, "id">'.
+  Property 'type' is missing in type '{ title: string; description: string; }' but required in type 'Omit<ToastType, "id">'.
+src/app/dashboard/support/page.tsx(64,55): error TS2353: Object literal may only specify known properties, and 'variant' does not exist in type 'Omit<ToastType, "id">'.
+src/app/dashboard/support/page.tsx(75,13): error TS2345: Argument of type '{ title: string; description: string; }' is not assignable to parameter of type 'Omit<ToastType, "id">'.
+  Property 'type' is missing in type '{ title: string; description: string; }' but required in type 'Omit<ToastType, "id">'.
+src/app/dashboard/support/page.tsx(79,55): error TS2353: Object literal may only specify known properties, and 'variant' does not exist in type 'Omit<ToastType, "id">'.
+src/app/dashboard/wallet/page.tsx(48,30): error TS2339: Property 'referral' does not exist on type 'UserProfile'.
+src/app/dashboard/wallet/page.tsx(59,18): error TS2339: Property 'error' does not exist on type '{ tx_ref: string; link: string; payment_id?: string | undefined; }'.
+src/app/dashboard/wallet/page.tsx(60,22): error TS2339: Property 'error' does not exist on type '{ tx_ref: string; link: string; payment_id?: string | undefined; }'.
+src/app/register/page.tsx(98,9): error TS2353: Object literal may only specify known properties, and 'acceptTerms' does not exist in type 'SignUpData'.

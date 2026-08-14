@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { changePassword } from '@/lib/auth';
+import { changePassword, changePin } from '@/lib/auth';
 import toast from 'react-hot-toast';
 import { Lock, Shield } from 'lucide-react';
 
@@ -46,13 +46,14 @@ export default function SecurityPage() {
       toast.error('PINs do not match');
       return;
     }
-    if (pin.length !== 4) {
-      toast.error('PIN must be 4 digits');
+    if (!/^\d{4,6}$/.test(pin)) {
+      toast.error('PIN must contain 4 to 6 digits');
       return;
     }
-    pinLoading(true);
+    setPinLoading(true);
     try {
-      // PIN change would need a backend endpoint
+      await changePin(pin, confirmPin);
+      await refreshUser();
       toast.success('PIN changed successfully');
       setPin('');
       setConfirmPin('');
@@ -122,15 +123,15 @@ export default function SecurityPage() {
         </h2>
         <form onSubmit={handleChangePin} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">New PIN (4 digits)</label>
+            <label className="block text-sm font-medium mb-1">New PIN (4–6 digits)</label>
             <input
               type="password"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               className="w-full p-2 border rounded-md"
               required
-              maxLength={4}
-              pattern="[0-9]{4}"
+              maxLength={6}
+              pattern="[0-9]{4,6}"
             />
           </div>
           <div>
@@ -141,8 +142,8 @@ export default function SecurityPage() {
               onChange={(e) => setConfirmPin(e.target.value)}
               className="w-full p-2 border rounded-md"
               required
-              maxLength={4}
-              pattern="[0-9]{4}"
+              maxLength={6}
+              pattern="[0-9]{4,6}"
             />
           </div>
           <button

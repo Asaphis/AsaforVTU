@@ -1,85 +1,67 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { apiRequest } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
-type NotificationType = 'success' | 'error' | 'info' | 'warning';
-
-interface Notification {
-  id: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  createdAt: string;
-}
-
+type NotificationType = 'success' | 'error' | 'info' | 'warning' | 'transaction' | 'wallet' | 'referral';
+interface Notification { id: string; type: NotificationType; title: string; message: string; createdAt: string; serverBacked?: boolean; }
 interface NotificationContextType {
   notifications: Notification[];
   addNotification: (type: NotificationType, title: string, message?: string) => void;
   removeNotification: (id: string) => void;
   clearNotifications: () => void;
 }
-
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  useEffect(() => {
+  const loadNotifications = useCallback(async () => {
+    if (!user) { setNotifications([]); return; }
     try {
-      const raw = typeof window !== 'undefined' ? window.localStorage.getItem('notifications_log') : null;
-      if (raw) {
-        const parsed = JSON.parse(raw) as Notification[];
-        setNotifications(parsed);
-      }
-    } catch {}
-  }, []);
+      const response = await apiRequest('/api/notifications?unreadOnly=true&limit=50');
+      if (!response.ok) return;
+      const data = await response.json();
+      setNotifications((Array.isArray(data) ? data : []).map((item: any) => ({
+        id: item.id,
+        type: item.type || 'info',
+        title: item.title,
+        message: item.message,
+        createdAt: item.created_at,
+        serverBacked: true
+      })));
+    } catch (_) { /* notification failure must not block the dashboard */ }
+  }, [user]);
 
-  const addNotification = useCallback((type: NotificationType, title: string, message: string = '') => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const item: Notification = { id, type, title, message, createdAt: new Date().toISOString() };
-    setNotifications((prev) => {
-      const next = [...prev, item].slice(-20);
-      try {
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('notifications_log', JSON.stringify(next));
-        }
-      } catch {}
-      return next;
-    });
+  useEffect(() => {
+    void loadNotifications();
+    if (!user) return;
+    const timer = window.setInterval(() => { void loadNotifications(); }, 15000);
+    return () => window.clearInterval(timer);
+  }, [loadNotifications, user]);
+
+  const addNotification = useCallback((type: NotificationType, title: string, message = '') => {
+    const item: Notification = { id: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`, type, title, message, createdAt: new Date().toISOString(), serverBacked: false };
+    setNotifications(prev => [item, ...prev].slice(0, 50));
   }, []);
 
   const removeNotification = useCallback((id: string) => {
-    setNotifications((prev) => {
-      const next = prev.filter((n) => n.id !== id);
-      try {
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('notifications_log', JSON.stringify(next));
-        }
-      } catch {}
-      return next;
-    });
+    setNotifications(prev => prev.filter(item => item.id !== id));
+    if (!id.startsWith('local-')) void apiRequest(`/api/notifications/${id}`, { method: 'DELETE' });
   }, []);
 
   const clearNotifications = useCallback(() => {
     setNotifications([]);
-    try {
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem('notifications_log');
-      }
-    } catch {}
+    void apiRequest('/api/notifications/read-all', { method: 'POST' });
   }, []);
 
-  return (
-    <NotificationContext.Provider value={{ notifications, addNotification, removeNotification, clearNotifications }}>
-      {children}
-    </NotificationContext.Provider>
-  );
+  return <NotificationContext.Provider value={{ notifications, addNotification, removeNotification, clearNotifications }}>{children}</NotificationContext.Provider>;
 }
 
 export function useNotifications() {
   const context = useContext(NotificationContext);
-  if (!context) {
-    throw new Error('useNotifications must be used within a NotificationProvider');
-  }
+  if (!context) throw new Error('useNotifications must be used within a NotificationProvider');
   return context;
 }

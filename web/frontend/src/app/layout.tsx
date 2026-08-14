@@ -35,13 +35,13 @@ export default function RootLayout({
         <meta name="color-scheme" content="light" />
       </head>
       <body className={`${inter.className} min-h-screen selection:bg-primary/20`}>
-        <NotificationProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <NotificationProvider>
             {children}
             <Toaster />
             <Notification />
-          </AuthProvider>
-        </NotificationProvider>
+          </NotificationProvider>
+        </AuthProvider>
       </body>
     </html>
   )

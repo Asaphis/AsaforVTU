@@ -5,6 +5,7 @@ interface User {
   email: string;
   full_name: string;
   username: string;
+  phone?: string;
   role: string;
   is_admin: boolean;
   email_verified: boolean;
@@ -42,7 +43,8 @@ export const setRefreshToken = (token: string): void => {
 
 export const getUser = (): User | null => {
   const userStr = localStorage.getItem('user');
-  return userStr ? JSON.parse(userStr) : null;
+  if (!userStr) return null;
+  try { return JSON.parse(userStr) as User; } catch (_) { localStorage.removeItem('user'); return null; }
 };
 
 export const setUser = (user: User): void => {

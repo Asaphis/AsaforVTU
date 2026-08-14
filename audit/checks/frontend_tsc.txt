@@ -1,0 +1,49 @@
+src/app/dashboard/security/page.tsx(53,5): error TS2349: This expression is not callable.
+  Type 'Boolean' has no call signatures.
+src/app/dashboard/services/airtime/page.tsx(76,54): error TS2554: Expected 1 arguments, but got 3.
+src/app/dashboard/services/data/page.tsx(88,27): error TS2551: Property 'priceUser' does not exist on type 'ServicePlan'. Did you mean 'price_user'?
+src/app/dashboard/services/data/page.tsx(117,9): error TS2554: Expected 1 arguments, but got 3.
+src/app/dashboard/services/electricity/page.tsx(19,3): error TS2304: Cannot find name 'useEffect'.
+src/app/dashboard/support/page.tsx(53,80): error TS2353: Object literal may only specify known properties, and 'variant' does not exist in type 'Omit<ToastType, "id">'.
+src/app/dashboard/support/page.tsx(59,13): error TS2345: Argument of type '{ title: string; description: string; }' is not assignable to parameter of type 'Omit<ToastType, "id">'.
+  Property 'type' is missing in type '{ title: string; description: string; }' but required in type 'Omit<ToastType, "id">'.
+src/app/dashboard/support/page.tsx(64,55): error TS2353: Object literal may only specify known properties, and 'variant' does not exist in type 'Omit<ToastType, "id">'.
+src/app/dashboard/support/page.tsx(75,13): error TS2345: Argument of type '{ title: string; description: string; }' is not assignable to parameter of type 'Omit<ToastType, "id">'.
+  Property 'type' is missing in type '{ title: string; description: string; }' but required in type 'Omit<ToastType, "id">'.
+src/app/dashboard/support/page.tsx(79,55): error TS2353: Object literal may only specify known properties, and 'variant' does not exist in type 'Omit<ToastType, "id">'.
+src/app/dashboard/wallet/page.tsx(48,30): error TS2339: Property 'referral' does not exist on type 'UserProfile'.
+src/app/dashboard/wallet/page.tsx(59,18): error TS2339: Property 'error' does not exist on type '{ tx_ref: string; link: string; }'.
+src/app/dashboard/wallet/page.tsx(60,22): error TS2339: Property 'error' does not exist on type '{ tx_ref: string; link: string; }'.
+src/app/register/page.tsx(98,9): error TS2353: Object literal may only specify known properties, and 'acceptTerms' does not exist in type 'SignUpData'.
+src/components/dashboard/TransactionPinModal.tsx(37,17): error TS2339: Property 'pinHash' does not exist on type 'UserProfile'.
+src/contexts/AuthContext.tsx(51,18): error TS2339: Property 'walletBalance' does not exist on type 'User'.
+src/contexts/AuthContext.tsx(52,18): error TS2339: Property 'cashbackBalance' does not exist on type 'User'.
+src/contexts/AuthContext.tsx(53,18): error TS2339: Property 'referralBalance' does not exist on type 'User'.
+src/contexts/AuthContext.tsx(59,18): error TS2345: Argument of type '(prev: AuthState) => { user: User; loading: false; initialized: true; error: null; }' is not assignable to parameter of type 'SetStateAction<AuthState>'.
+  Type '(prev: AuthState) => { user: User; loading: false; initialized: true; error: null; }' is not assignable to type '(prevState: AuthState) => AuthState'.
+    Call signature return types '{ user: User; loading: false; initialized: true; error: null; }' and 'AuthState' are incompatible.
+      The types of 'user' are incompatible between these types.
+        Property 'uid' is missing in type 'User' but required in type 'UserProfile'.
+src/contexts/AuthContext.tsx(105,16): error TS2339: Property 'walletBalance' does not exist on type 'User'.
+src/contexts/AuthContext.tsx(106,16): error TS2339: Property 'cashbackBalance' does not exist on type 'User'.
+src/contexts/AuthContext.tsx(107,16): error TS2339: Property 'referralBalance' does not exist on type 'User'.
+src/contexts/AuthContext.tsx(113,16): error TS2345: Argument of type '(prev: AuthState) => { user: User; loading: false; error: null; initialized: boolean; }' is not assignable to parameter of type 'SetStateAction<AuthState>'.
+  Type '(prev: AuthState) => { user: User; loading: false; error: null; initialized: boolean; }' is not assignable to type '(prevState: AuthState) => AuthState'.
+    Call signature return types '{ user: User; loading: false; error: null; initialized: boolean; }' and 'AuthState' are incompatible.
+      The types of 'user' are incompatible between these types.
+        Property 'uid' is missing in type 'User' but required in type 'UserProfile'.
+src/contexts/AuthContext.tsx(130,35): error TS2345: Argument of type 'SignUpData' is not assignable to parameter of type '{ email: string; password: string; full_name: string; username?: string | undefined; phone?: string | undefined; pin?: string | undefined; referral_code?: string | undefined; }'.
+  Property 'full_name' is missing in type 'SignUpData' but required in type '{ email: string; password: string; full_name: string; username?: string | undefined; phone?: string | undefined; pin?: string | undefined; referral_code?: string | undefined; }'.
+src/contexts/AuthContext.tsx(201,5): error TS2322: Type '({ email, password }: LoginCredentials) => Promise<User>' is not assignable to type '(credentials: LoginCredentials) => Promise<UserProfile>'.
+  Type 'Promise<User>' is not assignable to type 'Promise<UserProfile>'.
+    Property 'uid' is missing in type 'User' but required in type 'UserProfile'.
+src/hooks/useAuthForm.ts(57,27): error TS2339: Property 'verifyEmail' does not exist on type 'AuthContextType'.
+src/hooks/useAuthForm.ts(118,9): error TS2353: Object literal may only specify known properties, and 'rememberMe' does not exist in type 'LoginCredentials'.
+src/hooks/useAuthForm.ts(118,26): error TS2339: Property 'rememberMe' does not exist on type 'LoginCredentials'.
+src/hooks/useWalletListener.ts(24,29): error TS2551: Property 'mainBalance' does not exist on type '{ main_balance: number; cashback_balance: number; referral_balance: number; }'. Did you mean 'main_balance'?
+src/hooks/useWalletListener.ts(25,33): error TS2551: Property 'cashbackBalance' does not exist on type '{ main_balance: number; cashback_balance: number; referral_balance: number; }'. Did you mean 'cashback_balance'?
+src/hooks/useWalletListener.ts(26,33): error TS2551: Property 'referralBalance' does not exist on type '{ main_balance: number; cashback_balance: number; referral_balance: number; }'. Did you mean 'referral_balance'?
+src/lib/auth.ts(113,5): error TS7053: Element implicitly has an 'any' type because expression of type '"Authorization"' can't be used to index type 'HeadersInit'.
+  Property 'Authorization' does not exist on type 'HeadersInit'.
+src/lib/auth.ts(164,11): error TS2345: Argument of type '{ id: string; email: string; full_name: string; username: string; phone: string; referral_code: string; email_verified: boolean; created_at: string; }' is not assignable to parameter of type 'User'.
+  Property 'role' is missing in type '{ id: string; email: string; full_name: string; username: string; phone: string; referral_code: string; email_verified: boolean; created_at: string; }' but required in type 'User'.

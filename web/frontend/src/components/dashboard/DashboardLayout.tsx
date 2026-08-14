@@ -42,7 +42,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <MobileSidebar
         openLabel="Menu"
         pathname={pathname}
-        onLogout={async () => { await signOut(); router.push('/'); }}
+        onLogout={async () => { await signOut(); router.replace('/login'); }}
         items={{ primary: primaryItems, services: serviceItems, account: accountItems }}
       />
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-72 bg-gradient-to-b from-white via-white to-slate-50/50 backdrop-blur-xl border-r border-slate-200/60 flex-col overflow-y-auto z-40 transition-all duration-300">
@@ -103,7 +103,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Link>
               ))}
               <button
-                onClick={async () => { await signOut(); router.push('/'); }}
+                onClick={async () => { await signOut(); router.replace('/login'); }}
                 className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-red-500 font-bold text-sm hover:bg-red-50/80 transition-all duration-300 mt-6 group border border-transparent hover:border-red-100"
               >
                 <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500 group-hover:bg-red-100 group-hover:scale-110 transition-all">

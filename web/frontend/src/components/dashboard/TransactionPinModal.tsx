@@ -1,18 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { generateHash } from '@/lib/crypto';
+import { verifyPin } from '@/lib/auth';
 import { X, Lock } from 'lucide-react';
 
 interface TransactionPinModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (pin: string) => void;
 }
 
 export default function TransactionPinModal({ isOpen, onClose, onSuccess }: TransactionPinModalProps) {
-  const { user } = useAuth();
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,8 +19,8 @@ export default function TransactionPinModal({ isOpen, onClose, onSuccess }: Tran
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pin || pin.length !== 4) {
-      setError('Please enter a valid 4-digit PIN');
+    if (!/^\d{4,6}$/.test(pin)) {
+      setError('Please enter a valid 4 to 6 digit PIN');
       return;
     }
 
@@ -30,17 +28,14 @@ export default function TransactionPinModal({ isOpen, onClose, onSuccess }: Tran
     setError('');
 
     try {
-      const hashedPin = await generateHash(pin);
-      
-      // In a real app, you might want to verify this on the server
-      // But for this client-side logic with Firebase:
-      if (user?.pinHash === hashedPin) {
-        onSuccess();
-        onClose();
-        setPin('');
-      } else {
+      const valid = await verifyPin(pin);
+      if (!valid) {
         setError('Incorrect PIN');
+        return;
       }
+      onSuccess(pin);
+      onClose();
+      setPin('');
     } catch (err) {
       console.error('PIN verification failed', err);
       setError('Verification failed');
@@ -71,7 +66,7 @@ export default function TransactionPinModal({ isOpen, onClose, onSuccess }: Tran
             <div>
               <input
                 type="password"
-                maxLength={4}
+                maxLength={6}
                 value={pin}
                 onChange={(e) => {
                   const val = e.target.value.replace(/\D/g, '');
@@ -98,7 +93,7 @@ export default function TransactionPinModal({ isOpen, onClose, onSuccess }: Tran
               </button>
               <button
                 type="submit"
-                disabled={loading || pin.length !== 4}
+                disabled={loading || !/^\d{4,6}$/.test(pin)}
                 className="flex-1 px-4 py-2 bg-[#0A1F44] text-white rounded-lg hover:bg-[#0A1F44]/90 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
                 {loading ? 'Verifying...' : 'Confirm'}

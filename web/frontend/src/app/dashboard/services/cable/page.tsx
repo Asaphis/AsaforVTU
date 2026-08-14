@@ -11,7 +11,7 @@ const CABLE_PROVIDERS = ['DSTV', 'GOTV', 'Startimes'];
 
 export default function CablePage() {
   const { user } = useAuth();
-  const { service, loading, error } = useService('tv');
+  const { service, loading, error } = useService('cable');
   const [provider, setProvider] = useState(CABLE_PROVIDERS[0]);
   const [smartcardNumber, setSmartcardNumber] = useState('');
   const [amount, setAmount] = useState('');
@@ -24,7 +24,7 @@ export default function CablePage() {
     setShowPinModal(true);
   };
 
-  const onPinSuccess = async () => {
+  const onPinSuccess = async (transactionPin: string) => {
     if (!user || !service) return;
     
     setProcessing(true);
@@ -34,9 +34,12 @@ export default function CablePage() {
         Number(amount),
         'cable',
         {
-          provider,
+          customerId: smartcardNumber,
+          serviceId: provider.toLowerCase(),
+          planId: provider.toLowerCase(),
+          providerPlanId: provider.toLowerCase(),
           smartcardNumber,
-          serviceProvider: service.slug
+          transactionPin
         }
       );
 

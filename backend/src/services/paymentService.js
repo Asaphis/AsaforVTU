@@ -11,11 +11,11 @@ const createPayment = async (paymentData) => {
       amount,
       payment_method = 'flutterwave',
       provider = 'flutterwave',
-      metadata = {}
+      metadata = {},
+      tx_ref: suppliedTxRef = null
     } = paymentData;
 
-    // Generate transaction reference
-    const tx_ref = `PAY_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const tx_ref = suppliedTxRef || `PAY_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     const result = await pool.query(
       `INSERT INTO payments (user_id, transaction_id, amount, payment_method, provider, tx_ref, metadata, status)
@@ -104,7 +104,7 @@ const getPaymentById = async (paymentId) => {
 };
 
 // Get payment by transaction reference
-const getPaymentByTxRef = async (txRef) => {
+const getPaymentByTxRef = async (txRef, userId = null) => {
   try {
     const result = await pool.query(
       `SELECT p.*, 
@@ -113,8 +113,8 @@ const getPaymentByTxRef = async (txRef) => {
        FROM payments p
        LEFT JOIN users u ON p.user_id = u.id
        LEFT JOIN transactions t ON p.transaction_id = t.id
-       WHERE p.tx_ref = $1`,
-      [txRef]
+       WHERE (p.tx_ref = $1 OR p.provider_reference = $1)${userId ? ' AND p.user_id = $2' : ''}`,
+      userId ? [txRef, userId] : [txRef]
     );
 
     if (result.rows.length === 0) {
@@ -159,50 +159,27 @@ const getPaymentsByUserId = async (userId, limit = 50, offset = 0, status = null
   }
 };
 
-// Process successful payment
+// Process successful payment. Wallet credit uses the unique payment tx_ref as
+// its ledger reference, making retries safe even if the status update is retried.
 const processSuccessfulPayment = async (paymentId, providerData = {}) => {
-  const client = await pool.connect();
-  
-  try {
-    await client.query('BEGIN');
+  const payment = await getPaymentById(paymentId);
+  if (!payment) throw new Error('Payment not found');
+  if (payment.status === 'success') return payment;
 
-    // Get payment
-    const payment = await getPaymentById(paymentId);
-    if (!payment) {
-      throw new Error('Payment not found');
-    }
+  await walletService.creditWallet(
+    payment.user_id,
+    Number(payment.amount),
+    'main',
+    'Payment for wallet funding',
+    payment.tx_ref,
+    { paymentId, providerData }
+  );
 
-    if (payment.status === 'success') {
-      throw new Error('Payment already processed');
-    }
-
-    // Update payment status
-    const updatedPayment = await updatePaymentStatus(paymentId, 'success', providerData);
-
-    // Credit wallet INSTANTLY
-    await walletService.creditWallet(
-      payment.user_id,
-      payment.amount,
-      'main',
-      `Payment for wallet funding`,
-      payment.tx_ref
-    );
-
-    // If payment is linked to a transaction, process it
-    if (payment.transaction_id) {
-      await transactionService.completeTransaction(payment.transaction_id, providerData.provider_reference);
-    }
-
-    await client.query('COMMIT');
-
-    return updatedPayment;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('[Payment Service] Error processing successful payment:', error);
-    throw error;
-  } finally {
-    client.release();
+  const updatedPayment = await updatePaymentStatus(paymentId, 'success', providerData);
+  if (payment.transaction_id) {
+    await transactionService.completeTransaction(payment.transaction_id, providerData.provider_reference, providerData);
   }
+  return updatedPayment;
 };
 
 // Process failed payment

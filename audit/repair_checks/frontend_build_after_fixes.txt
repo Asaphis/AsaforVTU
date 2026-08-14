@@ -1,0 +1,30 @@
+
+> Asafor-vtu@1.0.0 build
+> next build --webpack
+
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /home/ubuntu/asaforvtu-audit/package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * /home/ubuntu/asaforvtu-audit/web/frontend/package-lock.json
+
+▲ Next.js 16.1.4 (webpack)
+
+  Creating an optimized production build ...
+⚠ Production code optimization has been disabled in your project. Read more: https://nextjs.org/docs/messages/minification-disabled
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+✓ Compiled successfully in 12.8s
+  Skipping validation of types
+  Collecting page data using 5 workers ...
+  Generating static pages using 5 workers (0/30) ...
+Error occurred prerendering page "/_not-found". Read more: https://nextjs.org/docs/messages/prerender-error
+Error: useAuth must be used within an AuthProvider
+    at useAuth (.next/server/chunks/377.js:318:25)
+    at NotificationProvider (.next/server/chunks/377.js:85:93) {
+  digest: '1502312782'
+}
+Export encountered an error on /_not-found/page: /_not-found, exiting the build.
+⨯ Next.js build worker exited with code: 1 and signal: null

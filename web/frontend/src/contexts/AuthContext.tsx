@@ -2,124 +2,69 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { UserProfile, SignUpData, LoginCredentials, AuthState, AuthContextType } from '@/types/auth';
-import { signIn, signUp, signOut, getCurrentUser, isAuthenticated, requestPasswordReset, resetPassword } from '@/lib/auth';
+import { User as ApiUser, signIn, signUp, signOut, getCurrentUser, apiRequest, requestPasswordReset, resetPassword } from '@/lib/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }
 
+const toProfile = (user: ApiUser): UserProfile => ({
+  uid: user.id,
+  email: user.email,
+  displayName: user.full_name,
+  fullName: user.full_name,
+  username: user.username,
+  phone: user.phone,
+  walletBalance: Number(user.wallet?.main_balance || 0),
+  referralBalance: Number(user.wallet?.referral_balance || 0),
+  cashbackBalance: Number(user.wallet?.cashback_balance || 0),
+  accountStatus: 'active',
+  isVerified: Boolean(user.email_verified),
+  emailVerified: Boolean(user.email_verified),
+  createdAt: user.created_at,
+  updatedAt: user.created_at,
+  metadata: { role: user.role, is_admin: user.is_admin, pin_set: user.pin_set }
+});
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    loading: true,
-    error: null,
-    initialized: false,
-  });
+  const [state, setState] = useState<AuthState>({ user: null, loading: true, error: null, initialized: false });
 
   const loadUserData = useCallback(async () => {
-    console.log('[Auth] Loading user data...');
-    
     try {
-      const token = localStorage.getItem('access_token');
-      
-      if (!token) {
-        setState(prev => ({ ...prev, user: null, loading: false, initialized: true }));
+      const user = await getCurrentUser();
+      if (!user) {
+        setState(prev => ({ ...prev, user: null, loading: false, initialized: true, error: null }));
         return;
       }
-
-      const user = await getCurrentUser();
-      
-      if (user) {
-        // Fetch wallet balance from backend
-        try {
-          const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://vtuapi.ferixas.com';
-          const walletRes = await fetch(`${backendUrl}/api/wallet`, {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (walletRes.ok) {
-            const walletData = await walletRes.json();
-            user.walletBalance = walletData.main_balance;
-            user.cashbackBalance = walletData.cashback_balance;
-            user.referralBalance = walletData.referral_balance;
-          }
-        } catch (e) {
-          console.warn('[Auth] Failed to fetch wallet balance:', e);
+      const profile = toProfile(user);
+      try {
+        const response = await apiRequest('/api/wallet');
+        if (response.ok) {
+          const wallet = await response.json();
+          profile.walletBalance = Number(wallet.main_balance || 0);
+          profile.cashbackBalance = Number(wallet.cashback_balance || 0);
+          profile.referralBalance = Number(wallet.referral_balance || 0);
         }
-
-        setState(prev => ({
-          ...prev,
-          user,
-          loading: false,
-          initialized: true,
-          error: null
-        }));
-      } else {
-        // Token invalid, clear it
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
-        setState(prev => ({ ...prev, user: null, loading: false, initialized: true }));
-      }
+      } catch (_) { /* stale wallet values remain usable until the next refresh */ }
+      setState(prev => ({ ...prev, user: profile, loading: false, initialized: true, error: null }));
     } catch (error: any) {
-      console.error('[Auth] Critical loading error:', error);
-      setState(prev => ({
-        ...prev,
-        error: error.message || 'Authentication failed',
-        loading: false,
-        initialized: true
-      }));
+      setState(prev => ({ ...prev, user: null, loading: false, initialized: true, error: error?.message || 'Authentication failed' }));
     }
   }, []);
 
-  useEffect(() => {
-    loadUserData();
-  }, [loadUserData]);
+  useEffect(() => { void loadUserData(); }, [loadUserData]);
 
-  const login = async ({ email, password }: LoginCredentials) => {
+  const login = async ({ email, password }: LoginCredentials): Promise<UserProfile> => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const user = await signIn(email, password);
-      
-      // Fetch wallet balance
-      try {
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://vtuapi.ferixas.com';
-        const walletRes = await fetch(`${backendUrl}/api/wallet`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-          }
-        });
-        
-        if (walletRes.ok) {
-          const walletData = await walletRes.json();
-          user.walletBalance = walletData.main_balance;
-          user.cashbackBalance = walletData.cashback_balance;
-          user.referralBalance = walletData.referral_balance;
-        }
-      } catch (e) {
-        console.warn('[Auth] Failed to fetch wallet balance after login:', e);
-      }
-
-      setState(prev => ({
-        ...prev,
-        user,
-        loading: false,
-        error: null
-      }));
-      
-      return user;
+      const profile = toProfile(await signIn(email, password));
+      setState(prev => ({ ...prev, user: profile, loading: false, initialized: true, error: null }));
+      return profile;
     } catch (error: any) {
-      setState(prev => ({ ...prev, error: error.message, loading: false }));
+      setState(prev => ({ ...prev, user: null, loading: false, error: error?.message || 'Login failed' }));
       throw error;
     }
   };
@@ -127,71 +72,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUpFn = async (data: SignUpData) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const result = await signUp(data);
-      
-      // Create user object from response
-      const user: UserProfile = {
-        uid: result.user.id,
-        email: result.user.email,
-        displayName: result.user.full_name,
-        fullName: result.user.full_name,
-        username: result.user.username,
-        phone: result.user.phone,
-        walletBalance: 0,
-        referralBalance: 0,
-        cashbackBalance: 0,
-        accountStatus: 'active',
-        isVerified: result.user.email_verified,
-        emailVerified: result.user.email_verified,
-        createdAt: result.user.created_at,
-        updatedAt: result.user.created_at,
-        metadata: {}
-      };
-
-      setState(prev => ({
-        ...prev,
-        user,
-        loading: false,
-        error: null
-      }));
-      
+      const result = await signUp({
+        email: data.email,
+        password: data.password,
+        full_name: data.fullName,
+        username: data.username,
+        phone: data.phone,
+        pin: data.transactionPin,
+        referral_code: data.referralCode || data.referralUsername
+      });
+      setState(prev => ({ ...prev, user: null, loading: false, initialized: true, error: null }));
       return result;
     } catch (error: any) {
-      setState(prev => ({ ...prev, error: error.message, loading: false }));
+      setState(prev => ({ ...prev, loading: false, error: error?.message || 'Registration failed' }));
       throw error;
     }
   };
 
   const logoutFn = async () => {
-    try {
-      await signOut();
-      setState(prev => ({ ...prev, user: null, loading: false, initialized: true }));
-    } catch (error: any) {
-      console.error('[Auth] Logout error:', error);
-      // Still clear state even if logout fails
-      setState(prev => ({ ...prev, user: null, loading: false, initialized: true }));
-    }
+    setState(prev => ({ ...prev, user: null, loading: false, initialized: true, error: null }));
+    await signOut();
   };
 
-  const refreshUser = useCallback(async () => {
-    await loadUserData();
-  }, [loadUserData]);
-
-  const requestPasswordResetFn = async (email: string) => {
-    try {
-      await requestPasswordReset(email);
-    } catch (error: any) {
-      throw error;
-    }
-  };
-
-  const resetPasswordFn = async (token: string, newPassword: string) => {
-    try {
-      await resetPassword(token, newPassword);
-    } catch (error: any) {
-      throw error;
-    }
-  };
+  const refreshUser = useCallback(async () => { await loadUserData(); }, [loadUserData]);
+  const requestPasswordResetFn = async (email: string) => { await requestPasswordReset(email); };
+  const resetPasswordFn = async (token: string, newPassword: string) => { await resetPassword(token, newPassword); };
 
   const value: AuthContextType = {
     user: state.user,
@@ -205,6 +110,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword: resetPasswordFn,
     requestPasswordReset: requestPasswordResetFn
   };
-
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

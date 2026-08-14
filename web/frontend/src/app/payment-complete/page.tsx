@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { verifyFunding, getWalletBalance } from '@/lib/services';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
@@ -8,6 +9,7 @@ import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 function PaymentCompleteContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const { refreshUser } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
   const [message, setMessage] = useState<string>('Verifying payment...');
 
@@ -31,6 +33,7 @@ function PaymentCompleteContent() {
         setStatus('success');
         setMessage('Wallet credited successfully');
         await getWalletBalance();
+        await refreshUser();
         setTimeout(() => router.replace('/dashboard/wallet'), 1500);
       } else {
         setStatus('failed');
@@ -38,7 +41,7 @@ function PaymentCompleteContent() {
       }
     };
     run();
-  }, [params, router]);
+  }, [params, router, refreshUser]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">

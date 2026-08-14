@@ -6,209 +6,105 @@ const FLW_API = 'https://api.flutterwave.com/v3';
 
 class FlutterwaveService {
   constructor() {
-    if (!process.env.FLW_SECRET_KEY) {
-      console.warn('Warning: FLW_SECRET_KEY is not set. Payments will fail.');
-    }
+    if (!process.env.FLW_SECRET_KEY) console.warn('Warning: FLW_SECRET_KEY is not set. Payments will fail.');
   }
 
   _headers() {
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.FLW_SECRET_KEY || ''}`,
-    };
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.FLW_SECRET_KEY || ''}` };
   }
 
   _genRef(prefix = 'FLW') {
-    const ts = Date.now().toString(36).toUpperCase();
-    const rnd = Math.random().toString(36).slice(2, 8).toUpperCase();
-    return `${prefix}-${ts}-${rnd}`;
+    return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
   }
 
-  async initiatePayment(userId, amount, customer = {}, redirectUrl) {
-    const tx_ref = this._genRef('DEP');
-    const body = {
+  generateReference() { return this._genRef('DEP'); }
+
+  async initiatePayment(userId, amount, customer = {}, redirectUrl, suppliedTxRef = null) {
+    const tx_ref = suppliedTxRef || this.generateReference();
+    const response = await axios.post(`${FLW_API}/payments`, {
       tx_ref,
       amount,
       currency: 'NGN',
-      redirect_url: redirectUrl || process.env.FLW_REDIRECT_URL || 'https://vtu.ferixas.com/payment-complete',
-      customer: {
-        email: customer.email || 'user@Asafor.com',
-        name: customer.name || 'Asafor User',
-        phonenumber: customer.phone || undefined,
-      },
-      meta: {
-        userId,
-        purpose: 'wallet_funding',
-      },
-      payment_options: 'card,banktransfer,ussd',
-    };
-    const res = await axios.post(`${FLW_API}/payments`, body, { headers: this._headers(), timeout: 15000 });
-    const data = res.data || {};
-
-    // Create payment record in PostgreSQL
-    await paymentService.createPayment({
-      user_id: userId,
-      amount,
-      payment_method: 'flutterwave',
-      provider: 'flutterwave',
-      tx_ref,
-      metadata: {
-        link: data?.data?.link,
-        flutterwave_data: data
-      }
-    });
-
+      redirect_url: redirectUrl || process.env.FLW_REDIRECT_URL || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-complete`,
+      customer: { email: customer.email || 'user@asaforvtu.com', name: customer.name || 'Asafor User', phonenumber: customer.phone || undefined },
+      meta: { userId, purpose: 'wallet_funding' },
+      payment_options: 'card,banktransfer,ussd'
+    }, { headers: this._headers(), timeout: 15000 });
+    const data = response.data || {};
     return { tx_ref, link: data?.data?.link, flw_ref: data?.data?.flw_ref, data };
   }
 
   async verifyById(id) {
-    const res = await axios.get(`${FLW_API}/transactions/${id}/verify`, { headers: this._headers(), timeout: 15000 });
-    return res.data || {};
+    const response = await axios.get(`${FLW_API}/transactions/${id}/verify`, { headers: this._headers(), timeout: 15000 });
+    return response.data || {};
   }
 
   async verifyByReference(tx_ref) {
-    const res = await axios.get(`${FLW_API}/transactions/verify_by_reference?tx_ref=${encodeURIComponent(tx_ref)}`, { headers: this._headers(), timeout: 15000 });
-    return res.data || {};
+    const response = await axios.get(`${FLW_API}/transactions/verify_by_reference?tx_ref=${encodeURIComponent(tx_ref)}`, { headers: this._headers(), timeout: 15000 });
+    return response.data || {};
   }
 
   async creditIfValid(referenceOrId, expectedAmount, userId) {
-    const client = await pool.connect();
-    
+    let verify;
     try {
-      await client.query('BEGIN');
-      
-      let verify;
-      try {
-        if (String(referenceOrId).match(/^\d+$/)) {
-          verify = await this.verifyById(referenceOrId);
-        } else {
-          verify = await this.verifyByReference(referenceOrId);
-        }
-      } catch (error) {
-        console.warn(`[Flutterwave Verify Error] Ref: ${referenceOrId} - ${error.message}`);
-        if (error.response && (error.response.status === 400 || error.response.status === 404)) {
-          // Mark as failed
-          await client.query(
-            `UPDATE payments 
-             SET status = 'failed', updated_at = CURRENT_TIMESTAMP 
-             WHERE tx_ref = $1 OR provider_reference = $2`,
-            [String(referenceOrId), String(referenceOrId)]
-          );
-          await client.query('ROLLBACK');
-          return { success: false, error: 'Payment not found or invalid reference' };
-        }
-        throw error;
-      }
-
-      const status = verify?.status;
-      const vdata = verify?.data || {};
-      const resolvedRef = String(vdata.tx_ref || referenceOrId);
-      const successful = status === 'success' && (vdata.status === 'successful' || vdata.processor_response === 'Approved');
-      const expected = Number(expectedAmount || vdata.amount || 0);
-      const amountOk = Number(vdata.amount) >= expected;
-
-      if (successful && amountOk) {
-        // Check if payment already exists
-        const paymentResult = await client.query(
-          `SELECT * FROM payments 
-           WHERE tx_ref = $1 OR provider_reference = $2 
-           LIMIT 1`,
-          [resolvedRef, resolvedRef]
-        );
-        
-        if (paymentResult.rows.length === 0) {
-          await client.query('ROLLBACK');
-          return { success: false, error: 'Payment record not found' };
-        }
-
-        const payment = paymentResult.rows[0];
-
-        // Check if already processed
-        if (payment.status === 'success' || payment.status === 'completed') {
-          await client.query('ROLLBACK');
-          return { success: true, message: 'Payment already processed', alreadyProcessed: true };
-        }
-
-        // Process payment - INSTANT CREDIT
-        await paymentService.processSuccessfulPayment(payment.id, {
-          flw_ref: vdata.flw_ref,
-          amount_paid: Number(vdata.amount)
-        });
-
-        await client.query('COMMIT');
-        return { success: true };
-      } else {
-        console.warn(`[Payment Verification Failed] Ref: ${referenceOrId}, User: ${userId}, Status: ${status}, AmountOk: ${amountOk}`);
-        await client.query(
-          `UPDATE payments 
-           SET status = 'failed', updated_at = CURRENT_TIMESTAMP 
-           WHERE tx_ref = $1 OR provider_reference = $2`,
-          [resolvedRef, resolvedRef]
-        );
-        await client.query('ROLLBACK');
-        return { success: false, data: vdata };
-      }
+      verify = /^\d+$/.test(String(referenceOrId))
+        ? await this.verifyById(referenceOrId)
+        : await this.verifyByReference(String(referenceOrId));
     } catch (error) {
-      await client.query('ROLLBACK');
-      console.error('[Flutterwave Service] Credit error:', error);
+      console.warn(`[Flutterwave Verify Error] Ref: ${referenceOrId} - ${error.message}`);
+      return { success: false, error: 'Payment not found or provider verification failed' };
+    }
+
+    const status = verify?.status;
+    const data = verify?.data || {};
+    const resolvedRef = String(data.tx_ref || referenceOrId);
+    const expected = Number(expectedAmount);
+    const amountPaid = Number(data.amount);
+    const successful = status === 'success' && ['successful', 'success'].includes(String(data.status).toLowerCase()) && Number.isFinite(amountPaid) && amountPaid >= expected;
+    if (!successful) return { success: false, error: 'Payment verification failed', data };
+
+    const result = await pool.query(
+      `SELECT * FROM payments WHERE user_id = $1 AND (tx_ref = $2 OR provider_reference = $2) LIMIT 1`,
+      [userId, resolvedRef]
+    );
+    const payment = result.rows[0];
+    if (!payment) return { success: false, error: 'Payment record not found' };
+    if (payment.status === 'success') return { success: true, message: 'Payment already processed', alreadyProcessed: true };
+    if (Number(payment.amount) > amountPaid) return { success: false, error: 'Paid amount is less than the required amount' };
+
+    try {
+      await paymentService.processSuccessfulPayment(payment.id, {
+        provider_reference: resolvedRef,
+        flw_ref: data.flw_ref,
+        amount_paid: amountPaid,
+        metadata: { flutterwave_status: data.status }
+      });
+      return { success: true };
+    } catch (error) {
+      const latest = await paymentService.getPaymentById(payment.id);
+      if (latest?.status === 'success') return { success: true, alreadyProcessed: true };
       throw error;
-    } finally {
-      client.release();
     }
   }
 
   async reconcilePayment(refOrId, force = false) {
     const input = String(refOrId);
-    let resolvedRef = input;
-    
-    // 1. Verify with Flutterwave
-    let fwData;
+    let result;
     try {
-      if (input.match(/^\d+$/)) {
-        const res = await this.verifyById(input);
-        fwData = res.data;
-      } else {
-        const res = await this.verifyByReference(input);
-        fwData = res.data;
-      }
-    } catch (e) {
-      if (e.response && e.response.status === 404) {
-        return { success: false, message: 'Transaction not found on Flutterwave' };
-      }
-      return { success: false, message: 'Flutterwave check failed: ' + e.message };
+      result = /^\d+$/.test(input) ? await this.verifyById(input) : await this.verifyByReference(input);
+    } catch (error) {
+      return { success: false, message: error.response?.status === 404 ? 'Transaction not found on Flutterwave' : `Flutterwave check failed: ${error.message}` };
     }
-
-    if (!fwData || (fwData.status !== 'successful' && fwData.status !== 'success')) {
-      return { success: false, message: `Payment not successful on Flutterwave (Status: ${fwData?.status})` };
+    const data = result?.data || {};
+    if (!data || !['successful', 'success'].includes(String(data.status).toLowerCase())) {
+      return { success: false, message: `Payment not successful on Flutterwave (Status: ${data?.status})` };
     }
-
-    resolvedRef = String(fwData.tx_ref || input);
-
-    // 2. Check if already credited
-    const existingPayment = await pool.query(
-      `SELECT * FROM payments 
-       WHERE tx_ref = $1 OR provider_reference = $1 
-       LIMIT 1`,
-      [resolvedRef]
-    );
-    
-    if (existingPayment.rows.length > 0) {
-      const payment = existingPayment.rows[0];
-      if ((payment.status === 'success' || payment.status === 'completed') && !force) {
-        return { success: false, message: 'Payment already processed' };
-      }
-    }
-
-    // 3. Process payment
-    if (existingPayment.rows.length > 0) {
-      await paymentService.processSuccessfulPayment(existingPayment.rows[0].id, {
-        flw_ref: fwData.flw_ref,
-        amount_paid: Number(fwData.amount)
-      });
-      return { success: true, message: 'Payment reconciled successfully' };
-    }
-
-    return { success: false, message: 'Payment record not found' };
+    const ref = String(data.tx_ref || input);
+    const paymentResult = await pool.query('SELECT * FROM payments WHERE tx_ref = $1 OR provider_reference = $1 LIMIT 1', [ref]);
+    const payment = paymentResult.rows[0];
+    if (!payment) return { success: false, message: 'Payment record not found' };
+    if (payment.status === 'success' && !force) return { success: true, message: 'Payment already processed' };
+    return this.creditIfValid(ref, Number(payment.amount), payment.user_id);
   }
 }
 

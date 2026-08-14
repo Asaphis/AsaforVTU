@@ -10,7 +10,10 @@ const {
   resetPassword,
   getUserById,
   updateUserProfile,
-  changePassword
+  changePassword,
+  resendVerificationEmail,
+  verifyPin,
+  changePin
 } = require('../services/authService');
 const { authenticate } = require('../middleware/auth');
 
@@ -38,7 +41,7 @@ router.post('/login', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('[Auth Routes] Login error:', error);
-    res.status(401).json({ error: error.message });
+    res.status(error.code === 'EMAIL_NOT_VERIFIED' ? 403 : 401).json({ error: error.message, code: error.code });
   }
 });
 
@@ -72,6 +75,17 @@ router.post('/logout', async (req, res) => {
   } catch (error) {
     console.error('[Auth Routes] Logout error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Resend verification email. The response is intentionally generic.
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const result = await resendVerificationEmail(req.body?.email);
+    res.json(result);
+  } catch (error) {
+    console.error('[Auth Routes] Resend verification error:', error);
+    res.json({ success: true, message: 'If the account exists, a verification link has been sent' });
   }
 });
 
@@ -150,6 +164,30 @@ router.put('/profile', authenticate, async (req, res) => {
   } catch (error) {
     console.error('[Auth Routes] Update profile error:', error);
     res.status(400).json({ error: error.message });
+  }
+});
+
+// Verify transaction PIN without returning the stored hash.
+router.post('/verify-pin', authenticate, async (req, res) => {
+  try {
+    const valid = await verifyPin(req.user.id, req.body?.pin);
+    if (!valid) return res.status(401).json({ success: false, error: 'Invalid transaction PIN' });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Auth Routes] Verify PIN error:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/change-pin', authenticate, async (req, res) => {
+  try {
+    if (req.body?.pin !== req.body?.confirm_pin) {
+      return res.status(400).json({ success: false, error: 'PINs do not match' });
+    }
+    res.json(await changePin(req.user.id, req.body?.pin));
+  } catch (error) {
+    console.error('[Auth Routes] Change PIN error:', error);
+    res.status(400).json({ success: false, error: error.message });
   }
 });
 

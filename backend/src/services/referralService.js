@@ -2,111 +2,78 @@ const walletService = require('./walletService');
 const pool = require('../config/database');
 const notificationService = require('./notificationService');
 
-const REFERRAL_BONUS_AMOUNT = 10; // Configurable
+const DEFAULT_REWARD = 10;
 
 class ReferralService {
-  
-  async getDailyBudget() {
-    try {
-      const result = await pool.query(
-        "SELECT value FROM settings WHERE key = 'referral_settings'"
-      );
-      
-      if (result.rows.length > 0) {
-        return result.rows[0].value?.daily_budget || 1000;
-      }
-      return 1000; // Default
-    } catch (error) {
-      console.error('[Referral Service] Error getting daily budget:', error);
-      return 1000;
-    }
+  async getSettings() {
+    const result = await pool.query("SELECT value FROM settings WHERE key = 'referral_settings'");
+    return result.rows[0]?.value || { enabled: true, reward_amount: DEFAULT_REWARD, daily_budget: 1000 };
   }
 
   async getDailyUsage() {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const result = await pool.query(
-        `SELECT COALESCE(SUM(reward_amount), 0) as total 
-         FROM referrals 
-         WHERE DATE(created_at) = $1`,
-        [today]
-      );
-      return Number(result.rows[0].total || 0);
-    } catch (error) {
-      console.error('[Referral Service] Error getting daily usage:', error);
-      return 0;
-    }
+    const result = await pool.query(
+      `SELECT COALESCE(SUM(reward_amount), 0) AS total FROM referrals
+       WHERE is_paid = true AND DATE(created_at) = CURRENT_DATE`
+    );
+    return Number(result.rows[0]?.total || 0);
   }
 
   async processReferral(userId, transactionId) {
-    try {
-      // 1. Get User Profile to find referrer
-      const userResult = await pool.query(
-        'SELECT referred_by FROM users WHERE id = $1',
-        [userId]
-      );
-      
-      if (userResult.rows.length === 0) {
-        console.log('[Referral Service] User not found');
-        return;
-      }
-      
-      const referrerId = userResult.rows[0].referred_by;
+    const settings = await this.getSettings();
+    if (settings.enabled === false) return;
+    const reward = Number(settings.reward_amount || DEFAULT_REWARD);
+    if (!Number.isFinite(reward) || reward <= 0) return;
 
-      if (!referrerId) {
-        console.log('[Referral Service] User has no referrer');
-        return;
-      }
+    const relation = await pool.query(
+      `SELECT r.id AS referral_id, r.referrer_id, r.is_paid, u.referred_by,
+              ref.id AS resolved_referrer_id
+       FROM users u
+       LEFT JOIN referrals r ON r.referred_id = u.id
+       LEFT JOIN users ref ON ref.referral_code = u.referred_by
+       WHERE u.id = $1
+       ORDER BY r.created_at ASC LIMIT 1`,
+      [userId]
+    );
+    const row = relation.rows[0];
+    const referrerId = row?.resolved_referrer_id || row?.referrer_id;
+    if (!referrerId || row?.is_paid) return;
 
-      // 2. Check Budget
-      const budget = await this.getDailyBudget();
-      const usage = await this.getDailyUsage();
-
-      if (usage + REFERRAL_BONUS_AMOUNT > budget) {
-        console.log('[Referral Service] Daily referral budget exceeded');
-        await notificationService.sendNotification(
-          referrerId,
-          'Referral Bonus Missed',
-          'Daily referral budget exceeded. No bonus credited.'
-        );
-        return;
-      }
-
-      // 3. Check if referral already processed
-      const existingReferral = await pool.query(
-        'SELECT id FROM referrals WHERE referred_id = $1 LIMIT 1',
-        [userId]
-      );
-      
-      if (existingReferral.rows.length > 0) {
-        console.log('[Referral Service] Referral already processed');
-        return;
-      }
-
-      // 4. Credit Referrer
-      await walletService.creditWallet(
-        referrerId,
-        REFERRAL_BONUS_AMOUNT,
-        'referral',
-        `Referral bonus from user ${userId}`
-      );
-
-      // 5. Record referral
-      await pool.query(
-        `INSERT INTO referrals (referrer_id, referred_id, referral_code, reward_amount, is_paid)
-         VALUES ($1, $2, $3, $4, true)`,
-        [referrerId, userId, '', REFERRAL_BONUS_AMOUNT]
-      );
-      
-      await notificationService.sendNotification(
-        referrerId,
-        'Referral Bonus',
-        `You earned ₦${REFERRAL_BONUS_AMOUNT} referral bonus!`
-      );
-
-    } catch (error) {
-      console.error('[Referral Service] Error processing referral:', error);
+    const budget = Number(settings.daily_budget || 1000);
+    if (await this.getDailyUsage() + reward > budget) {
+      await notificationService.sendNotification(referrerId, 'Referral Bonus Missed', 'The daily referral reward budget has been reached.', 'referral', { userId, transactionId });
+      return;
     }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const locked = await client.query('SELECT id, is_paid FROM referrals WHERE referred_id = $1 FOR UPDATE', [userId]);
+      if (locked.rows[0]?.is_paid) {
+        await client.query('ROLLBACK');
+        return;
+      }
+      if (!locked.rows[0]) {
+        await client.query(
+          `INSERT INTO referrals (referrer_id, referred_id, referral_code, reward_amount, is_paid)
+           SELECT $1, $2, COALESCE(u.referred_by, ''), 0, false FROM users u WHERE u.id = $2`,
+          [referrerId, userId]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    await walletService.creditWallet(referrerId, reward, 'referral', `Referral bonus from user ${userId}`, `REFERRAL_${userId}`, { transactionId });
+    await pool.query(
+      `UPDATE referrals SET reward_amount = $1, is_paid = true, updated_at = CURRENT_TIMESTAMP
+       WHERE referred_id = $2 AND is_paid = false`,
+      [reward, userId]
+    );
+    await notificationService.sendNotification(referrerId, 'Referral Bonus', `You earned ₦${reward.toFixed(2)} referral bonus!`, 'referral', { userId, transactionId });
   }
 }
 

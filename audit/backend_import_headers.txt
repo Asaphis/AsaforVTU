@@ -1,0 +1,427 @@
+
+===== backend/src/app.js =====
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const dotenv = require('dotenv');
+
+dotenv.config();
+
+const app = express();
+const pool = require('./config/database');
+
+// Middleware
+app.use(helmet());
+const originsEnv = process.env.CORS_ALLOWED_ORIGINS;
+
+===== backend/src/config/database.js =====
+const { Pool } = require('pg');
+const dotenv = require('dotenv');
+
+dotenv.config();
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+pool.on('connect', () => {
+  console.log('[Database] Connected to Neon PostgreSQL');
+});
+
+
+===== backend/src/controllers/adminController.js =====
+const pool = require('../config/database');
+const walletService = require('../services/walletService');
+const flutterwaveService = require('../services/flutterwaveService');
+const transactionService = require('../services/transactionService');
+const paymentService = require('../services/paymentService');
+
+const getStats = async (req, res) => {
+  try {
+    // Get total users
+    const usersResult = await pool.query('SELECT COUNT(*) as count FROM users WHERE is_active = true');
+    const totalUsers = parseInt(usersResult.rows[0].count);
+
+    // Get total wallet balance
+    const walletResult = await pool.query('SELECT COALESCE(SUM(main_balance), 0) as total FROM wallets');
+
+===== backend/src/controllers/transactionController.js =====
+const transactionService = require('../services/transactionService');
+const Joi = require('joi');
+
+const purchaseSchema = Joi.object({
+  type: Joi.string().valid('airtime', 'data', 'bill', 'cable', 'electricity').required(),
+  amount: Joi.number().positive().required(),
+  details: Joi.object().required(), // Validate details based on type if needed
+  requestId: Joi.string().optional()
+});
+
+const purchase = async (req, res) => {
+  try {
+    const { error, value } = purchaseSchema.validate(req.body);
+    if (error) return res.status(400).json({ error: error.details[0].message });
+
+===== backend/src/controllers/walletController.js =====
+const walletService = require('../services/walletService');
+
+const getBalance = async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const balance = await walletService.getBalance(uid);
+    res.json(balance);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+const getHistory = async (req, res) => {
+
+===== backend/src/cron/index.js =====
+const cron = require('node-cron');
+const reconcilePayments = require('./paymentReconciler');
+
+const initCronJobs = () => {
+  console.log('Initializing Cron Jobs...');
+
+  // Run payment reconciliation every minute
+  // Schedule: * * * * *
+  cron.schedule('* * * * *', () => {
+    reconcilePayments();
+  });
+
+  console.log('Cron Jobs scheduled: Payment Reconciliation (every 1 min)');
+};
+
+===== backend/src/cron/paymentReconciler.js =====
+const pool = require('../config/database');
+const flutterwaveService = require('../services/flutterwaveService');
+
+/**
+ * Reconciles pending payments by verifying them with Flutterwave
+ * and crediting the user if successful.
+ */
+const reconcilePayments = async () => {
+  console.log('[Cron] Starting payment reconciliation...');
+  try {
+    // Get pending payments
+    const result = await pool.query(
+      `SELECT * FROM payments 
+       WHERE status = 'pending' 
+
+===== backend/src/middleware/auth.js =====
+const jwt = require('jsonwebtoken');
+const pool = require('../config/database');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '30d';
+
+// Generate JWT token
+const generateToken = (userId, email, role = 'user') => {
+  return jwt.sign(
+    { userId, email, role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+
+===== backend/src/routes/adminRoutes.js =====
+const express = require('express');
+const { authenticate, requireAdmin } = require('../middleware/auth');
+const adminController = require('../controllers/adminController');
+const pool = require('../config/database');
+const walletService = require('../services/walletService');
+const transactionService = require('../services/transactionService');
+const paymentService = require('../services/paymentService');
+
+const router = express.Router();
+
+router.use(authenticate);
+router.use(requireAdmin);
+
+// Stats
+
+===== backend/src/routes/authRoutes.js =====
+const express = require('express');
+const router = express.Router();
+const {
+  registerUser,
+  loginUser,
+  refreshAccessToken,
+  logoutUser,
+  verifyEmail,
+  requestPasswordReset,
+  resetPassword,
+  getUserById,
+  updateUserProfile,
+  changePassword
+} = require('../services/authService');
+
+===== backend/src/routes/paymentRoutes.js =====
+const express = require('express');
+const { authenticate } = require('../middleware/auth');
+const paymentService = require('../services/paymentService');
+const flutterwaveService = require('../services/flutterwaveService');
+
+const router = express.Router();
+
+router.use(authenticate);
+
+router.post('/initiate', async (req, res) => {
+  try {
+    const { amount } = req.body;
+    if (!amount || isNaN(amount) || Number(amount) < 100) {
+      return res.status(400).json({ error: 'Invalid amount. Minimum is ₦100.' });
+
+===== backend/src/routes/supportRoutes.js =====
+const express = require('express');
+const { authenticate } = require('../middleware/auth');
+const pool = require('../config/database');
+
+const router = express.Router();
+
+router.use(authenticate);
+
+// Create support ticket
+router.post('/tickets', async (req, res) => {
+  try {
+    const { subject, category, priority } = req.body;
+    
+    if (!subject) {
+
+===== backend/src/routes/transactionRoutes.js =====
+const express = require('express');
+const { authenticate } = require('../middleware/auth');
+const transactionService = require('../services/transactionService');
+
+const router = express.Router();
+
+router.use(authenticate);
+
+router.post('/purchase', async (req, res) => {
+  try {
+    const { type, amount, details } = req.body;
+    
+    if (!type || !details) {
+      return res.status(400).json({ error: 'type and details are required' });
+
+===== backend/src/routes/vtuRoutes.js =====
+const express = require('express');
+const { authenticate } = require('../middleware/auth');
+const providerService = require('../services/providerService');
+const transactionService = require('../services/transactionService');
+const pool = require('../config/database');
+const { getServicePlans } = require('../services/serviceService');
+
+const router = express.Router();
+
+// Network mapping for IA Café
+const NETWORK_ID_MAP = {
+  mtn: 1,
+  glo: 2,
+  '9mobile': 3,
+
+===== backend/src/routes/walletRoutes.js =====
+const express = require('express');
+const { authenticate } = require('../middleware/auth');
+const walletService = require('../services/walletService');
+
+const router = express.Router();
+
+router.use(authenticate);
+
+router.get('/', async (req, res) => {
+  try {
+    const wallet = await walletService.getWalletByUserId(req.user.id);
+    if (!wallet) {
+      return res.status(404).json({ error: 'Wallet not found' });
+    }
+
+===== backend/src/routes/webhookRoutes.js =====
+const express = require('express');
+const flutterwaveService = require('../services/flutterwaveService');
+const paymentService = require('../services/paymentService');
+const pool = require('../config/database');
+
+const router = express.Router();
+
+router.post('/flutterwave', express.json({ type: '*/*' }), async (req, res) => {
+  try {
+    const signature = req.headers['verif-hash'];
+    const secret = process.env.FLW_SECRET_HASH || '';
+    if (secret && signature !== secret) {
+      return res.status(403).json({ error: 'Invalid signature' });
+    }
+
+===== backend/src/server.js =====
+const app = require('./app');
+const { initCronJobs } = require('./cron');
+
+const PORT = process.env.PORT || 3001;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  initCronJobs();
+});
+
+===== backend/src/services/authService.js =====
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const pool = require('../config/database');
+const { generateToken, generateRefreshToken } = require('../middleware/auth');
+
+const SALT_ROUNDS = 10;
+
+// Hash password
+const hashPassword = async (password) => {
+  return await bcrypt.hash(password, SALT_ROUNDS);
+};
+
+// Compare password
+const comparePassword = async (password, hash) => {
+
+===== backend/src/services/cashbackService.js =====
+const walletService = require('./walletService');
+const pool = require('../config/database');
+const notificationService = require('./notificationService');
+
+const CASHBACK_PERCENTAGE = 0.03; // 3%
+
+class CashbackService {
+  async processCashback(userId, amount, transactionId) {
+    try {
+      // Check if cashback is enabled globally
+      const settingsResult = await pool.query(
+        "SELECT value FROM settings WHERE key = 'cashback_settings'"
+      );
+      
+
+===== backend/src/services/flutterwaveService.js =====
+const axios = require('axios');
+const pool = require('../config/database');
+const paymentService = require('./paymentService');
+
+const FLW_API = 'https://api.flutterwave.com/v3';
+
+class FlutterwaveService {
+  constructor() {
+    if (!process.env.FLW_SECRET_KEY) {
+      console.warn('Warning: FLW_SECRET_KEY is not set. Payments will fail.');
+    }
+  }
+
+  _headers() {
+
+===== backend/src/services/notificationService.js =====
+const pool = require('../config/database');
+
+// Create notification
+const createNotification = async (notificationData) => {
+  try {
+    const { user_id, type, title, message, metadata = {} } = notificationData;
+
+    const result = await pool.query(
+      `INSERT INTO notifications (user_id, type, title, message, metadata)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [user_id, type, title, message, JSON.stringify(metadata)]
+    );
+
+
+===== backend/src/services/paymentService.js =====
+const pool = require('../config/database');
+const walletService = require('./walletService');
+const transactionService = require('./transactionService');
+
+// Create payment
+const createPayment = async (paymentData) => {
+  try {
+    const {
+      user_id,
+      transaction_id,
+      amount,
+      payment_method = 'flutterwave',
+      provider = 'flutterwave',
+      metadata = {}
+
+===== backend/src/services/providerService.js =====
+const axios = require('axios');
+const pool = require('../config/database');
+
+class ProviderService {
+  constructor() {
+    this.baseUrl = process.env.VTU_PROVIDER_URL || 'https://iacafe.com.ng/devapi/v1';
+    this.apiKey = process.env.VTU_PROVIDER_API_KEY ? process.env.VTU_PROVIDER_API_KEY.trim() : '';
+  }
+
+  _getHeaders() {
+    return {
+      'Authorization': `Bearer ${this.apiKey}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'Asafor-VTU/1.0'
+
+===== backend/src/services/referralService.js =====
+const walletService = require('./walletService');
+const pool = require('../config/database');
+const notificationService = require('./notificationService');
+
+const REFERRAL_BONUS_AMOUNT = 10; // Configurable
+
+class ReferralService {
+  
+  async getDailyBudget() {
+    try {
+      const result = await pool.query(
+        "SELECT value FROM settings WHERE key = 'referral_settings'"
+      );
+      
+
+===== backend/src/services/serviceService.js =====
+const pool = require('../config/database');
+
+// Create service
+const createService = async (serviceData) => {
+  try {
+    const { name, slug, icon, category, description, is_active = true, sort_order = 0, metadata = {} } = serviceData;
+
+    const result = await pool.query(
+      `INSERT INTO services (name, slug, icon, category, description, is_active, sort_order, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+      [name, slug.toLowerCase(), icon, category, description, is_active, sort_order, JSON.stringify(metadata)]
+    );
+
+
+===== backend/src/services/transactionService.js =====
+const pool = require('../config/database');
+const walletService = require('./walletService');
+
+// Create transaction
+const createTransaction = async (transactionData) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    const {
+      user_id,
+      service_id,
+      plan_id,
+
+===== backend/src/services/walletService.js =====
+const pool = require('../config/database');
+
+// Create wallet for user
+const createWallet = async (userId) => {
+  try {
+    const result = await pool.query(
+      `INSERT INTO wallets (user_id) 
+       VALUES ($1) 
+       ON CONFLICT (user_id) DO NOTHING 
+       RETURNING *`,
+      [userId]
+    );
+
+    return result.rows[0] || await getWalletByUserId(userId);

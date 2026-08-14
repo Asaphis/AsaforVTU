@@ -1,0 +1,34 @@
+--- backend/src files ---
+   210 backend/src/app.js
+    20 backend/src/config/database.js
+   904 backend/src/controllers/adminController.js
+    42 backend/src/controllers/transactionController.js
+    45 backend/src/controllers/walletController.js
+    16 backend/src/cron/index.js
+    61 backend/src/cron/paymentReconciler.js
+   179 backend/src/middleware/auth.js
+   164 backend/src/routes/adminRoutes.js
+   173 backend/src/routes/authRoutes.js
+    90 backend/src/routes/paymentRoutes.js
+    98 backend/src/routes/supportRoutes.js
+    76 backend/src/routes/transactionRoutes.js
+   368 backend/src/routes/vtuRoutes.js
+    56 backend/src/routes/walletRoutes.js
+    99 backend/src/routes/webhookRoutes.js
+     9 backend/src/server.js
+   559 backend/src/services/authService.js
+    45 backend/src/services/cashbackService.js
+   215 backend/src/services/flutterwaveService.js
+   163 backend/src/services/notificationService.js
+   340 backend/src/services/paymentService.js
+   448 backend/src/services/providerService.js
+   113 backend/src/services/referralService.js
+   330 backend/src/services/serviceService.js
+   377 backend/src/services/transactionService.js
+   288 backend/src/services/walletService.js
+--- backend migrations/scripts ---
+   359 backend/migrations/001_initial_schema.sql
+    73 backend/scripts/createAdminUser.js
+    70 backend/scripts/create_admin_user.js
+   117 backend/scripts/reprocess_payment.js
+    26 backend/scripts/runMigration.js

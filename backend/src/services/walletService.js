@@ -1,278 +1,188 @@
 const pool = require('../config/database');
 
-// Create wallet for user
+const BALANCE_FIELDS = new Set(['main', 'cashback', 'referral']);
+const fieldFor = (walletType) => {
+  if (!BALANCE_FIELDS.has(walletType)) throw new Error('Invalid wallet type');
+  return `${walletType}_balance`;
+};
+
+const normalizeWallet = (wallet) => wallet ? {
+  ...wallet,
+  main_balance: Number(wallet.main_balance || 0),
+  cashback_balance: Number(wallet.cashback_balance || 0),
+  referral_balance: Number(wallet.referral_balance || 0),
+  total_earned: Number(wallet.total_earned || 0),
+  total_spent: Number(wallet.total_spent || 0)
+} : null;
+
+const getLockedWallet = async (client, userId) => {
+  let result = await client.query('SELECT * FROM wallets WHERE user_id = $1 FOR UPDATE', [userId]);
+  if (result.rows.length === 0) {
+    await client.query('INSERT INTO wallets (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING', [userId]);
+    result = await client.query('SELECT * FROM wallets WHERE user_id = $1 FOR UPDATE', [userId]);
+  }
+  if (result.rows.length === 0) throw new Error('Wallet not found');
+  return result.rows[0];
+};
+
 const createWallet = async (userId) => {
-  try {
-    const result = await pool.query(
-      `INSERT INTO wallets (user_id) 
-       VALUES ($1) 
-       ON CONFLICT (user_id) DO NOTHING 
-       RETURNING *`,
-      [userId]
-    );
-
-    return result.rows[0] || await getWalletByUserId(userId);
-  } catch (error) {
-    console.error('[Wallet Service] Error creating wallet:', error);
-    throw error;
-  }
+  const result = await pool.query(
+    'INSERT INTO wallets (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING RETURNING *',
+    [userId]
+  );
+  if (result.rows[0]) return normalizeWallet(result.rows[0]);
+  return getWalletByUserId(userId);
 };
 
-// Get wallet by user ID
 const getWalletByUserId = async (userId) => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM wallets WHERE user_id = $1',
-      [userId]
-    );
-
-    if (result.rows.length === 0) {
-      return null;
-    }
-
-    return result.rows[0];
-  } catch (error) {
-    console.error('[Wallet Service] Error getting wallet:', error);
-    throw error;
-  }
+  const result = await pool.query('SELECT * FROM wallets WHERE user_id = $1', [userId]);
+  return normalizeWallet(result.rows[0] || null);
 };
 
-// Credit wallet
-const creditWallet = async (userId, amount, walletType = 'main', description = null, reference = null) => {
+const assertAmount = (amount) => {
+  const value = Number(amount);
+  if (!Number.isFinite(value) || value <= 0) throw new Error('Amount must be greater than zero');
+  return value;
+};
+
+const writeLedger = async (client, wallet, userId, type, amount, balanceAfter, description, reference, metadata = null) => {
+  await client.query(
+    `INSERT INTO wallet_transactions
+      (user_id, wallet_id, type, amount, balance_after, description, reference, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [userId, wallet.id, type, amount, balanceAfter, description, reference, metadata]
+  );
+};
+
+const creditWallet = async (userId, amount, walletType = 'main', description = null, reference = null, metadata = null) => {
+  const value = assertAmount(amount);
+  const balanceField = fieldFor(walletType);
   const client = await pool.connect();
-  
   try {
     await client.query('BEGIN');
-
-    // Ensure wallet exists
-    let wallet = await getWalletByUserId(userId);
-    if (!wallet) {
-      wallet = await createWallet(userId);
+    const wallet = await getLockedWallet(client, userId);
+    if (reference) {
+      const existing = await client.query('SELECT id FROM wallet_transactions WHERE user_id = $1 AND reference = $2 LIMIT 1', [userId, reference]);
+      if (existing.rows.length) { await client.query('COMMIT'); return getWalletByUserId(userId); }
     }
-
-    // Determine which balance to update
-    const balanceField = `${walletType}_balance`;
-    const currentBalance = wallet[balanceField] || 0;
-    const newBalance = parseFloat(currentBalance) + parseFloat(amount);
-
-    // Update wallet balance
+    const newBalance = Number(wallet[balanceField] || 0) + value;
     await client.query(
-      `UPDATE wallets 
-       SET ${balanceField} = $1, 
-           total_earned = total_earned + $2,
-           updated_at = CURRENT_TIMESTAMP 
-       WHERE user_id = $3`,
-      [newBalance, amount, userId]
+      `UPDATE wallets
+       SET ${balanceField} = ${balanceField} + $1,
+           total_earned = total_earned + $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = $2`,
+      [value, userId]
     );
-
-    // Record transaction
-    await client.query(
-      `INSERT INTO wallet_transactions (user_id, wallet_id, type, amount, balance_after, description, reference)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [userId, wallet.id, 'credit', amount, newBalance, description, reference]
-    );
-
+    await writeLedger(client, wallet, userId, 'credit', value, newBalance, description, reference, metadata);
     await client.query('COMMIT');
-
-    // Return updated wallet
-    const updatedWallet = await getWalletByUserId(userId);
-    return updatedWallet;
+    return getWalletByUserId(userId);
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('[Wallet Service] Error crediting wallet:', error);
     throw error;
   } finally {
     client.release();
   }
 };
 
-// Debit wallet
-const debitWallet = async (userId, amount, walletType = 'main', description = null, reference = null) => {
+const debitWallet = async (userId, amount, walletType = 'main', description = null, reference = null, metadata = null) => {
+  const value = assertAmount(amount);
+  const balanceField = fieldFor(walletType);
   const client = await pool.connect();
-  
   try {
     await client.query('BEGIN');
-
-    // Ensure wallet exists
-    let wallet = await getWalletByUserId(userId);
-    if (!wallet) {
-      throw new Error('Wallet not found');
+    const wallet = await getLockedWallet(client, userId);
+    if (reference) {
+      const existing = await client.query('SELECT id FROM wallet_transactions WHERE user_id = $1 AND reference = $2 LIMIT 1', [userId, reference]);
+      if (existing.rows.length) { await client.query('COMMIT'); return getWalletByUserId(userId); }
     }
-
-    // Determine which balance to update
-    const balanceField = `${walletType}_balance`;
-    const currentBalance = wallet[balanceField] || 0;
-
-    // Check sufficient balance
-    if (parseFloat(currentBalance) < parseFloat(amount)) {
-      throw new Error(`Insufficient ${walletType} balance`);
-    }
-
-    const newBalance = parseFloat(currentBalance) - parseFloat(amount);
-
-    // Update wallet balance
+    const currentBalance = Number(wallet[balanceField] || 0);
+    if (currentBalance < value) throw new Error(`Insufficient ${walletType} balance`);
+    const newBalance = currentBalance - value;
     await client.query(
-      `UPDATE wallets 
-       SET ${balanceField} = $1, 
-           total_spent = total_spent + $2,
-           updated_at = CURRENT_TIMESTAMP 
-       WHERE user_id = $3`,
-      [newBalance, amount, userId]
+      `UPDATE wallets
+       SET ${balanceField} = ${balanceField} - $1,
+           total_spent = total_spent + $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = $2`,
+      [value, userId]
     );
-
-    // Record transaction
-    await client.query(
-      `INSERT INTO wallet_transactions (user_id, wallet_id, type, amount, balance_after, description, reference)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [userId, wallet.id, 'debit', amount, newBalance, description, reference]
-    );
-
+    await writeLedger(client, wallet, userId, 'debit', value, newBalance, description, reference, metadata);
     await client.query('COMMIT');
-
-    // Return updated wallet
-    const updatedWallet = await getWalletByUserId(userId);
-    return updatedWallet;
+    return getWalletByUserId(userId);
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('[Wallet Service] Error debiting wallet:', error);
     throw error;
   } finally {
     client.release();
   }
 };
 
-// Transfer between wallet types
 const transferWalletBalance = async (userId, fromType, toType, amount, description = null) => {
+  const value = assertAmount(amount);
+  if (fromType === toType) throw new Error('Source and destination wallets must differ');
+  const fromField = fieldFor(fromType);
+  const toField = fieldFor(toType);
   const client = await pool.connect();
-  
   try {
     await client.query('BEGIN');
-
-    // Ensure wallet exists
-    let wallet = await getWalletByUserId(userId);
-    if (!wallet) {
-      throw new Error('Wallet not found');
-    }
-
-    const fromField = `${fromType}_balance`;
-    const toField = `${toType}_balance`;
-    const fromBalance = wallet[fromField] || 0;
-    const toBalance = wallet[toField] || 0;
-
-    // Check sufficient balance
-    if (parseFloat(fromBalance) < parseFloat(amount)) {
-      throw new Error(`Insufficient ${fromType} balance`);
-    }
-
-    const newFromBalance = parseFloat(fromBalance) - parseFloat(amount);
-    const newToBalance = parseFloat(toBalance) + parseFloat(amount);
-
-    // Update wallet balances
+    const wallet = await getLockedWallet(client, userId);
+    const fromBalance = Number(wallet[fromField] || 0);
+    const toBalance = Number(wallet[toField] || 0);
+    if (fromBalance < value) throw new Error(`Insufficient ${fromType} balance`);
+    const fromAfter = fromBalance - value;
+    const toAfter = toBalance + value;
     await client.query(
-      `UPDATE wallets 
-       SET ${fromField} = $1, ${toField} = $2, updated_at = CURRENT_TIMESTAMP 
-       WHERE user_id = $3`,
-      [newFromBalance, newToBalance, userId]
+      `UPDATE wallets
+       SET ${fromField} = ${fromField} - $1,
+           ${toField} = ${toField} + $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = $2`,
+      [value, userId]
     );
-
-    // Record debit transaction
-    await client.query(
-      `INSERT INTO wallet_transactions (user_id, wallet_id, type, amount, balance_after, description)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [userId, wallet.id, 'debit', amount, newFromBalance, description || ` (Transfer from ${fromType} to ${toType})`]
-    );
-
-    // Record credit transaction
-    await client.query(
-      `INSERT INTO wallet_transactions (user_id, wallet_id, type, amount, balance_after, description)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [userId, wallet.id, 'credit', amount, newToBalance, description || ` (Transfer from ${fromType} to ${toType})`]
-    );
-
+    const note = description || `Transfer from ${fromType} to ${toType}`;
+    await writeLedger(client, wallet, userId, 'debit', value, fromAfter, note, null, { fromType, toType });
+    await writeLedger(client, wallet, userId, 'credit', value, toAfter, note, null, { fromType, toType });
     await client.query('COMMIT');
-
-    // Return updated wallet
-    const updatedWallet = await getWalletByUserId(userId);
-    return updatedWallet;
+    return getWalletByUserId(userId);
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('[Wallet Service] Error transferring balance:', error);
     throw error;
   } finally {
     client.release();
   }
 };
 
-// Get wallet transactions
 const getWalletTransactions = async (userId, limit = 50, offset = 0) => {
-  try {
-    const result = await pool.query(
-      `SELECT * FROM wallet_transactions 
-       WHERE user_id = $1 
-       ORDER BY created_at DESC 
-       LIMIT $2 OFFSET $3`,
-      [userId, limit, offset]
-    );
-
-    return result.rows;
-  } catch (error) {
-    console.error('[Wallet Service] Error getting transactions:', error);
-    throw error;
-  }
+  const result = await pool.query(
+    `SELECT * FROM wallet_transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+    [userId, Math.min(Number(limit) || 50, 500), Math.max(Number(offset) || 0, 0)]
+  );
+  return result.rows;
 };
 
-// Get all wallets (admin)
 const getAllWallets = async (limit = 100, offset = 0) => {
-  try {
-    const result = await pool.query(
-      `SELECT w.*, u.email, u.full_name, u.username 
-       FROM wallets w 
-       JOIN users u ON w.user_id = u.id 
-       ORDER BY w.created_at DESC 
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
-    );
-
-    return result.rows;
-  } catch (error) {
-    console.error('[Wallet Service] Error getting all wallets:', error);
-    throw error;
-  }
+  const result = await pool.query(
+    `SELECT w.*, u.email, u.full_name, u.username
+     FROM wallets w JOIN users u ON w.user_id = u.id
+     ORDER BY w.created_at DESC LIMIT $1 OFFSET $2`,
+    [Math.min(Number(limit) || 100, 500), Math.max(Number(offset) || 0, 0)]
+  );
+  return result.rows.map(normalizeWallet);
 };
 
-// Get wallet balance
 const getWalletBalance = async (userId, walletType = 'main') => {
-  try {
-    const wallet = await getWalletByUserId(userId);
-    if (!wallet) {
-      return 0;
-    }
-
-    const balanceField = `${walletType}_balance`;
-    return parseFloat(wallet[balanceField] || 0);
-  } catch (error) {
-    console.error('[Wallet Service] Error getting balance:', error);
-    throw error;
-  }
+  const wallet = await getWalletByUserId(userId);
+  if (!wallet) return 0;
+  return Number(wallet[`${walletType}_balance`] || 0);
 };
 
-// Get total system wallet balance (admin)
 const getTotalSystemBalance = async () => {
-  try {
-    const result = await pool.query(
-      `SELECT 
-         SUM(main_balance) as total_main,
-         SUM(cashback_balance) as total_cashback,
-         SUM(referral_balance) as total_referral,
-         COUNT(*) as total_wallets
-       FROM wallets`
-    );
-
-    return result.rows[0];
-  } catch (error) {
-    console.error('[Wallet Service] Error getting system balance:', error);
-    throw error;
-  }
+  const result = await pool.query(
+    `SELECT SUM(main_balance) AS total_main, SUM(cashback_balance) AS total_cashback,
+            SUM(referral_balance) AS total_referral, COUNT(*) AS total_wallets FROM wallets`
+  );
+  return result.rows[0];
 };
 
 module.exports = {

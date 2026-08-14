@@ -1,0 +1,19 @@
+--- notification references ---
+backend/src/services/cashbackService.js:3:const notificationService = require('./notificationService');
+backend/src/services/cashbackService.js:33:        await notificationService.sendNotification(
+backend/src/services/notificationService.js:4:const createNotification = async (notificationData) => {
+backend/src/services/notificationService.js:156:  createNotification,
+backend/src/services/referralService.js:3:const notificationService = require('./notificationService');
+backend/src/services/referralService.js:67:        await notificationService.sendNotification(
+backend/src/services/referralService.js:101:      await notificationService.sendNotification(
+--- cashback/referral references ---
+backend/src/services/cashbackService.js:8:  async processCashback(userId, amount, transactionId) {
+backend/src/services/referralService.js:41:  async processReferral(userId, transactionId) {
+--- email/mailer references ---
+backend/src/services/authService.js:123:    // const verificationToken = crypto.randomBytes(32).toString('hex');
+backend/src/services/authService.js:127:    //   `INSERT INTO email_verification_tokens (user_id, token, expires_at)
+backend/src/services/authService.js:129:    //   [user.id, verificationToken, verificationExpiresAt]
+backend/src/services/authService.js:306:      `SELECT user_id, expires_at FROM email_verification_tokens
+backend/src/services/authService.js:325:      'UPDATE email_verification_tokens SET verified_at = CURRENT_TIMESTAMP WHERE token = $1',
+web/frontend/src/hooks/useAuthForm.ts:165:      addNotification('error', 'Error', error.message || 'Failed to resend verification email. Please try again.');
+web/frontend/src/lib/auth.ts:44:  verification_token: string;

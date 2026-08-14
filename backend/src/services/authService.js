@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const pool = require('../config/database');
 const { generateToken, generateRefreshToken } = require('../middleware/auth');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('./emailService');
 
 const SALT_ROUNDS = 10;
 
@@ -119,19 +120,24 @@ const registerUser = async (userData) => {
       }
     }
 
-    // Skip email verification for now - auto-verify users
-    // const verificationToken = crypto.randomBytes(32).toString('hex');
-    // const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    // await client.query(
-    //   `INSERT INTO email_verification_tokens (user_id, token, expires_at)
-    //    VALUES ($1, $2, $3)`,
-    //   [user.id, verificationToken, verificationExpiresAt]
-    // );
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await client.query(
+      `INSERT INTO email_verification_tokens (user_id, token, expires_at)
+       VALUES ($1, $2, $3)`,
+      [user.id, verificationToken, verificationExpiresAt]
+    );
 
     await client.query('COMMIT');
 
-    // Generate tokens
+    let verificationSent = false;
+    try {
+      await sendVerificationEmail({ email: user.email, token: verificationToken });
+      verificationSent = true;
+    } catch (emailError) {
+      console.error('[Auth] Verification email delivery failed:', emailError.message);
+    }
+
     const accessToken = generateToken(user.id, user.email, 'user');
     const refreshToken = await generateRefreshToken(user.id);
 
@@ -143,9 +149,10 @@ const registerUser = async (userData) => {
         username: user.username,
         phone: user.phone,
         referral_code: user.referral_code,
-        email_verified: true, // Auto-verify for now
+        email_verified: false,
         created_at: user.created_at
       },
+      verification_sent: verificationSent,
       tokens: {
         access_token: accessToken,
         refresh_token: refreshToken
@@ -197,6 +204,12 @@ const loginUser = async (email, password) => {
       throw new Error('Invalid credentials');
     }
 
+    if (!user.email_verified) {
+      const verificationError = new Error('Please verify your email before signing in');
+      verificationError.code = 'EMAIL_NOT_VERIFIED';
+      throw verificationError;
+    }
+
     // Update last login
     await client.query(
       'UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1',
@@ -231,6 +244,7 @@ const loginUser = async (email, password) => {
         email_verified: user.email_verified,
         referral_code: user.referral_code,
         avatar_url: user.avatar_url,
+        pin_set: Boolean(user.pin_hash),
         created_at: user.created_at,
         wallet: wallet ? {
           main_balance: wallet.main_balance,
@@ -337,6 +351,39 @@ const verifyEmail = async (token) => {
   }
 };
 
+const resendVerificationEmail = async (email) => {
+  const normalizedEmail = String(email || '').toLowerCase().trim();
+  if (!normalizedEmail) return { success: true, message: 'If the account exists, a verification link has been sent' };
+
+  const client = await pool.connect();
+  try {
+    const userResult = await client.query(
+      'SELECT id, email, email_verified FROM users WHERE email = $1',
+      [normalizedEmail]
+    );
+    if (userResult.rows.length === 0 || userResult.rows[0].email_verified) {
+      return { success: true, message: 'If the account exists, a verification link has been sent' };
+    }
+
+    const user = userResult.rows[0];
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await client.query('UPDATE email_verification_tokens SET verified_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND verified_at IS NULL', [user.id]);
+    await client.query(
+      `INSERT INTO email_verification_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)`,
+      [user.id, token, expiresAt]
+    );
+    try {
+      await sendVerificationEmail({ email: user.email, token });
+    } catch (emailError) {
+      console.error('[Auth] Resend verification email failed:', emailError.message);
+    }
+    return { success: true, message: 'If the account exists, a verification link has been sent' };
+  } finally {
+    client.release();
+  }
+};
+
 // Request password reset
 const requestPasswordReset = async (email) => {
   const client = await pool.connect();
@@ -366,10 +413,15 @@ const requestPasswordReset = async (email) => {
       [user.id, resetToken, expiresAt]
     );
 
+    try {
+      await sendPasswordResetEmail({ email: user.email, token: resetToken });
+    } catch (emailError) {
+      console.error('[Auth] Password reset email delivery failed:', emailError.message);
+    }
+
     return {
       success: true,
-      message: 'Password reset link sent',
-      reset_token: resetToken
+      message: 'If the email exists, a reset link has been sent'
     };
   } finally {
     client.release();
@@ -431,7 +483,7 @@ const resetPassword = async (token, newPassword) => {
 // Get user by ID
 const getUserById = async (userId) => {
   const result = await pool.query(
-    'SELECT id, email, full_name, username, phone, email_verified, is_active, is_admin, role, referral_code, avatar_url, created_at, last_login_at FROM users WHERE id = $1',
+    'SELECT id, email, full_name, username, phone, email_verified, is_active, is_admin, role, pin_hash, referral_code, avatar_url, created_at, last_login_at FROM users WHERE id = $1',
     [userId]
   );
 
@@ -453,12 +505,30 @@ const getUserById = async (userId) => {
 
   return {
     ...user,
+    pin_set: Boolean(user.pin_hash),
     wallet: wallet ? {
-      main_balance: wallet.main_balance,
-      cashback_balance: wallet.cashback_balance,
-      referral_balance: wallet.referral_balance
+      main_balance: Number(wallet.main_balance),
+      cashback_balance: Number(wallet.cashback_balance),
+      referral_balance: Number(wallet.referral_balance)
     } : null
   };
+};
+
+// Verify transaction PIN server-side. The stored hash never leaves the backend.
+const verifyPin = async (userId, pin) => {
+  if (!/^\\d{4,6}$/.test(String(pin || ''))) return false;
+  const result = await pool.query('SELECT pin_hash FROM users WHERE id = $1', [userId]);
+  if (result.rows.length === 0 || !result.rows[0].pin_hash) return false;
+  return bcrypt.compare(String(pin), result.rows[0].pin_hash);
+};
+
+const changePin = async (userId, pin) => {
+  if (!/^\\d{4,6}$/.test(String(pin || ''))) {
+    throw new Error('PIN must contain 4 to 6 digits');
+  }
+  const pinHash = await hashPassword(String(pin));
+  await pool.query('UPDATE users SET pin_hash = $1 WHERE id = $2', [pinHash, userId]);
+  return { success: true, message: 'Transaction PIN changed successfully' };
 };
 
 // Update user profile
@@ -549,11 +619,14 @@ module.exports = {
   refreshAccessToken,
   logoutUser,
   verifyEmail,
+  resendVerificationEmail,
   requestPasswordReset,
   resetPassword,
   getUserById,
   updateUserProfile,
   changePassword,
+  verifyPin,
+  changePin,
   hashPassword,
   comparePassword
 };

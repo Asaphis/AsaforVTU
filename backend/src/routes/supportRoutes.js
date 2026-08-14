@@ -3,94 +3,84 @@ const { authenticate } = require('../middleware/auth');
 const pool = require('../config/database');
 
 const router = express.Router();
-
 router.use(authenticate);
 
-// Create support ticket
+const ownedTicket = async (ticketId, userId) => {
+  const result = await pool.query('SELECT * FROM support_tickets WHERE id = $1 AND user_id = $2', [ticketId, userId]);
+  return result.rows[0] || null;
+};
+
 router.post('/tickets', async (req, res) => {
+  const client = await pool.connect();
   try {
-    const { subject, category, priority } = req.body;
-    
-    if (!subject) {
-      return res.status(400).json({ error: 'Subject is required' });
-    }
-
-    const result = await pool.query(
+    const { subject, message, category = 'general', priority = 'normal' } = req.body || {};
+    if (!subject || !message) return res.status(400).json({ error: 'Subject and message are required' });
+    await client.query('BEGIN');
+    const ticketResult = await client.query(
       `INSERT INTO support_tickets (user_id, subject, category, priority)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [req.user.id, subject, category || 'general', priority || 'normal']
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [req.user.id, subject.trim(), category, priority]
     );
-
-    res.status(201).json(result.rows[0]);
+    const ticket = ticketResult.rows[0];
+    await client.query(
+      `INSERT INTO support_messages (ticket_id, user_id, is_admin, message)
+       VALUES ($1, $2, false, $3)`,
+      [ticket.id, req.user.id, message.trim()]
+    );
+    await client.query('COMMIT');
+    res.status(201).json(ticket);
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('[Support Routes] Create ticket error:', error);
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 
-// Get user's tickets
 router.get('/tickets', async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT * FROM support_tickets 
-       WHERE user_id = $1 
-       ORDER BY created_at DESC 
-       LIMIT 50`,
+      `SELECT * FROM support_tickets WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50`,
       [req.user.id]
     );
-
     res.json(result.rows);
   } catch (error) {
-    console.error('[Support Routes] Get tickets error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get ticket messages
 router.get('/tickets/:id/messages', async (req, res) => {
   try {
+    if (!await ownedTicket(req.params.id, req.user.id)) return res.status(404).json({ error: 'Ticket not found' });
     const result = await pool.query(
-      `SELECT * FROM support_messages 
-       WHERE ticket_id = $1 
-       ORDER BY created_at ASC`,
+      `SELECT * FROM support_messages WHERE ticket_id = $1 ORDER BY created_at ASC`,
       [req.params.id]
     );
-
     res.json(result.rows);
   } catch (error) {
-    console.error('[Support Routes] Get messages error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Reply to ticket
 router.post('/tickets/:id/reply', async (req, res) => {
   try {
-    const { message } = req.body;
-    
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
-    }
-
+    const { message } = req.body || {};
+    if (!message) return res.status(400).json({ error: 'Message is required' });
+    const ticket = await ownedTicket(req.params.id, req.user.id);
+    if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
     const result = await pool.query(
       `INSERT INTO support_messages (ticket_id, user_id, is_admin, message)
-       VALUES ($1, $2, false, $3)
-       RETURNING *`,
-      [req.params.id, req.user.id, message]
+       VALUES ($1, $2, false, $3) RETURNING *`,
+      [req.params.id, req.user.id, message.trim()]
     );
-
-    // Update ticket status to in_progress if it was open
     await pool.query(
-      `UPDATE support_tickets 
-       SET status = 'in_progress', updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $1 AND status = 'open'`,
-      [req.params.id]
+      `UPDATE support_tickets SET status = CASE WHEN status = 'open' THEN 'in_progress' ELSE status END,
+       updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND user_id = $2`,
+      [req.params.id, req.user.id]
     );
-
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('[Support Routes] Reply error:', error);
     res.status(500).json({ error: error.message });
   }
 });

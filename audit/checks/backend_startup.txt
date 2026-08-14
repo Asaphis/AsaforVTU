@@ -1,0 +1,4 @@
+Warning: FLW_SECRET_KEY is not set. Payments will fail.
+Server running on port 3001
+Initializing Cron Jobs...
+Cron Jobs scheduled: Payment Reconciliation (every 1 min)
