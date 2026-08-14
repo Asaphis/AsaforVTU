@@ -1,6 +1,5 @@
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
-import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { isAuthenticated } from "@/lib/auth";
 
@@ -9,7 +8,6 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [location, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(true);
   const [isAuth, setIsAuth] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -19,9 +17,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       const authenticated = isAuthenticated();
       setIsAuth(authenticated);
       
-      if (!authenticated && location !== "/login") {
+      if (!authenticated && window.location.pathname !== "/login") {
         window.location.href = "/login";
-      } else if (authenticated && location === "/login") {
+      } else if (authenticated && window.location.pathname === "/login") {
         window.location.href = "/dashboard";
       }
       
