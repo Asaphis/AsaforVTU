@@ -19,8 +19,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       
       if (!authenticated && window.location.pathname !== "/login") {
         window.location.href = "/login";
-      } else if (authenticated && window.location.pathname === "/login") {
-        window.location.href = "/dashboard";
       }
       
       setIsLoading(false);
