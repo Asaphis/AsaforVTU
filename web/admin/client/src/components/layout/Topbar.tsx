@@ -78,9 +78,8 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
             <DropdownMenuItem className="px-3 py-2 cursor-pointer" onClick={() => setLocation("/profile")}>Profile</DropdownMenuItem>
             <DropdownMenuItem className="px-3 py-2 cursor-pointer" onClick={() => setLocation("/settings/api")}>API Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="px-3 py-2 text-red-600 cursor-pointer" onClick={() => {
-              logout();
-              window.location.href = "/login";
+            <DropdownMenuItem className="px-3 py-2 text-red-600 cursor-pointer" onClick={async () => {
+              await logout();
             }}>
               Sign out
             </DropdownMenuItem>
