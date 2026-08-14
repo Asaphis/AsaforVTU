@@ -103,7 +103,13 @@ export function useAuthForm() {
       addNotification(result.verification_sent ? 'success' : 'warning', 'Account created!', deliveryMessage);
       router.push(`/verify-email-sent?email=${encodeURIComponent(data.email)}&sent=${result.verification_sent ? '1' : '0'}`);
     } catch (error: any) {
-      addNotification('error', 'Error', error.message || 'Failed to create account. Please try again.');
+      if (error?.code === 'EMAIL_NOT_VERIFIED') {
+        const existingEmail = String(error?.details?.email || data.email).trim();
+        addNotification('warning', 'Email verification required', 'This email is already registered but not verified. We will help you request a new verification link.');
+        router.push(`/verify-email-sent?email=${encodeURIComponent(existingEmail)}&sent=0&existing=1`);
+      } else {
+        addNotification('error', 'Registration failed', error.message || 'Failed to create account. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -127,8 +133,9 @@ export function useAuthForm() {
       const msg = error.message || 'Invalid email or password. Please try again.';
       addNotification('error', 'Login failed', msg);
       setErrors(prev => ({ ...prev, general: msg }));
-      if (msg.toLowerCase().includes('verify your email')) {
+      if (error?.code === 'EMAIL_NOT_VERIFIED' || msg.toLowerCase().includes('verify your email')) {
         setNeedsVerification(true);
+        router.push(`/verify-email-sent?email=${encodeURIComponent(data.email.trim().toLowerCase())}&sent=0&existing=1`);
       } else {
         setNeedsVerification(false);
       }

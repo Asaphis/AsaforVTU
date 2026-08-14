@@ -23,15 +23,20 @@ const generateReferralCode = () => {
 
 // Register new user
 const registerUser = async (userData) => {
-  const {
-    email,
-    password,
-    full_name,
-    username,
-    phone,
-    pin,
-    referral_code
-  } = userData;
+  const input = userData || {};
+  const email = String(input.email || '').trim().toLowerCase();
+  const password = String(input.password || '');
+  const full_name = String(input.full_name ?? input.fullName ?? '').trim();
+  const username = String(input.username || '').trim().toLowerCase();
+  const phone = String(input.phone || '').trim() || null;
+  const pin = input.pin ?? input.transactionPin;
+  const referral_code = input.referral_code ?? input.referralUsername;
+
+  if (!email || !password || !full_name || !username) {
+    const error = new Error('Email, password, full name, and username are required');
+    error.code = 'INVALID_REGISTRATION';
+    throw error;
+  }
 
   const client = await pool.connect();
   
@@ -40,23 +45,31 @@ const registerUser = async (userData) => {
 
     // Check if email already exists
     const emailCheck = await client.query(
-      'SELECT id FROM users WHERE email = $1',
-      [email.toLowerCase()]
+      'SELECT id, email_verified FROM users WHERE lower(trim(email)) = $1 LIMIT 1',
+      [email]
     );
 
     if (emailCheck.rows.length > 0) {
-      throw new Error('Email already registered');
+      const error = emailCheck.rows[0].email_verified
+        ? new Error('Email already registered')
+        : new Error('This email is already registered but not verified. Please request a new verification email.');
+      error.code = emailCheck.rows[0].email_verified ? 'EMAIL_EXISTS' : 'EMAIL_NOT_VERIFIED';
+      error.email = email;
+      throw error;
     }
 
     // Check if username already exists
     if (username) {
       const usernameCheck = await client.query(
-        'SELECT id FROM users WHERE username = $1',
-        [username.toLowerCase()]
+        'SELECT id FROM users WHERE lower(trim(username)) = $1 LIMIT 1',
+        [username]
       );
 
       if (usernameCheck.rows.length > 0) {
-        throw new Error('Username already taken');
+        const error = new Error('Username already taken');
+        error.code = 'USERNAME_EXISTS';
+        error.username = username;
+        throw error;
       }
     }
 
@@ -90,7 +103,7 @@ const registerUser = async (userData) => {
       `INSERT INTO users (email, password_hash, full_name, username, phone, pin_hash, referral_code, referred_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id, email, full_name, username, phone, referral_code, created_at`,
-      [email.toLowerCase(), passwordHash, full_name, username?.toLowerCase(), phone, pinHash, userReferralCode, referredBy]
+      [email, passwordHash, full_name, username || null, phone, pinHash, userReferralCode, referredBy]
     );
 
     const user = userResult.rows[0];
@@ -160,6 +173,11 @@ const registerUser = async (userData) => {
     };
   } catch (error) {
     await client.query('ROLLBACK');
+    if (error?.code === '23505') {
+      const duplicate = new Error(String(error.constraint || '').toLowerCase().includes('username') ? 'Username already taken' : 'Email already registered');
+      duplicate.code = String(error.constraint || '').toLowerCase().includes('username') ? 'USERNAME_EXISTS' : 'EMAIL_EXISTS';
+      throw duplicate;
+    }
     throw error;
   } finally {
     client.release();

@@ -18,6 +18,16 @@ export interface User {
 
 interface LoginResponse { user: User; tokens: { access_token: string; refresh_token: string } }
 export interface RegisterResponse { user: User; verification_sent: boolean }
+export class AuthApiError extends Error {
+  code?: string;
+  details?: Record<string, unknown>;
+  constructor(message: string, code?: string, details: Record<string, unknown> = {}) {
+    super(message);
+    this.name = 'AuthApiError';
+    this.code = code;
+    this.details = details;
+  }
+}
 
 const isClient = () => typeof window !== 'undefined';
 const getAccessToken = () => isClient() ? localStorage.getItem('access_token') : null;
@@ -82,7 +92,7 @@ export const signUp = async (userData: {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(userData)
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'Registration failed');
+  if (!response.ok) throw new AuthApiError(data.error || 'Registration failed', data.code, data);
   // Registration intentionally does not create an authenticated browser session.
   return data as RegisterResponse;
 };
@@ -92,8 +102,8 @@ export const signIn = async (email: string, password: string): Promise<User> => 
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password })
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'Login failed');
-  if (!data.user?.email_verified) throw new Error('Please verify your email before signing in');
+  if (!response.ok) throw new AuthApiError(data.error || 'Login failed', data.code, data);
+  if (!data.user?.email_verified) throw new AuthApiError('Please verify your email before signing in', 'EMAIL_NOT_VERIFIED', data);
   setTokens(data.tokens.access_token, data.tokens.refresh_token);
   setUser(data.user);
   return data.user;

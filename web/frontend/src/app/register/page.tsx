@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, Check, X, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +33,6 @@ type FormData = {
 };
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showPin, setShowPin] = useState(false);
@@ -89,17 +87,15 @@ export default function RegisterPage() {
 
     try {
       await handleSignUp({
-        fullName: formData.fullName,
-        username: formData.username,
-        email: formData.email,
-        phone: formData.phone,
-        transactionPin: formData.transactionPin,
+        fullName: formData.fullName.trim(),
+        username: formData.username.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone.trim(),
+        transactionPin: formData.transactionPin.trim(),
         password: formData.password,
         acceptTerms: formData.acceptTerms,
-        referralUsername: formData.referralUsername || ''
+        referralUsername: formData.referralUsername.trim()
       });
-      // Redirect to verification page after successful signup
-      router.push('/verify-email-sent?email=' + encodeURIComponent(formData.email));
     } catch (error: any) {
       setFormErrors(prev => ({ ...prev, general: error.message || 'Registration failed' }));
     }

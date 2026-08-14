@@ -24,7 +24,8 @@ router.post('/register', async (req, res) => {
     res.status(201).json(result);
   } catch (error) {
     console.error('[Auth Routes] Register error:', error);
-    res.status(400).json({ error: error.message });
+    const status = error.code === 'EMAIL_NOT_VERIFIED' ? 409 : 400;
+    res.status(status).json({ error: error.message, code: error.code, email: error.email, username: error.username });
   }
 });
 

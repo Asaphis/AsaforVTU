@@ -1,17 +1,31 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, ArrowRight, CheckCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { AuthLayout } from '@/components/auth/AuthLayout';
+import { resendVerification } from '@/lib/auth';
 
 function VerifyEmailSentContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || 'your email address';
   const delivered = searchParams.get('sent') !== '0';
+  const existing = searchParams.get('existing') === '1';
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+
+  const handleResend = async () => {
+    if (!email || email === 'your email address') return;
+    setResendState('sending');
+    try {
+      await resendVerification(decodeURIComponent(email));
+      setResendState('sent');
+    } catch (_) {
+      setResendState('error');
+    }
+  };
 
   return (
     <AuthLayout>
@@ -37,7 +51,7 @@ function VerifyEmailSentContent() {
         </div>
 
           <div className={`${delivered ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'} rounded-2xl p-6 space-y-3`}>
-            {!delivered && <p className="text-sm text-amber-800 font-semibold">Email delivery is not configured on this server. An administrator must configure `RESEND_API_KEY` and `EMAIL_FROM`, then resend the link from the sign-in page.</p>}
+            {!delivered && <p className="text-sm text-amber-800 font-semibold">{existing ? 'This email is already registered but has not been verified. Request a new verification link below, then check your inbox and spam folder.' : 'Email delivery is not configured on this server. An administrator must configure `RESEND_API_KEY` and `EMAIL_FROM`, then resend the link.'}</p>}
           </div>
 
           {delivered && (
@@ -55,6 +69,16 @@ function VerifyEmailSentContent() {
               </div>
             </div>
           )}
+
+        {existing && email !== 'your email address' && (
+          <div className="space-y-2">
+            <Button type="button" onClick={handleResend} disabled={resendState === 'sending'} className="w-full h-12 bg-primary text-white font-bold rounded-2xl">
+              {resendState === 'sending' ? 'Sending...' : resendState === 'sent' ? 'Verification Link Requested' : 'Resend Verification Email'}
+            </Button>
+            {resendState === 'error' && <p className="text-center text-sm text-destructive font-semibold">We could not request the link. Please try again or contact support.</p>}
+            {resendState === 'sent' && <p className="text-center text-sm text-emerald-700 font-semibold">If the account exists, a new verification link has been sent.</p>}
+          </div>
+        )}
 
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 space-y-3">
           <div className="flex gap-3">
