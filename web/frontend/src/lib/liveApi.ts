@@ -10,6 +10,7 @@ export type LiveUser = {
 export type Wallet = { main_balance: number; cashback_balance: number; referral_balance: number };
 export type ServicePlan = { id: string; name: string; network?: string; network_key?: string; price_user: number; priceUser?: number; active?: boolean; is_active?: boolean; metadata?: Record<string, unknown> };
 export type ServiceItem = { id: string; name: string; slug: string; category?: string; description?: string; enabled?: boolean; is_active?: boolean };
+export type LiveNotification = { id: string; title?: string; message?: string; type?: string; is_read?: boolean; created_at?: string; };
 
 export class LiveApiError extends Error {
   code?: string; details: Record<string, unknown>;
@@ -66,7 +67,7 @@ export const login = async (email: string, password: string) => {
 };
 
 export const logout = async () => { const refresh = refreshToken(); clearSession(); if (!refresh) return; try { await fetch(`${API_BASE}/api/auth/logout`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refresh_token: refresh }), signal: AbortSignal.timeout(4000) }); } catch {} };
-export const currentUser = async (): Promise<LiveUser | null> => { if (!accessToken()) return null; try { const user = await parse<LiveUser>(await apiRequest("/api/auth/me")); persistUser(user); return user; } catch { return null; } };
+export const currentUser = async (): Promise<LiveUser | null> => { if (!accessToken()) return null; try { const payload = await parse<any>(await apiRequest("/api/auth/me")); const user = payload?.user || payload; if (!user?.id || !user?.email) throw new LiveApiError("The session response is invalid", "INVALID_SESSION_RESPONSE", payload); persistUser(user); return user as LiveUser; } catch { return null; } };
 export const resendVerification = async (email: string) => parse(await fetch(`${API_BASE}/api/auth/resend-verification`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }));
 export const requestReset = async (email: string) => parse(await fetch(`${API_BASE}/api/auth/forgot-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }));
 export const resetPassword = async (token: string, password: string) => parse(await fetch(`${API_BASE}/api/auth/reset-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, new_password: password }) }));
@@ -75,6 +76,9 @@ export const getWallet = () => parse<Wallet>(apiRequest("/api/wallet"));
 export const getWalletHistory = () => parse<any[]>(apiRequest("/api/wallet/history"));
 export const getTransactions = async () => { const payload = await parse<any>(apiRequest("/api/transactions")); return Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []); };
 export const getAnnouncements = async () => { try { return await parse<any[]>(await apiRequest("/api/announcements")); } catch { return []; } };
+export const getNotifications = async () => parse<LiveNotification[]>(apiRequest("/api/notifications?unreadOnly=false&limit=50"));
+export const markNotificationRead = (id: string) => parse<LiveNotification>(apiRequest(`/api/notifications/${id}/read`, { method: "PATCH" }));
+export const markAllNotificationsRead = () => parse<{ notifications: number }>(apiRequest("/api/notifications/read-all", { method: "POST" }));
 export const getServices = async () => { try { return await parse<ServiceItem[]>(await apiRequest("/api/services")); } catch { return []; } };
 export const getPlans = async () => { try { const plans = await parse<any[]>(await apiRequest("/api/plans")); return plans.map(plan => ({ ...plan, price_user: Number(plan.price_user ?? plan.priceUser ?? 0), priceUser: Number(plan.price_user ?? plan.priceUser ?? 0) })) as ServicePlan[]; } catch { return []; } };
 export const initiateFunding = (amount: number) => parse<{ tx_ref: string; link: string }>(apiRequest("/api/payments/initiate", { method: "POST", body: JSON.stringify({ amount }) }));
