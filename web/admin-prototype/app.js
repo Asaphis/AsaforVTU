@@ -1,7 +1,7 @@
 import { mockApi as api } from './mockApi.js';
 
 const app = document.querySelector('#app');
-const state = { view: 'overview', selectedTicket: null, query: '', theme: 'light' };
+const state = { view: 'overview', selectedTicket: null, query: '', theme: 'light', sidebarOpen: false };
 const money = value => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(Number(value || 0));
 const compactMoney = value => value >= 1000000 ? `₦${(value / 1000000).toFixed(2)}m` : money(value);
 const escape = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
@@ -29,12 +29,13 @@ function iconCircle(symbol, tone = '') { return `<span class="icon-circle ${tone
 function empty(title, description, action = '') { return `<div class="empty"><div>${iconCircle('⌁')}</div><h3>${title}</h3><p>${description}</p>${action}</div>`; }
 function toast(title, copy, tone = 'good') { const region = document.querySelector('#toast-region'); const node = document.createElement('div'); node.className = `toast ${tone}`; node.innerHTML = `<b>${escape(title)}</b><span>${escape(copy)}</span>`; region.appendChild(node); setTimeout(() => node.remove(), 3700); }
 function drawer(title, content, actions = '') { document.querySelector('#overlay')?.remove(); const node = document.createElement('div'); node.id = 'overlay'; node.className = 'overlay'; node.innerHTML = `<section class="drawer" role="dialog" aria-modal="true"><header><div><span class="eyebrow">FERIXAS OPERATIONS</span><h2>${title}</h2></div><button class="icon-button close-overlay" aria-label="Close">×</button></header><div class="drawer-body">${content}</div>${actions ? `<footer class="drawer-actions">${actions}</footer>` : ''}</section>`; document.body.appendChild(node); node.addEventListener('click', event => { if (event.target === node || event.target.closest('.close-overlay')) node.remove(); }); }
-function setView(view) { state.view = view; state.query = ''; render(); }
+function setView(view) { state.view = view; state.query = ''; state.sidebarOpen = false; render(); }
 
 function shell(content, title, subtitle) {
   return `<div class="app-shell">
-    <aside class="sidebar">
-      <button class="brand" data-nav="overview"><img src="./assets/ferixas-globe.png" alt="Ferixas"/><span><b>Ferixas</b><small>AsaforVTU operations</small></span></button>
+    ${state.sidebarOpen ? '<button class="sidebar-backdrop" data-action="close-sidebar" aria-label="Close navigation"></button>' : ''}
+    <aside class="sidebar ${state.sidebarOpen ? 'open' : ''}">
+      <div class="sidebar-brand-row"><button class="brand" data-nav="overview"><img src="./assets/ferixas-globe.png" alt="Ferixas"/><span><b>Ferixas</b><small>AsaforVTU operations</small></span></button><button class="sidebar-close" data-action="close-sidebar" aria-label="Close navigation">×</button></div>
       <div class="workspace"><span>OPERATIONS WORKSPACE</span><button class="workspace-switch">Nigeria production <i>⌄</i></button></div>
       <nav class="side-nav">${nav.map(([key, label, icon, helper]) => `<button class="nav-item ${state.view === key ? 'active' : ''}" data-nav="${key}"><i>${icon}</i><span>${label}<small>${helper}</small></span></button>`).join('')}</nav>
       <div class="sidebar-footer"><div class="admin-mini"><span>FO</span><div><b>Ferixas Operations</b><small>Super administrator</small></div><i>⋮</i></div><button class="signout" data-action="signout">⇥ Sign out prototype</button></div>
@@ -113,6 +114,8 @@ function wire() {
   app.querySelector('#ticket-reply')?.addEventListener('submit', async event => { event.preventDefault(); const text = new FormData(event.currentTarget).get('reply')?.trim(); if (!text) return toast('Reply required', 'Write a message before sending.', 'warn'); await api.replyTicket(state.selectedTicket, text); toast('Reply stored', 'The simulated customer conversation and notification have both updated.', 'good'); render(); });
 }
 async function action(name, data = {}) {
+  if (name === 'mobile-menu') { state.sidebarOpen = true; render(); return; }
+  if (name === 'close-sidebar') { state.sidebarOpen = false; render(); return; }
   if (name === 'notifications') { const notifications = await api.listNotifications(); drawer('Operations notifications', notifications.map(notificationRow).join(''), `<button class="button secondary" id="mark-read">Mark all read</button>`); document.querySelector('#mark-read')?.addEventListener('click', async () => { await api.markNotificationsRead(); document.querySelector('#overlay').remove(); toast('Notifications updated', 'All simulated alerts are marked as read.', 'good'); render(); }); }
   if (name === 'user') { const user = (await api.listUsers()).find(item => item.id === data.id); drawer(user.name, `<div class="drawer-profile"><span class="user-avatar huge">${initials(user.name)}</span><div><h3>${escape(user.name)}</h3><p>@${escape(user.username)} · ${escape(user.email)}</p>${badge(user.status)}</div></div><dl class="detail-list"><div><dt>Customer ID</dt><dd>${user.id}</dd></div><div><dt>Wallet balance</dt><dd>${money(user.balance)}</dd></div><div><dt>Phone</dt><dd>${user.phone}</dd></div><div><dt>Referral code</dt><dd>${user.referralCode}</dd></div><div><dt>Transactions</dt><dd>${user.transactions}</dd></div><div><dt>Verification</dt><dd>${user.verified ? 'Verified' : 'Unverified'}</dd></div></dl>`, `<button class="button secondary" id="toggle-user">${user.status === 'active' ? 'Suspend account' : 'Activate account'}</button><button class="button primary" id="drawer-credit">Credit wallet</button>`); document.querySelector('#toggle-user')?.addEventListener('click', async () => { await api.updateUser(user.id, { status: user.status === 'active' ? 'suspended' : 'active' }); toast('Account updated', `${user.name} is now ${user.status === 'active' ? 'suspended' : 'active'}.`, 'warn'); document.querySelector('#overlay').remove(); render(); }); document.querySelector('#drawer-credit')?.addEventListener('click', () => creditDrawer(user)); }
   if (name === 'credit-wallet') creditDrawer();
