@@ -7,6 +7,8 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
+// API clients expect JSON bodies on every successful request; avoid conditional 304 responses for authenticated data.
+app.disable('etag');
 const pool = require('./config/database');
 
 // Middleware

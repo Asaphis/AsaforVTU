@@ -41,7 +41,7 @@ export const apiRequest = async (path: string, init: RequestInit = {}, retry = t
   Object.entries(init.headers || {}).forEach(([key, value]) => { headers[key] = String(value); });
   const token = accessToken();
   if (token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  const response = await fetch(`${API_BASE}${path}`, { ...init, headers, cache: "no-store" });
   if (response.status === 401 && retry && !path.endsWith("/refresh")) {
     if (await refreshAccessToken()) return apiRequest(path, init, false);
     clearSession();
