@@ -1,56 +1,34 @@
-# Ferixas Operations Command Prototype
+# Ferixas AsaforVTU Admin Prototype
 
-This is a **separate, standalone prototype** for a redesigned AsaforVTU administrator interface. It does not replace the current `web/admin` implementation and it never calls production APIs. Open it through a static server, for example `npx serve -l 4173 .`, then visit `http://localhost:4173`.
+This is a **separate simulation prototype** for the administrator interface. It does not alter the current production admin application and it does not call production APIs. Its sole purpose is to approve the page layout, page responsibilities, and interaction flow before the live adapter replaces the simulated repository.
 
-The visual system uses the same Ferixas/AsaforVTU brand assets as the customer product: a deep navy operations shell, Ferixas globe mark, high-contrast white command surfaces, and lime highlights for active and healthy states. The design deliberately differs from the existing white/slate control center while preserving its operating scope.
+Run the prototype through a static server, for example `npx serve -l 4173 .`, and open the returned local address. All mock records and simulated actions are isolated in `mockApi.js`.
 
-## Integration architecture
+## Design rule
 
-The screen code depends only on `mockApi.js`. It contains realistic in-memory records and each operation returns the same kind of entity the future live backend should return. Integration consists of replacing the exported `mockApi` with a `liveApi` implementation that keeps the same method names, arguments, and result shapes; the UI pages do not need to be redesigned or moved.
+> Each sidebar page contains only the functions that already belong to that page in the current admin application.
 
-| Prototype method | Existing live administrative capability | Prototype behavior |
+The prototype keeps visual copy brief. It uses short summaries, focused tabs, a single principal table per state, and drill-down views instead of stacking unrelated cards and controls on one page.
+
+| Sidebar page | Prototype contents | Existing live integration boundary |
 | --- | --- | --- |
-| `getOverview()` | System statistics, financial analytics, transaction history | Command metrics, attention queue, activity feed |
-| `listUsers()` / `updateUser()` | User listing, profile, suspend/activate, delete, password reset, verification link | Customer directory and profile drawer |
-| `creditWallet()` | Admin wallet credit | Simulates ledger entry, transaction activity, receipt, and notification |
-| `listDeposits()` / `updateDeposit()` | Wallet funding request review, approve, reject | Deposit-review queue and decision actions |
-| `listTransactions()` / `reconcile()` | Transaction details and provider payment reconciliation | Activity table, receipt drawer, reconciliation action |
-| `listServices()` / `updateService()` | Create, edit, delete, and enable services | Service availability and configuration cards |
-| `listPlans()` | Create, edit, delete, sync provider plans | Service-plan pricing and margin table |
-| `listTickets()` / `replyTicket()` / `updateTicket()` | Support ticket list, same-ticket messages, reply, status, delete | Three-pane support conversation workspace |
-| `listAnnouncements()` / `createAnnouncement()` | Announcement list, publish, delete | Customer communication management |
-| `listAdmins()` | List and create administrators | Administrator governance panel |
-| `listLogs()` | Wallet/audit/system logs | Audit trail and operational review |
-| `listNotifications()` / `markNotificationsRead()` | Notification event visibility | Operations notification drawer |
+| Dashboard | Four platform figures, revenue trend, system status, recent transactions | Admin statistics and recent transactions |
+| User Management | Searchable account table, enrol user, profile/wallet/suspend actions | User list, create, suspend, password and verification actions |
+| User Profile | Identity, balances, lifetime figures, five recent transactions | User, user finance and user transaction endpoints |
+| Wallet Funding | Requests, Adjust and Logs tabs | Deposit review, credit, debit, wallet repair and wallet-log endpoints |
+| Transactions | Search/filter controls, transaction table, receipt and detail actions | Transaction list and detail endpoints |
+| Transaction Details | Core fields, provider status/error and raw provider response | Single transaction endpoint |
+| VTU Services | Categories, Airtime, Data, Cable and Power tabs | Service, plan and settings endpoints |
+| Financial Intel | Scope/date filters, finance figures, Breakdown/Historical/Capacity tabs | Finance analytics, user finance and plans endpoints |
+| API Settings | Provider link, webhook URL and payment reconciliation | Settings and reconciliation endpoints |
+| Support Center | Tickets and Announcements tabs; message thread only after ticket selection | Ticket, message, status and announcement endpoints |
+| System Logs | One chronological audit table | Transaction-derived logs endpoint |
+| My Profile | Administrator identity, profile update and password update | Current-admin profile and password endpoints |
 
-## Feature coverage map
+## Mock-to-live boundary
 
-| Current admin area | Included in prototype | Key design treatment |
-| --- | --- | --- |
-| Dashboard | Yes | Operational overview, system health, attention queue, live activity, notification signals |
-| User management and profile | Yes | Search-ready customer table, customer drawer, wallet, referral, verification, access controls |
-| Wallet funding and wallet audit | Yes | Deposit approvals/rejections, manual credit, reconciliation, ghost-wallet-safe scan, ledger feed |
-| Transactions and receipts | Yes | Activity table, status filters, receipt details, provider reconciliation affordance |
-| Finance | Yes | Volume, provider cost, margin, exceptions, system and user finance integration surface |
-| VTU services and plans | Yes | Service state, pricing, network, provider price, customer price, margin, sync controls |
-| Support center | Yes | Ticket queue, real conversation panel, customer context, reply and ticket-status controls |
-| Announcements and admins | Yes | Customer announcements, administrator accounts, audit history |
-| API/provider settings | Yes | Provider cards, webhook security, notification/referral/availability control categories |
-| Logs and profile/security | Yes | Audit stream, administrator profile, two-factor and approval confirmation controls |
+The view layer only imports `mockApi.js`. When the design is approved, replace that export with a live adapter that preserves the same method names and return shapes. The screen locations, UI state and user flows stay unchanged.
 
-## Prototype usage
+Sensitive operational actions must continue to rely on the existing live backend validation. In particular, wallet credits and debits, deposit approvals, payment reconciliation, ticket replies, service-plan changes, user suspension, and administrator profile changes must never be represented as complete until the live API confirms success.
 
-The prototype supports these interactive simulations:
-
-1. Open a customer to inspect account, wallet, referral, verification, and access details.
-2. Credit a wallet from the wallet screen or customer drawer. The simulated balance, transaction activity, audit event, and notification update together.
-3. Approve or reject a deposit review.
-4. Open a receipt and run simulated provider reconciliation.
-5. Configure service availability and inspect customer/provider pricing margins.
-6. Select a support ticket, reply in the **same** thread, and change ticket status. The message, ticket state, and notification event update together.
-7. Publish an announcement and inspect administrator/audit panels.
-8. Open the notification drawer and mark all operations alerts read.
-
-## Integration guardrails
-
-The `Simulator mode` chip must be removed only when `mockApi.js` is replaced with a reviewed authenticated live adapter. Live integration must preserve the existing backend validation requirements for administrator authorization, wallet idempotency, provider verification, transaction status, notification creation, ticket ownership, and attachment handling. The prototype never claims an action succeeded until the adapter returns a confirmed result.
+See `PAGE_FEATURE_MAP.md` for the page-by-page mapping derived from the current administrator code, and `VALIDATION_NOTES.md` for the interaction checks performed on the simulation prototype.
