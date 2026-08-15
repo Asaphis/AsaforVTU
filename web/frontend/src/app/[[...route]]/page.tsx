@@ -1,6 +1,6 @@
 'use client';
 
-/* Ferixas prototype port: every customer route is rendered by the approved interactive mock until live integration begins. */
+/* Ferixas customer route entry: renders the approved AsaforVTU product interface. */
 import PrototypeClient from '../PrototypeClient';
 
 export default function PrototypeRoutePage() {
