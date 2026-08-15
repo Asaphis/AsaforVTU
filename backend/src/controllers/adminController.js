@@ -566,12 +566,16 @@ const replyTicket = async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
     
+    const ticketResult = await pool.query('SELECT id, user_id, subject FROM support_tickets WHERE id = $1', [req.params.id]);
+    if (!ticketResult.rows[0]) return res.status(404).json({ error: 'Ticket not found' });
+    const ticket = ticketResult.rows[0];
     const result = await pool.query(
       `INSERT INTO support_messages (ticket_id, user_id, is_admin, message)
        VALUES ($1, $2, true, $3)
        RETURNING *`,
       [req.params.id, req.user.id, message]
     );
+    try { await notificationService.sendNotification(ticket.user_id, 'Support replied', `Support replied to your ticket: ${ticket.subject}`, 'support', { ticketId: ticket.id, messageId: result.rows[0].id }); } catch (notificationError) { console.error('[Admin Controller] Support reply notification failed:', notificationError.message); }
     
     // Update ticket status
     await pool.query(
@@ -596,11 +600,13 @@ const updateTicketStatus = async (req, res) => {
       return res.status(400).json({ error: 'Status is required' });
     }
     
+    const ticketResult = await pool.query('SELECT id, user_id, subject FROM support_tickets WHERE id = $1', [req.params.id]);
+    if (!ticketResult.rows[0]) return res.status(404).json({ error: 'Ticket not found' });
     await pool.query(
       'UPDATE support_tickets SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [status, req.params.id]
     );
-    
+    try { await notificationService.sendNotification(ticketResult.rows[0].user_id, 'Support ticket updated', `Your support ticket is now ${status}.`, 'support', { ticketId: req.params.id, status }); } catch (notificationError) { console.error('[Admin Controller] Support status notification failed:', notificationError.message); }
     res.json({ success: true, message: 'Ticket status updated' });
   } catch (error) {
     console.error('[Admin Controller] Update ticket status error:', error);

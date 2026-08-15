@@ -209,6 +209,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const referralRoutes = require('./routes/referralRoutes');
 const vtuRoutes = require('./routes/vtuRoutes');
 
 app.use('/api/auth', authRoutes);
@@ -221,6 +222,7 @@ app.use('/api/webhooks', webhookRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/referrals', referralRoutes);
 app.use('/api/vtu', vtuRoutes);
 
 // Error Handling Middleware

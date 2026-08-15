@@ -85,6 +85,7 @@ export const getPlans = async () => { try { const plans = await parse<any[]>(awa
 export const initiateFunding = (amount: number) => parse<{ tx_ref: string; link: string }>(apiRequest("/api/payments/initiate", { method: "POST", body: JSON.stringify({ amount }) }));
 export const verifyFunding = (tx_ref: string) => parse<{ success: boolean; message: string }>(apiRequest("/api/payments/verify", { method: "POST", body: JSON.stringify({ tx_ref }) }));
 export const cancelFunding = (tx_ref: string) => parse<{ success: boolean; message: string }>(apiRequest("/api/payments/cancel", { method: "POST", body: JSON.stringify({ tx_ref }) }));
+export const getReferralSummary = () => parse<any>(apiRequest("/api/referrals/me"));
 export const transferWallet = (amount: number, fromWalletType: "cashback" | "referral") => parse(apiRequest("/api/wallet/transfer", { method: "POST", body: JSON.stringify({ amount, fromWalletType }) }));
 export const purchase = (type: string, amount: number, details: Record<string, unknown>) => parse<any>(apiRequest("/api/vtu/purchase", { method: "POST", body: JSON.stringify({ type, amount, details }) }));
 export const verifyPin = async (pin: string) => (await apiRequest("/api/auth/verify-pin", { method: "POST", body: JSON.stringify({ pin }) })).ok;

@@ -77,8 +77,8 @@ const registerUser = async (userData) => {
     let referredBy = null;
     if (referral_code) {
       const referralCheck = await client.query(
-        'SELECT id, referral_code FROM users WHERE referral_code = $1',
-        [referral_code.toUpperCase()]
+        'SELECT id, referral_code FROM users WHERE upper(referral_code) = upper($1) OR lower(username) = lower($1) LIMIT 1',
+        [String(referral_code).trim()]
       );
 
       if (referralCheck.rows.length > 0) {

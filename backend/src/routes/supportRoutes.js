@@ -5,6 +5,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const { randomUUID } = require('crypto');
+const notificationService = require('../services/notificationService');
 
 const router = express.Router();
 router.use(authenticate);
@@ -63,6 +64,7 @@ router.post('/tickets', upload.array('attachments', 3), async (req, res) => {
     );
     const attachments = await createAttachments(client, ticket.id, messageResult.rows[0].id, req.user.id, req.files || []);
     await client.query('COMMIT');
+    try { await notificationService.sendNotification(req.user.id, 'Support ticket created', `Your support ticket "${ticket.subject}" was received.`, 'support', { ticketId: ticket.id }); } catch (notificationError) { console.error('[Support Routes] Ticket notification failed:', notificationError.message); }
     res.status(201).json({ ...ticket, attachments });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -117,6 +119,7 @@ router.post('/tickets/:id/reply', upload.array('attachments', 3), async (req, re
       [req.params.id, req.user.id]
     );
     await client.query('COMMIT');
+    try { await notificationService.sendNotification(req.user.id, 'Support reply sent', 'Your reply was added to the support ticket.', 'support', { ticketId: req.params.id, messageId: result.rows[0].id }); } catch (notificationError) { console.error('[Support Routes] Reply notification failed:', notificationError.message); }
     res.status(201).json({ ...result.rows[0], attachments });
   } catch (error) {
     await client.query('ROLLBACK');
