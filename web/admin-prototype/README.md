@@ -1,34 +1,38 @@
-# Ferixas AsaforVTU Admin Prototype
+# Ferixas AsaforVTU Admin Simulator
 
-This is a **separate simulation prototype** for the administrator interface. It does not alter the current production admin application and it does not call production APIs. Its sole purpose is to approve the page layout, page responsibilities, and interaction flow before the live adapter replaces the simulated repository.
+This directory now contains the **complete replacement** for the former admin prototype. It is an authenticated, stateful front-end simulator for the Ferixas AsaforVTU administration platform. The old prototype layout and code path were replaced; this interface is not a visual patch of the previous design.
 
-Run the prototype through a static server, for example `npx serve -l 4173 .`, and open the returned local address. All mock records and simulated actions are isolated in `mockApi.js`.
+The simulator starts on a login screen and stores only a local browser session. It never sends the simulator credential, transactions, customer data, or wallet actions to production services.
 
-## Design rule
+## Simulator access
 
-> Each sidebar page contains only the functions that already belong to that page in the current admin application.
+| Field | Value |
+| --- | --- |
+| Email | `admin@ferixas.test` |
+| Password | `Admin@2026` |
+| Environment | Local simulator only |
 
-The prototype keeps visual copy brief. It uses short summaries, focused tabs, a single principal table per state, and drill-down views instead of stacking unrelated cards and controls on one page.
+Use the **Sign out** control to return to login. Profile password changes update the simulator state for the open browser session only.
 
-| Sidebar page | Prototype contents | Existing live integration boundary |
+## Full feature coverage
+
+| Module | Stateful simulator behavior | Future live administrative contract |
 | --- | --- | --- |
-| Dashboard | Four platform figures, revenue trend, system status, recent transactions | Admin statistics and recent transactions |
-| User Management | Searchable account table, enrol user, profile/wallet/suspend actions | User list, create, suspend, password and verification actions |
-| User Profile | Identity, balances, lifetime figures, five recent transactions | User, user finance and user transaction endpoints |
-| Wallet Funding | Requests, Adjust and Logs tabs | Deposit review, credit, debit, wallet repair and wallet-log endpoints |
-| Transactions | Search/filter controls, transaction table, receipt and detail actions | Transaction list and detail endpoints |
-| Transaction Details | Core fields, provider status/error and raw provider response | Single transaction endpoint |
-| VTU Services | Categories, Airtime, Data, Cable and Power tabs | Service, plan and settings endpoints |
-| Financial Intel | Scope/date filters, finance figures, Breakdown/Historical/Capacity tabs | Finance analytics, user finance and plans endpoints |
-| API Settings | Provider link, webhook URL and payment reconciliation | Settings and reconciliation endpoints |
-| Support Center | Tickets and Announcements tabs; message thread only after ticket selection | Ticket, message, status and announcement endpoints |
-| System Logs | One chronological audit table | Transaction-derived logs endpoint |
-| My Profile | Administrator identity, profile update and password update | Current-admin profile and password endpoints |
+| Command Center | Dashboard metrics, seven-day successful-flow trend, health, funding/ticket queue, recent activity | Stats and recent transaction routes |
+| Customers | Search, enrolment, customer profile, verification link, password reset, suspend/restore, wallet shortcut | Users, verification, password, suspend and wallet routes |
+| Wallet Operations | Funding approval/rejection, main/cashback/referral adjustment, new transaction/log creation, ghost-wallet dry run/repair | Wallet requests, credit/debit, deposits and logs routes |
+| Transactions | Search/status/type filters, receipt, provider details, provider cost, SMS cost, net, failure source/reason | Transactions list and detail routes |
+| Services & Pricing | Service availability, airtime configuration, plan pricing, new plan, provider-plan synchronisation | Services, settings and plan CRUD/sync routes |
+| Financial Intelligence | System/customer scope, period selector, provider obligation, wallet liquidity, successful flow, provider/SMS cost, net profit, trend, daily/weekly/monthly performance, margin ledger, exceptions, customer risk and plan capacity | Finance analytics, system and customer finance routes |
+| Support & Broadcasts | Ticket selection, same-thread replies, ticket statuses, ticket deletion, announcement creation/deletion | Support tickets/messages/status/delete and announcement routes |
+| Platform Controls | Provider configuration, webhook copy, cashback/referral controls, payment reconciliation, administrator invitation | Settings, reconciliation and admin-access routes |
+| Audit Trail | State-changing admin actions appended to chronological audit records | Administrative audit endpoint |
+| My Account | Profile update and password rotation | Administrator profile/password routes |
 
-## Mock-to-live boundary
+## Adapter boundary
 
-The view layer only imports `mockApi.js`. When the design is approved, replace that export with a live adapter that preserves the same method names and return shapes. The screen locations, UI state and user flows stay unchanged.
+`mockApi.js` is the only source of data and side effects. To connect the approved interface to production, replace each method in that module with calls to the existing authenticated `/api/admin/*` endpoints while preserving the return shapes that the views use. The visual layer should not be rewritten.
 
-Sensitive operational actions must continue to rely on the existing live backend validation. In particular, wallet credits and debits, deposit approvals, payment reconciliation, ticket replies, service-plan changes, user suspension, and administrator profile changes must never be represented as complete until the live API confirms success.
+The simulation makes state changes locally so a review can safely demonstrate the expected front-end behavior. In production, wallet adjustments, funding approval, reconciliation, profile/password updates, ticket actions, customer access, and service pricing must continue to display completion only after the backend returns a confirmed success response.
 
-See `PAGE_FEATURE_MAP.md` for the page-by-page mapping derived from the current administrator code, and `VALIDATION_NOTES.md` for the interaction checks performed on the simulation prototype.
+See `SIMULATOR_ARCHITECTURE.md` for the complete technical mapping, especially the Financial Intelligence fields and their current backend meaning. `VALIDATION_NOTES.md` records the functional checks run against the simulator.
