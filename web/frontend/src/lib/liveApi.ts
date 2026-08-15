@@ -50,9 +50,10 @@ export const apiRequest = async (path: string, init: RequestInit = {}, retry = t
   return response;
 };
 
-export const parse = async <T>(response: Response): Promise<T> => {
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new LiveApiError(body.error || body.message || "Request failed", body.code, body);
+export const parse = async <T>(response: Response | Promise<Response>): Promise<T> => {
+  const resolved = await response;
+  const body = await resolved.json().catch(() => ({}));
+  if (!resolved.ok) throw new LiveApiError(body.error || body.message || "Request failed", body.code, body);
   return body as T;
 };
 
