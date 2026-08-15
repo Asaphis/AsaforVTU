@@ -1,50 +1,12 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { Toaster } from 'react-hot-toast'
-import { AuthProvider } from '@/contexts/AuthContext'
-import { NotificationProvider } from '@/contexts/NotificationContext'
-import Notification from '@/components/Notification'
-import { WhatsAppContact } from '@/components/WhatsAppContact'
-
-const inter = Inter({ subsets: ['latin'] })
+/* Ferixas prototype port: Next.js document shell for the unconnected review build. */
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:5000'),
-  title: 'AsaforVTU - Instant Digital Services',
-  description: 'Buy airtime, data, electricity and more instantly with AsaforVTU',
-  icons: {
-    icon: '/logo.png',
-    shortcut: '/logo.png',
-    apple: '/logo.png',
-  },
-  openGraph: {
-    title: 'AsaforVTU',
-    description: 'Instant digital services platform',
-    images: ['/logo.png'],
-  },
-}
+  title: 'AsaforVTU | Ferixas',
+  description: 'Interactive AsaforVTU customer experience prototype.',
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <html lang="en" className="light" suppressHydrationWarning>
-      <head>
-        <meta name="color-scheme" content="light" />
-      </head>
-      <body className={`${inter.className} min-h-screen selection:bg-primary/20`}>
-        <AuthProvider>
-          <NotificationProvider>
-            {children}
-            <Toaster />
-            <Notification />
-            <WhatsAppContact />
-          </NotificationProvider>
-        </AuthProvider>
-      </body>
-    </html>
-  )
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <html lang="en"><body>{children}</body></html>;
 }

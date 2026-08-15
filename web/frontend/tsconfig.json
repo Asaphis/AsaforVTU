@@ -1,21 +1,21 @@
 {
   "compilerOptions": {
-    "target": "es2017",
+    "target": "ES2017",
     "lib": [
       "dom",
       "dom.iterable",
       "esnext"
     ],
-    "jsx": "react-jsx",
-    "module": "esnext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
     "allowJs": true,
-    "strict": true,
-    "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+    "strict": false,
     "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
       {
@@ -27,8 +27,7 @@
         "./src/*"
       ]
     },
-    "isolatedModules": true,
-    "types": ["node", "react", "react-dom"]
+    "strictNullChecks": true
   },
   "include": [
     "next-env.d.ts",

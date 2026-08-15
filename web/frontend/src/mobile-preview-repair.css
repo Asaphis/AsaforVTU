@@ -1,0 +1,88 @@
+/* Ferixas prototype port: prevent local brand lockup overlap and compact the mobile review layout. */
+.asf-logo { min-width: 0; }
+.asf-logo > span { width: 44px; height: 44px; flex: 0 0 44px; overflow: visible; background: transparent; border-radius: 0; }
+.asf-logo img { width: 100%; height: 100%; display: block; object-fit: contain; transform: none; }
+.asf-logo > div { min-width: 0; }
+.asf-logo b { letter-spacing: -0.03em; }
+
+.landing-refined-brand,
+.public-info-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+}
+
+.landing-refined-brand > span,
+.public-info-brand > span {
+  width: 44px !important;
+  height: 44px !important;
+  flex: 0 0 44px;
+  display: block;
+}
+
+.landing-refined-brand > div,
+.public-info-brand > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.landing-refined-brand b,
+.public-info-brand b {
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.landing-refined-brand small,
+.public-info-brand small {
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .public-top { height: 76px; padding: 10px 24px; }
+  .public-top > button:first-child { max-width: calc(100% - 66px); min-width: 0; }
+  .public-top .asf-logo { gap: 8px; }
+  .public-top .asf-logo > span { width: 40px; height: 40px; flex-basis: 40px; }
+  .public-top .asf-logo b { display: block; max-width: 185px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; line-height: 1.1; }
+  .public-top .asf-logo small { display: block; max-width: 185px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; line-height: 1.2; }
+  .public-top .menu { width: 42px; height: 42px; padding: 8px !important; }
+
+  .landing-refined-top,
+  .public-info-top--shared { height: 72px !important; padding: 10px 24px !important; }
+  .landing-refined-brand,
+  .public-info-brand { max-width: calc(100% - 58px); gap: 8px; }
+  .landing-refined-brand > span,
+  .public-info-brand > span { width: 40px !important; height: 40px !important; flex-basis: 40px; }
+  .landing-refined-brand b,
+  .public-info-brand b { max-width: 184px; overflow: hidden; font-size: 16px; text-overflow: ellipsis; }
+  .landing-refined-brand small,
+  .public-info-brand small { max-width: 184px; overflow: hidden; font-size: 9px; text-overflow: ellipsis; }
+
+  .landing-refined-footer { display: grid; grid-template-columns: 1fr; gap: 22px; padding: 32px 24px 38px; }
+  .landing-refined-footer .landing-footer-brand { grid-template-columns: 42px minmax(0, 1fr); }
+  .landing-refined-footer .landing-footer-brand > span { width: 42px; height: 42px; }
+  .landing-refined-footer > div:not(.landing-footer-brand) { display: flex; align-items: baseline; gap: 14px; }
+  .landing-refined-footer > div:not(.landing-footer-brand) strong { width: 94px; flex: 0 0 94px; }
+  .landing-refined-footer > div:not(.landing-footer-brand) small { flex: 1; line-height: 1.65; }
+  .landing-refined-footer nav { display: flex; flex-wrap: wrap; gap: 10px 20px; }
+  .landing-refined-footer nav button { font-size: 12px; }
+  .landing-refined-footer > p { margin: 0; font-size: 11px; line-height: 1.55; }
+
+  .auth-card { min-height: auto; display: block; padding: 82px 24px 42px; }
+  .auth-card form, .auth-card .verify-state { margin-top: 16px; }
+  .auth-card .back { top: 24px; left: 24px; }
+
+  .public-foot { padding: 32px 24px 36px; gap: 24px; }
+  .public-foot .asf-logo > span { width: 42px; height: 42px; flex-basis: 42px; }
+  .public-foot .asf-logo b { font-size: 16px; }
+  .public-foot .asf-logo small { font-size: 9px; }
+  .public-foot p { max-width: 320px; margin: 10px 0 0; line-height: 1.65; }
+  .footer-links { grid-template-columns: 1fr 1fr; gap: 24px 18px; }
+  .footer-links > div:last-child { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+  .footer-links > div:last-child b { width: 100%; }
+  .public-foot > span { font-size: 9px; line-height: 1.55; }
+}

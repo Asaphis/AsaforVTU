@@ -1,0 +1,79 @@
+/* Ferixas identity: show the supplied transparent globe-and-ribbon mark as a standalone logo, never inside a colored tile. */
+:where(.landing-refined-brand,.landing-footer-brand,.public-info-brand,.hub-brand,.asf-logo)>span{
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+}
+
+:where(.landing-refined-brand,.landing-footer-brand,.public-info-brand,.hub-brand,.asf-logo) img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  transform:none!important;
+}
+
+/* Ferixas wordmarks echo the mark's green-to-gold-to-cyan-to-navy ribbon, while dark surfaces use only bright stops for legibility. */
+:where(.landing-refined-brand,.landing-footer-brand,.public-info-brand,.hub-brand,.asf-logo) b{
+  background:linear-gradient(105deg,#147115 0%,#99BC0D 28%,#D69B04 51%,#0291C0 76%,#012044 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent!important;
+  font-weight:800!important;
+}
+
+:where(.landing-refined-brand,.landing-footer-brand,.public-info-brand,.hub-brand,.asf-logo) small{
+  background:linear-gradient(100deg,#012044 0%,#036A97 30%,#0291C0 55%,#147115 76%,#D69B04 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent!important;
+  font-weight:800!important;
+}
+
+:where(.side,.more-sheet) .asf-logo b{
+  background:linear-gradient(105deg,#D69B04 0%,#99BC0D 36%,#55C7E8 68%,#FFF7F4 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent!important;
+}
+
+:where(.side,.more-sheet) .asf-logo small{
+  background:linear-gradient(100deg,#99BC0D 0%,#55C7E8 50%,#D69B04 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent!important;
+}
+
+/* Landing footer: identity lockup leads the company statement without reintroducing a logo tile. */
+.landing-refined-footer .landing-footer-brand{
+  display:grid!important;
+  grid-template-columns:40px minmax(0,1fr);
+  column-gap:10px!important;
+  row-gap:4px!important;
+  align-items:center;
+}
+
+.landing-footer-brand>span{
+  grid-row:1;
+  width:40px;
+  height:40px;
+  display:grid;
+  place-items:center;
+}
+
+.landing-footer-brand>div{
+  display:grid!important;
+  gap:1px!important;
+}
+
+.landing-footer-brand>b{display:block}
+
+.landing-footer-brand>p{
+  grid-column:1/-1;
+  margin:7px 0 0;
+  max-width:275px;
+  color:#718096;
+  font-size:8px;
+  line-height:1.55;
+}

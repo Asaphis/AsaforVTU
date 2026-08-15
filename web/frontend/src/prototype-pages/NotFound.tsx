@@ -1,0 +1,8 @@
+// AsaforVTU recovery page: maintain the VTU wallet and service language even when a route is unavailable.
+import { ArrowRight, ReceiptText } from "lucide-react";
+import { useLocation } from "wouter";
+
+export default function NotFound() {
+  const [, setLocation] = useLocation();
+  return <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "24px", background: "#f7f3eb", color: "#123b39", fontFamily: "'DM Sans', sans-serif" }}><section style={{ width: "min(520px, 100%)", padding: "34px", background: "#fffdf9", border: "1px solid #ded8ca", borderRadius: "24px 4px 24px 4px", boxShadow: "5px 5px 0 #123b39" }}><span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: ".1em", color: "#2e5a56" }}>ASAFORVTU / PAGE UNAVAILABLE</span><div style={{ width: "52px", height: "52px", display: "grid", placeItems: "center", margin: "22px 0 16px", background: "#d8f56b", borderRadius: "50%" }}><ReceiptText size={23} /></div><h1 style={{ fontFamily: "Sora, sans-serif", letterSpacing: "-.08em", fontSize: "42px", lineHeight: 1, margin: "0 0 15px" }}>This page is not available.</h1><p style={{ color: "#697570", lineHeight: 1.6, fontSize: "14px" }}>Return to your dashboard to fund your wallet, buy a service, or view your transaction history.</p><button onClick={() => setLocation("/dashboard")} style={{ display: "inline-flex", gap: "8px", alignItems: "center", marginTop: "14px", border: "1px solid #123b39", background: "#d8f56b", color: "#123b39", padding: "12px 14px", borderRadius: "13px 3px 13px 3px", boxShadow: "3px 3px 0 #123b39", fontWeight: 700 }}>Go to dashboard <ArrowRight size={16} /></button></section></main>;
+}
