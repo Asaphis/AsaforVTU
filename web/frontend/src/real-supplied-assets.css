@@ -1,4 +1,4 @@
-/* User-supplied AsaforVTU banners and network logos replace prototype artwork in the review build. */
+/* User-supplied AsaforVTU banners and network logos replace legacy artwork in the application. */
 .real-banner-carousel {
   isolation: isolate;
   position: relative;

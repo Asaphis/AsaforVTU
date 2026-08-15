@@ -1,4 +1,4 @@
-/* Ferixas prototype port: reuse the approved static design assets within the Next.js review shell. */
+/* Ferixas customer application: reuse the customer design assets within the Next.js application shell. */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "../index.css";
 @import "../type-system.css";

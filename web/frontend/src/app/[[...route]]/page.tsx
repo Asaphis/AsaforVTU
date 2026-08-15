@@ -1,8 +1,8 @@
 'use client';
 
-/* Ferixas prototype port: every customer route is rendered by the approved interactive mock until live integration begins. */
-import PrototypeClient from '../PrototypeClient';
+/* Ferixas customer application: every customer route is rendered by the live customer application. */
+import CustomerClient from '../CustomerClient';
 
-export default function PrototypeRoutePage() {
-  return <PrototypeClient />;
+export default function CustomerRoutePage() {
+  return <CustomerClient />;
 }
