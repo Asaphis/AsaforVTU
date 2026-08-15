@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { NotificationProvider } from '@/contexts/NotificationContext'
 import Notification from '@/components/Notification'
+import { WhatsAppContact } from '@/components/WhatsAppContact'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -40,10 +41,10 @@ export default function RootLayout({
             {children}
             <Toaster />
             <Notification />
+            <WhatsAppContact />
           </NotificationProvider>
         </AuthProvider>
       </body>
     </html>
   )
 }
-

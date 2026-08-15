@@ -18,6 +18,7 @@ export default function SupportPage() {
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [replies, setReplies] = useState<any[]>([]);
   const [replyMessage, setReplyMessage] = useState('');
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [sendingReply, setSendingReply] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -68,12 +69,13 @@ export default function SupportPage() {
   };
 
   const handleReply = async () => {
-    if (!replyMessage || !selectedTicket) return;
+    if ((!replyMessage && !replyFiles.length) || !selectedTicket) return;
     setSendingReply(true);
     try {
-      await replyToTicket(selectedTicket.id, replyMessage);
+      await replyToTicket(selectedTicket.id, replyMessage, replyFiles);
       toast({ type: 'default', title: 'Success', description: 'Reply sent successfully' });
       setReplyMessage('');
+      setReplyFiles([]);
       loadTicketMessages(selectedTicket.id);
     } catch (e: any) {
       toast({ type: 'destructive', title: 'Error', description: e.message });
@@ -141,6 +143,7 @@ export default function SupportPage() {
                 {replies.map((reply) => (
                   <div key={reply.id} className={`p-3 rounded ${reply.is_admin ? 'bg-blue-50 ml-8' : 'bg-gray-50'}`}>
                     <p className="text-sm">{reply.message}</p>
+                    {Array.isArray(reply.attachments) && reply.attachments.length > 0 ? <div className="mt-2 flex flex-wrap gap-2">{reply.attachments.map((attachment: any) => <span key={attachment.id} className="inline-flex items-center gap-1 rounded bg-white px-2 py-1 text-[11px] text-[#036A97]"><Paperclip size={12}/>{attachment.original_name}</span>)}</div> : null}
                     <p className="text-xs text-gray-500 mt-1">
                       {reply.is_admin ? 'Admin' : 'You'} - {new Date(reply.created_at).toLocaleString()}
                     </p>
@@ -153,10 +156,12 @@ export default function SupportPage() {
                   onChange={(e) => setReplyMessage(e.target.value)}
                   placeholder="Type your reply..."
                 />
+                <label className="inline-flex cursor-pointer items-center justify-center rounded-md border border-slate-200 px-3 text-slate-600 hover:bg-slate-50" title="Attach image, document, or video"><Paperclip size={16}/><input className="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,video/mp4,video/webm,video/quicktime" onChange={(event) => setReplyFiles(Array.from(event.target.files || []).slice(0, 3))}/></label>
                 <Button onClick={handleReply} disabled={sendingReply}>
                   {sendingReply ? 'Sending...' : <Send size={16} />}
                 </Button>
               </div>
+              {replyFiles.length > 0 ? <p className="mt-2 text-xs text-slate-500">Attached: {replyFiles.map(file => file.name).join(', ')}</p> : null}
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">

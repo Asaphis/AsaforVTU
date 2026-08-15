@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
+import { BrandLockup } from '@/components/BrandLockup';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,20 +11,7 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
       <div className="container-main flex justify-between items-center h-16">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 relative">
-            <Image
-              src="/logo.png"
-              alt="AsaforVTU"
-              fill
-              className="object-contain"
-            />
-          </div>
-          <span className="font-bold text-lg">
-            <span className="text-[#0A1F44]">AsaforVTU</span>
-            <span className="text-[#F97316]">VTU</span>
-          </span>
-        </Link>
+        <Link href="/" aria-label="Ferixas AsaforVTU home"><BrandLockup compact /></Link>
 
         {/* Desktop Menu */}
         <div className="hidden md:flex gap-8">
@@ -82,4 +69,3 @@ export function Navbar() {
     </nav>
   );
 }
-

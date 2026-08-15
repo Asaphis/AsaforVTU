@@ -16,15 +16,22 @@ export const getAnnouncements = async (): Promise<Announcement[]> => {
   catch (_) { return []; }
 };
 
-export const createTicket = async (subject: string, message: string): Promise<{ success: boolean; message: string; ticketId?: string }> => {
+const supportForm = (fields: Record<string, string>, attachments: File[] = []) => {
+  const form = new FormData();
+  Object.entries(fields).forEach(([key, value]) => form.append(key, value));
+  attachments.forEach(file => form.append('attachments', file));
+  return form;
+};
+
+export const createTicket = async (subject: string, message: string, attachments: File[] = []): Promise<{ success: boolean; message: string; ticketId?: string }> => {
   try {
-    const data = await parse(await apiRequest('/api/support/tickets', { method: 'POST', body: JSON.stringify({ subject, message, category: 'general' }) }));
+    const data = await parse(await apiRequest('/api/support/tickets', { method: 'POST', body: supportForm({ subject, message, category: 'general' }, attachments) }));
     return { success: true, message: 'Ticket created successfully', ticketId: data.id };
   } catch (error: any) { return { success: false, message: error.message || 'Failed to create ticket' }; }
 };
 
-export const replyToTicket = async (ticketId: string, message: string) => {
-  try { await parse(await apiRequest(`/api/support/tickets/${ticketId}/reply`, { method: 'POST', body: JSON.stringify({ message }) })); return { success: true, message: 'Reply sent successfully' }; }
+export const replyToTicket = async (ticketId: string, message: string, attachments: File[] = []) => {
+  try { await parse(await apiRequest(`/api/support/tickets/${ticketId}/reply`, { method: 'POST', body: supportForm({ message }, attachments) })); return { success: true, message: 'Reply sent successfully' }; }
   catch (error: any) { return { success: false, message: error.message || 'Failed to send reply' }; }
 };
 export const getTickets = async (): Promise<any[]> => { try { const data = await parse(await apiRequest('/api/support/tickets')); return Array.isArray(data) ? data : []; } catch (_) { return []; } };

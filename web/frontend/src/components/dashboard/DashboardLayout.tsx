@@ -6,12 +6,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import { Home, CreditCard, Activity, User, Settings, ShieldCheck, LifeBuoy, PhoneCall, Globe, MonitorPlay, Lightbulb, GraduationCap, LogOut, Bell, Menu, Eye, EyeOff, X } from 'lucide-react';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { BrandLockup } from '@/components/BrandLockup';
+import { useServices } from '@/hooks/useServices';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { notifications, removeNotification, clearNotifications } = useNotifications();
+  const { services: liveServices } = useServices();
   const [notifOpen, setNotifOpen] = useState(false);
 
   const primaryItems = [
@@ -20,13 +23,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: '/dashboard/transactions', label: 'Transactions', icon: Activity },
   ];
 
-  const serviceItems = [
+  const fallbackServiceItems = [
     { href: '/dashboard/services/airtime', label: 'Airtime', icon: PhoneCall },
     { href: '/dashboard/services/data', label: 'Data', icon: Globe },
     { href: '/dashboard/services/cable', label: 'Cable TV', icon: MonitorPlay },
     { href: '/dashboard/services/electricity', label: 'Electricity', icon: Lightbulb },
     { href: '/dashboard/services/exam-pins', label: 'Exam PINs', icon: GraduationCap },
   ];
+  const serviceIconByName: Record<string, typeof PhoneCall> = { phone: PhoneCall, wifi: Globe, tv: MonitorPlay, zap: Lightbulb, book: GraduationCap };
+  const serviceItems = liveServices
+    ? liveServices.filter(service => service.enabled || service.is_active).sort((a, b) => a.name.localeCompare(b.name)).map(service => ({
+        href: `/dashboard/services/${encodeURIComponent(service.slug)}`,
+        label: service.name,
+        icon: serviceIconByName[service.icon || ''] || CreditCard,
+      }))
+    : fallbackServiceItems;
   
   const accountItems = [
     { href: '/dashboard/profile', label: 'Profile', icon: User },
@@ -48,15 +59,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-72 bg-gradient-to-b from-white via-white to-slate-50/50 backdrop-blur-xl border-r border-slate-200/60 flex-col overflow-y-auto z-40 transition-all duration-300">
         <div className="flex flex-col h-full">
           <div className="p-8">
-            <div className="flex items-center gap-4 group cursor-pointer">
-              <div className="w-14 h-14 rounded-[22px] bg-gradient-to-br from-[#0B4F6C] to-[#145a77] flex items-center justify-center text-white shadow-xl shadow-[#0B4F6C]/20 group-hover:rotate-6 group-hover:scale-105 transition-all duration-500 ring-4 ring-slate-50">
-                <img src="/logo.png" alt="AsaforVTU Logo" className="w-9 h-9 object-contain" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-black text-2xl tracking-tighter text-[#0B4F6C] leading-none">Asafor<span className="text-[#C58A17]">VTU</span></span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Premium Services</span>
-              </div>
-            </div>
+            <BrandLockup inverse />
           </div>
           <nav className="px-4 space-y-1.5 flex-grow">
             {primaryItems.map(({ href, label, icon: Icon }) => (
@@ -239,7 +242,7 @@ function MobileSidebar({
           <div className="fixed inset-0 bg-black/30 z-50" onClick={() => setOpen(false)} />
           <div className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50 flex flex-col">
             <div className="flex items-center justify-between p-4 border-b">
-              <span className="font-black text-[#0B4F6C]">Asafor<span className="text-[#C58A17]">VTU</span></span>
+              <BrandLockup compact />
               <button className="p-2 rounded-xl border border-gray-200" onClick={() => setOpen(false)}>
                 <X />
               </button>
@@ -279,4 +282,3 @@ function MobileSidebar({
     </>
   );
 }
-

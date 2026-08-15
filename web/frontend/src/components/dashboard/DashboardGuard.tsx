@@ -1,18 +1,23 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function DashboardGuard({ children }: { children: React.ReactNode }) {
   const { user, initialized, loading, error } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (initialized && !loading && !user && !error) {
-      router.replace('/login');
+      router.replace(`/login?next=${encodeURIComponent(pathname || '/dashboard')}`);
+      return;
     }
-  }, [initialized, loading, user, error, router]);
+    if (initialized && !loading && user && !user.emailVerified) {
+      router.replace(`/verify-email-sent?email=${encodeURIComponent(user.email)}`);
+    }
+  }, [initialized, loading, user, error, pathname, router]);
 
   if (error) {
     return (
@@ -48,7 +53,7 @@ export default function DashboardGuard({ children }: { children: React.ReactNode
     );
   }
 
-  if (!user) return null;
+  if (!user || !user.emailVerified) return null;
 
   return <>{children}</>;
 }

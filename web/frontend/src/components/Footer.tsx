@@ -1,14 +1,17 @@
 import Link from 'next/link';
+import { BrandLockup } from '@/components/BrandLockup';
 
 export function Footer() {
+  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL;
+  const supportPhone = process.env.NEXT_PUBLIC_SUPPORT_PHONE;
   return (
     <footer className="bg-[#0A1F44] text-white py-12 mt-20">
       <div className="container-main">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div>
-            <h3 className="font-bold text-lg mb-4">AsaforVTU</h3>
+            <BrandLockup inverse className="mb-4" />
             <p className="text-gray-300 text-sm">
-              Your trusted platform for instant digital services
+              Buy airtime, data, electricity tokens, cable TV subscriptions and exam PINs from one wallet.
             </p>
           </div>
           <div>
@@ -30,8 +33,8 @@ export function Footer() {
           </div>
           <div>
             <h4 className="font-semibold mb-4">Contact</h4>
-            <p className="text-sm text-gray-300">support@AsaforVTU.com</p>
-            <p className="text-sm text-gray-300">+234 800 123 4567</p>
+            {supportEmail ? <a href={`mailto:${supportEmail}`} className="block text-sm text-gray-300 hover:text-white">{supportEmail}</a> : <p className="text-sm text-gray-300">Contact support from your account.</p>}
+            {supportPhone ? <a href={`tel:${supportPhone}`} className="mt-2 block text-sm text-gray-300 hover:text-white">{supportPhone}</a> : null}
           </div>
         </div>
         <div className="border-t border-gray-700 pt-8 text-center text-gray-400 text-sm">
@@ -41,4 +44,3 @@ export function Footer() {
     </footer>
   );
 }
-

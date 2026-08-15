@@ -73,7 +73,8 @@ const refreshAccessToken = async (): Promise<boolean> => {
 };
 
 export const apiRequest = async (endpoint: string, options: RequestInit = {}, retry = true): Promise<Response> => {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const headers: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' };
   Object.entries(options.headers || {}).forEach(([key, value]) => { headers[key] = String(value); });
   const token = getAccessToken();
   if (token) headers.Authorization = `Bearer ${token}`;
