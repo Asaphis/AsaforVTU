@@ -42,6 +42,24 @@ router.post('/initiate', async (req, res) => {
   }
 });
 
+router.post('/cancel', async (req, res) => {
+  try {
+    const requestedRef = String(req.body?.tx_ref || '').trim();
+    if (!requestedRef) return res.status(400).json({ error: 'tx_ref is required' });
+    const payment = await paymentService.getPaymentByTxRef(requestedRef, req.user.id);
+    if (!payment) return res.status(404).json({ error: 'Payment not found' });
+    if (payment.status === 'success') return res.status(409).json({ success: false, message: 'This payment was already verified successfully.' });
+    if (['failed', 'cancelled', 'reversed'].includes(payment.status)) return res.json({ success: true, message: `Payment already marked ${payment.status}.` });
+    await paymentService.updatePaymentStatus(payment.id, 'cancelled', { metadata: { cancellation_source: 'provider_redirect' } });
+    const notificationService = require('../services/notificationService');
+    await notificationService.sendNotification(req.user.id, 'Payment cancelled', 'Your wallet funding payment was cancelled. No wallet credit was applied.', 'wallet', { tx_ref: payment.tx_ref });
+    return res.json({ success: true, message: 'Payment cancelled. No wallet credit was applied.' });
+  } catch (error) {
+    console.error('[Payment Routes] Cancel error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 router.post('/verify', async (req, res) => {
   try {
     const requestedRef = String(req.body?.tx_ref || '').trim();

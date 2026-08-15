@@ -17,7 +17,17 @@ router.post('/flutterwave', express.json({ type: '*/*' }), async (req, res) => {
     const event = req.body || {};
     const eventStatus = String(event?.data?.status || event?.event || '').toLowerCase();
     if (eventStatus && !['successful', 'success', 'charge.completed'].some(value => eventStatus.includes(value))) {
-      return res.json({ success: true, ignored: true });
+      const txRef = String(event?.data?.tx_ref || '').trim();
+      if (txRef) {
+        const payment = await paymentService.getPaymentByTxRef(txRef);
+        if (payment && payment.status !== 'success') {
+          const normalized = eventStatus.includes('cancel') ? 'cancelled' : eventStatus.includes('timeout') ? 'timeout' : 'failed';
+          await paymentService.updatePaymentStatus(payment.id, normalized, { metadata: { flutterwave_event: event } });
+          const notificationService = require('../services/notificationService');
+          await notificationService.sendNotification(payment.user_id, 'Payment update', `Your wallet funding payment is ${normalized}. No successful credit was recorded.`, 'wallet', { tx_ref: txRef, status: normalized });
+        }
+      }
+      return res.json({ success: true, handled: true, status: eventStatus });
     }
 
     const txRef = String(event?.data?.tx_ref || '').trim();

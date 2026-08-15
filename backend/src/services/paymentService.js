@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const walletService = require('./walletService');
 const transactionService = require('./transactionService');
+const notificationService = require('./notificationService');
 
 // Create payment
 const createPayment = async (paymentData) => {
@@ -159,6 +160,26 @@ const getPaymentsByUserId = async (userId, limit = 50, offset = 0, status = null
   }
 };
 
+const recordWalletCreditActivity = async ({ userId, amount, reference, description, metadata = {}, notificationTitle = 'Wallet credited', notificationMessage }) => {
+  const value = Number(amount);
+  const existing = await pool.query('SELECT * FROM transactions WHERE reference = $1 LIMIT 1', [reference]);
+  let created = false;
+  if (!existing.rows.length) {
+    const wallet = await walletService.getWalletByUserId(userId);
+    const after = Number(wallet?.main_balance || 0);
+    const before = after - value;
+    await pool.query(
+      `INSERT INTO transactions (user_id, type, amount, status, reference, metadata)
+       VALUES ($1, 'wallet_funding', $2, 'success', $3, $4)`,
+      [userId, value, reference, JSON.stringify({ ...metadata, description, balance_before: before, balance_after: after })]
+    );
+    created = true;
+  }
+  if (created && notificationMessage) {
+    await notificationService.sendNotification(userId, notificationTitle, notificationMessage, 'wallet', { reference, amount: value, ...metadata });
+  }
+};
+
 // Process successful payment. Wallet credit uses the unique payment tx_ref as
 // its ledger reference, making retries safe even if the status update is retried.
 const processSuccessfulPayment = async (paymentId, providerData = {}) => {
@@ -166,7 +187,7 @@ const processSuccessfulPayment = async (paymentId, providerData = {}) => {
   if (!payment) throw new Error('Payment not found');
   if (payment.status === 'success') return payment;
 
-  await walletService.creditWallet(
+  const creditedWallet = await walletService.creditWallet(
     payment.user_id,
     Number(payment.amount),
     'main',
@@ -174,6 +195,12 @@ const processSuccessfulPayment = async (paymentId, providerData = {}) => {
     payment.tx_ref,
     { paymentId, providerData }
   );
+
+  await recordWalletCreditActivity({
+    userId: payment.user_id, amount: Number(payment.amount), reference: payment.tx_ref,
+    description: 'Payment for wallet funding', metadata: { paymentId, providerData, wallet: creditedWallet },
+    notificationMessage: `Your wallet was credited with ₦${Number(payment.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}.`
+  });
 
   const updatedPayment = await updatePaymentStatus(paymentId, 'success', providerData);
   if (payment.transaction_id) {
@@ -313,5 +340,6 @@ module.exports = {
   processSuccessfulPayment,
   processFailedPayment,
   reversePayment,
-  getPaymentStats
+  getPaymentStats,
+  recordWalletCreditActivity
 };

@@ -3,6 +3,7 @@ const walletService = require('../services/walletService');
 const flutterwaveService = require('../services/flutterwaveService');
 const transactionService = require('../services/transactionService');
 const paymentService = require('../services/paymentService');
+const notificationService = require('../services/notificationService');
 
 const getStats = async (req, res) => {
   try {
@@ -272,7 +273,19 @@ const creditWallet = async (req, res) => {
 
     // Create wallet and credit
     await walletService.createWallet(targetUserId);
-    const newBalance = await walletService.creditWallet(targetUserId, amt, wtype, description || 'Admin Credit');
+    const creditDescription = description || 'Admin Credit';
+    const newBalance = await walletService.creditWallet(targetUserId, amt, wtype, creditDescription);
+    if (wtype === 'main') {
+      const reference = `ADMIN_CREDIT_${Date.now()}_${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+      await paymentService.recordWalletCreditActivity({
+        userId: targetUserId, amount: amt, reference, description: creditDescription,
+        metadata: { source: 'admin', walletType: wtype, adminId: req.user.id },
+        notificationTitle: 'Wallet credited by administrator',
+        notificationMessage: `An administrator credited your wallet with ₦${amt.toLocaleString('en-NG', { minimumFractionDigits: 2 })}.`
+      });
+    } else {
+      await notificationService.sendNotification(targetUserId, 'Wallet balance updated', `Your ${wtype} balance was credited with ₦${amt.toLocaleString('en-NG', { minimumFractionDigits: 2 })}.`, 'wallet', { source: 'admin', walletType: wtype, adminId: req.user.id });
+    }
     
     // Log to admin_audit for tracking
     try {
