@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SiGoogle, SiApple } from "react-icons/si";
-import { AuthLayout } from "@/components/auth/AuthLayout";
+import { FerixasAuthShell } from "@/components/ferixas/FerixasAuthShell";
 import { useAuthForm } from "@/hooks/useAuthForm";
 import { logger } from "@/lib/logger";
 
@@ -113,16 +113,11 @@ export default function RegisterPage() {
   const formRef = useRef<HTMLFormElement | null>(null);
 
   return (
-    <AuthLayout>
-      <div className="w-full space-y-10 p-10 bg-white/80 backdrop-blur-xl rounded-[3rem] shadow-2xl border border-slate-100 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-accent to-primary"></div>
+    <FerixasAuthShell eyebrow="ASAFORVTU ACCOUNT" title="Create an account. Start topping up.">
+      <div className="w-full space-y-8">
         <div className="space-y-2">
-          <div className="lg:hidden flex items-center justify-center gap-3 mb-6">
-            <img src="/logo.png" alt="AsaforVTU Logo" className="h-12 w-12 object-contain" />
-            <span className="font-black text-2xl text-slate-900 tracking-tight">AsaforVTU</span>
-          </div>
-          <h1 className="text-center text-4xl font-black text-slate-950 tracking-tight">Create Account</h1>
-          <p className="text-center text-slate-500 font-semibold">Join the future of digital top-ups</p>
+          <h2 className="text-3xl font-extrabold tracking-[-.04em] text-[#012044]">Create your AsaforVTU account.</h2>
+          <p className="mt-2 text-slate-500">Enter your details to create and verify your account.</p>
         </div>
 
         {formErrors.general && (
@@ -277,6 +272,6 @@ export default function RegisterPage() {
           </Link>
         </p>
       </div>
-    </AuthLayout>
+    </FerixasAuthShell>
   );
 }

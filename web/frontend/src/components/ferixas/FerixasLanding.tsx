@@ -1,0 +1,31 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { ArrowRight, FileText, Headphones, ShieldCheck, Smartphone, Tv, WalletCards, Wifi, Zap } from 'lucide-react';
+import { BrandLockup } from '@/components/BrandLockup';
+import { Footer } from '@/components/Footer';
+import { useServices } from '@/hooks/useServices';
+
+const heroCards = [
+  ['Airtime Recharge', 'Top up any supported number in a few steps.', Smartphone],
+  ['Data Bundles', 'Choose the right available plan for your network.', Wifi],
+  ['Electricity Bills', 'Confirm your meter details and buy a token.', Zap],
+  ['Exam PINs', 'Buy result-checking PINs when you need them.', FileText],
+] as const;
+const iconByName: Record<string, typeof Smartphone> = { phone: Smartphone, wifi: Wifi, tv: Tv, zap: Zap, book: FileText };
+
+export function FerixasLanding() {
+  const { services, loading } = useServices();
+  const [activeHero, setActiveHero] = useState(0);
+  useEffect(() => { const timer = window.setInterval(() => setActiveHero(value => (value + 1) % heroCards.length), 5000); return () => window.clearInterval(timer); }, []);
+  const [heroTitle, heroText, HeroIcon] = heroCards[activeHero];
+  return <main className="min-h-screen bg-[#FFF7F4] text-[#162337]">
+    <header className="sticky top-0 z-40 border-b border-[#E8EDF2] bg-white/95 px-5 py-4 backdrop-blur md:px-10"><div className="mx-auto flex max-w-7xl items-center justify-between"><Link href="/" aria-label="Ferixas AsaforVTU home"><BrandLockup compact /></Link><nav className="hidden items-center gap-6 text-sm font-bold text-slate-600 md:flex"><Link href="/services">Services</Link><Link href="/how-it-works">How It Works</Link><Link href="/about">About</Link><Link href="/help">Help</Link><Link href="/login">Sign in</Link><Link href="/register" className="rounded-lg bg-[#1463DB] px-4 py-2.5 text-white">Create account</Link></nav><Link href="/login" className="rounded-lg border border-[#E8EDF2] px-3 py-2 text-sm font-bold md:hidden">Sign in</Link></div></header>
+    <section className="mx-auto grid max-w-7xl gap-10 px-5 py-14 md:grid-cols-[1.05fr_.95fr] md:px-10 md:py-20"><div className="self-center"><h1 className="max-w-3xl text-5xl font-extrabold leading-[.98] tracking-[-.06em] text-[#012044] md:text-7xl">One Wallet for <span className="text-[#036A97]">Everyday Top-Up Services</span></h1><p className="mt-7 max-w-xl text-lg leading-8 text-[#56667D]">Fund your wallet and purchase airtime, data, electricity, cable TV and exam PINs from one protected AsaforVTU account.</p><div className="mt-8 flex flex-wrap gap-3"><Link href="/register" className="inline-flex items-center gap-2 rounded-lg bg-[#1463DB] px-5 py-3.5 font-extrabold text-white">Create your account <ArrowRight size={18}/></Link><Link href="/services" className="inline-flex items-center gap-2 rounded-lg border border-[#1463DB] px-5 py-3.5 font-extrabold text-[#1463DB]">Explore services</Link></div></div><article className="overflow-hidden rounded-2xl bg-[#012044] p-7 text-white shadow-[0_24px_64px_rgba(1,32,68,.2)]"><p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#99BC0D]">{heroTitle}</p><HeroIcon className="mt-10 text-[#0291C0]" size={46}/><h2 className="mt-5 text-3xl font-extrabold">{heroTitle}</h2><p className="mt-3 max-w-sm text-slate-300">{heroText}</p><Link href="/register" className="mt-8 inline-flex items-center gap-2 font-extrabold text-[#99BC0D]">Get started <ArrowRight size={16}/></Link><div className="mt-12 flex gap-2">{heroCards.map((card, index) => <button key={card[0]} onClick={() => setActiveHero(index)} aria-label={`Show ${card[0]}`} className={`h-1.5 flex-1 rounded-full ${activeHero === index ? 'bg-[#99BC0D]' : 'bg-white/20'}`}/>)}</div></article></section>
+    <section className="border-y border-[#E8EDF2] bg-white"><div className="mx-auto grid max-w-7xl gap-6 px-5 py-7 sm:grid-cols-3 md:px-10">{[[ShieldCheck,'Secure & reliable','Wallet and records protected'],[Zap,'Fast service delivery','Clear top-up flow'],[Headphones,'Account support','Help when you need it']].map(([Icon,title,copy]) => { const I=Icon as typeof ShieldCheck; return <div key={String(title)} className="flex items-center gap-3"><I className="text-[#036A97]"/><div><b className="block text-sm">{String(title)}</b><span className="text-xs text-slate-500">{String(copy)}</span></div></div>})}</div></section>
+    <section className="mx-auto max-w-7xl px-5 py-16 md:px-10"><p className="text-xs font-extrabold tracking-[.18em] text-[#147115]">OUR SERVICES</p><div className="mt-3 flex flex-wrap items-end justify-between gap-4"><h2 className="max-w-2xl text-4xl font-extrabold tracking-[-.04em] text-[#012044]">Essential top-up services in one place.</h2><Link className="font-bold text-[#1463DB]" href="/services">View all services</Link></div><div className="mt-9 grid gap-3 md:grid-cols-2">{loading ? <p className="text-slate-500">Loading available services…</p> : services?.map((service,index) => { const Icon=iconByName[service.icon || ''] || WalletCards; return <Link key={service.id} href="/register" className="group grid grid-cols-[auto_auto_1fr_auto] items-center gap-4 border-b border-[#E8EDF2] bg-white px-4 py-6 transition hover:bg-[#F4FAFF]"><span className="text-xs font-bold text-slate-400">{String(index+1).padStart(2,'0')}</span><Icon className="text-[#036A97]" size={21}/><span><b className="block">{service.name}</b><small className="mt-1 block text-slate-500">{service.description}</small></span><ArrowRight className="text-[#147115]" size={18}/></Link>})}</div></section>
+    <section className="bg-[#012044] px-5 py-16 text-white"><div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-7 md:px-5"><div><p className="text-xs font-extrabold tracking-[.18em] text-[#99BC0D]">CUSTOMER SUPPORT</p><h2 className="mt-3 text-4xl font-extrabold tracking-[-.04em]">We are here when you need help.</h2><p className="mt-3 max-w-xl text-slate-300">Create a support ticket, track the conversation and keep your transaction evidence with your account.</p></div><Link href="/login" className="rounded-lg bg-[#99BC0D] px-5 py-3.5 font-extrabold text-[#012044]">Get support</Link></div></section>
+    <Footer />
+  </main>;
+}

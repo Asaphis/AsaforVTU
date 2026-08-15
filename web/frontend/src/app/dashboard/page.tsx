@@ -1,40 +1,44 @@
 'use client';
 
+/* Ferixas operational canvas: navy balance surfaces, warm paper workspace, compact data-first cards. */
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Smartphone, Wifi, Tv, Zap, CreditCard, GraduationCap, Eye, EyeOff, ChevronLeft, ChevronRight, Pause, Play, Megaphone } from 'lucide-react';
+import {
+  Smartphone, Wifi, Tv, Zap, GraduationCap, Eye, EyeOff, ChevronLeft, ChevronRight,
+  Pause, Play, Megaphone, ArrowUpRight, WalletCards, Receipt, Sparkles,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { getWalletHistory, getWalletBalance, getAnnouncements, transferToMain } from '@/lib/services';
 import { useNotifications } from '@/contexts/NotificationContext';
 
+const naira = (value: number) => `₦${Number(value || 0).toLocaleString()}`;
+
 export default function Dashboard() {
   const router = useRouter();
   const { user, loading, initialized, refreshUser } = useAuth();
+  const { addNotification } = useNotifications();
   const [showMain, setShowMain] = useState(true);
   const [showCashback, setShowCashback] = useState(true);
   const [showReferral, setShowReferral] = useState(true);
   const [processingWithdrawal, setProcessingWithdrawal] = useState(false);
-  const { addNotification } = useNotifications();
   const [recent, setRecent] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [currentAnnIndex, setCurrentAnnIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [walletBalance, setWalletBalance] = useState<any>(null);
-  
+
   const nextAnnouncement = useCallback(() => {
-    setAnnouncements((prev: any[]) => {
-      if (prev.length <= 1) return prev;
-      setCurrentAnnIndex((current: number) => (current + 1) % prev.length);
-      return prev;
+    setAnnouncements((current) => {
+      if (current.length > 1) setCurrentAnnIndex((index) => (index + 1) % current.length);
+      return current;
     });
   }, []);
 
   const prevAnnouncement = useCallback(() => {
-    setAnnouncements((prev: any[]) => {
-      if (prev.length <= 1) return prev;
-      setCurrentAnnIndex((current: number) => (current - 1 + prev.length) % prev.length);
-      return prev;
+    setAnnouncements((current) => {
+      if (current.length > 1) setCurrentAnnIndex((index) => (index - 1 + current.length) % current.length);
+      return current;
     });
   }, []);
 
@@ -48,73 +52,51 @@ export default function Dashboard() {
     const loadAnnouncements = async () => {
       try {
         const data = await getAnnouncements();
-        const filtered = data
-          .filter((a: any) => a.is_active !== false)
-          .sort((a: any, b: any) => {
-            const getTime = (val: any) => {
-              if (!val) return 0;
-              if (typeof val === 'number') return val;
-              if (typeof val === 'string') return new Date(val).getTime();
-              return new Date(val).getTime() || 0;
-            };
-            return getTime(b.created_at) - getTime(a.created_at);
-          })
-          .slice(0, 3);
-        setAnnouncements(filtered);
-      } catch (e) {
-        console.error('Announcements load failed', e);
+        setAnnouncements(data
+          .filter((announcement: any) => announcement.is_active !== false)
+          .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+          .slice(0, 3));
+      } catch (error) {
+        console.error('Announcements load failed', error);
       }
     };
-    if (user) {
-      loadAnnouncements();
-      const interval = setInterval(loadAnnouncements, 30000);
-      return () => clearInterval(interval);
-    }
+    if (!user) return;
+    loadAnnouncements();
+    const interval = setInterval(loadAnnouncements, 30000);
+    return () => clearInterval(interval);
   }, [user]);
 
   useEffect(() => {
     if (!initialized || loading) return;
-    if (user && !user.emailVerified) {
-      router.push('/verify');
-    }
-    const sm = sessionStorage.getItem('showMainBalance') === 'true';
-    const sc = sessionStorage.getItem('showCashbackBalance') === 'true';
-    const sr = sessionStorage.getItem('showReferralBalance') === 'true';
-    setShowMain(sm);
-    setShowCashback(sc);
-    setShowReferral(sr);
+    if (user && !user.emailVerified) router.push('/verify');
+    setShowMain(sessionStorage.getItem('showMainBalance') === 'true');
+    setShowCashback(sessionStorage.getItem('showCashbackBalance') === 'true');
+    setShowReferral(sessionStorage.getItem('showReferralBalance') === 'true');
   }, [initialized, user, loading, router]);
 
-  // Fetch wallet balance from backend
   useEffect(() => {
     const fetchBalance = async () => {
       if (!user) return;
       try {
         const balance = await getWalletBalance();
-        if (balance) {
-          setWalletBalance(balance);
-        }
-      } catch (e) {
-        console.error('Failed to fetch wallet balance:', e);
+        if (balance) setWalletBalance(balance);
+      } catch (error) {
+        console.error('Failed to fetch wallet balance:', error);
       }
     };
-    
-    if (user) {
-      fetchBalance();
-      // Refresh balance every 10 seconds
-      const interval = setInterval(fetchBalance, 10000);
-      return () => clearInterval(interval);
-    }
+    if (!user) return;
+    fetchBalance();
+    const interval = setInterval(fetchBalance, 10000);
+    return () => clearInterval(interval);
   }, [user]);
 
   useEffect(() => {
     const loadRecent = async () => {
       if (!user) return;
       try {
-        const items = await getWalletHistory();
-        setRecent(items.slice(0, 5));
-      } catch (e) {
-        console.error('Recent history load failed', e);
+        setRecent((await getWalletHistory()).slice(0, 5));
+      } catch (error) {
+        console.error('Recent history load failed', error);
       }
     };
     loadRecent();
@@ -122,238 +104,90 @@ export default function Dashboard() {
 
   const handleWithdraw = async (type: 'referral' | 'cashback') => {
     if (!user || processingWithdrawal) return;
-    
     const amount = type === 'referral' ? (walletBalance?.referral_balance ?? 0) : (walletBalance?.cashback_balance ?? 0);
     if (amount <= 0) {
-      addNotification('warning', 'Insufficient balance', 'No funds available to withdraw');
+      addNotification('warning', 'Insufficient balance', 'No funds are available to transfer.');
       return;
     }
-
-    if (!confirm(`Are you sure you want to withdraw ₦${amount.toLocaleString()} to your main wallet?`)) {
-      return;
-    }
-
+    if (!confirm(`Transfer ${naira(amount)} to your main wallet?`)) return;
     setProcessingWithdrawal(true);
     try {
       await transferToMain(amount, type);
-      addNotification('success', 'Withdrawal successful', `₦${amount.toLocaleString()} moved to main wallet`);
+      addNotification('success', 'Transfer complete', `${naira(amount)} moved to your main wallet.`);
       await refreshUser();
-      // Refresh wallet balance
       const balance = await getWalletBalance();
       if (balance) setWalletBalance(balance);
     } catch (error: any) {
-      console.error("Withdrawal failed: ", error);
-      addNotification('error', 'Withdrawal failed', error.message || 'Please try again');
+      console.error('Withdrawal failed:', error);
+      addNotification('error', 'Transfer failed', error.message || 'Please try again.');
     } finally {
       setProcessingWithdrawal(false);
     }
   };
 
+  const setVisibility = (which: 'main' | 'cashback' | 'referral', value: boolean) => {
+    const stateSetters = { main: setShowMain, cashback: setShowCashback, referral: setShowReferral };
+    stateSetters[which](value);
+    sessionStorage.setItem(`show${which.charAt(0).toUpperCase()}${which.slice(1)}Balance`, String(value));
+  };
+
   if (loading || !user) {
-    return (
-      <div className="space-y-8 animate-pulse">
-        <div className="h-16 bg-gray-100 rounded-2xl" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-64 bg-gray-100 rounded-[2rem]" />
-          <div className="h-64 bg-gray-100 rounded-2xl" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="h-48 bg-gray-100 rounded-2xl" />
-          <div className="h-48 bg-gray-100 rounded-2xl" />
-        </div>
-      </div>
-    );
+    return <div className="space-y-5 animate-pulse"><div className="h-8 w-44 rounded bg-[#E8EDF2]" /><div className="h-52 rounded-[26px] bg-[#E8EDF2]" /><div className="grid gap-4 md:grid-cols-2"><div className="h-44 rounded-2xl bg-[#E8EDF2]" /><div className="h-44 rounded-2xl bg-[#E8EDF2]" /></div></div>;
   }
 
+  const mainBalance = walletBalance?.main_balance ?? user.walletBalance ?? 0;
+  const cashbackBalance = walletBalance?.cashback_balance ?? user.cashbackBalance ?? 0;
+  const referralBalance = walletBalance?.referral_balance ?? user.referralBalance ?? 0;
   const actions = [
-    { icon: Smartphone, label: 'Airtime', href: '/dashboard/services/airtime' },
-    { icon: Wifi, label: 'Data', href: '/dashboard/services/data' },
-    { icon: Tv, label: 'Cable TV', href: '/dashboard/services/cable' },
-    { icon: Zap, label: 'Electricity', href: '/dashboard/services/electricity' },
-    { icon: GraduationCap, label: 'Exam PINs', href: '/dashboard/services/exam-pins' },
+    { icon: Smartphone, label: 'Airtime', href: '/dashboard/services/airtime', tone: 'bg-[#036A97]' },
+    { icon: Wifi, label: 'Data', href: '/dashboard/services/data', tone: 'bg-[#0291C0]' },
+    { icon: Tv, label: 'Cable TV', href: '/dashboard/services/cable', tone: 'bg-[#D69B04]' },
+    { icon: Zap, label: 'Electricity', href: '/dashboard/services/electricity', tone: 'bg-[#99BC0D]' },
+    { icon: GraduationCap, label: 'Exam PINs', href: '/dashboard/services/exam-pins', tone: 'bg-[#012044]' },
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
-        {announcements.length > 0 && (
-          <div 
-            className="relative bg-[#0B4F6C] text-white p-4 rounded-2xl shadow-xl shadow-[#0B4F6C]/10 group transition-all duration-500 overflow-hidden border border-white/5"
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-          >
-            <div className="flex items-center gap-5">
-              <div className="flex-shrink-0 p-3 bg-white/10 rounded-xl text-[#C58A17] animate-pulse">
-                <Megaphone size={20} />
-              </div>
-              
-              <div className="flex-grow relative h-[48px] flex flex-col justify-center">
-                {announcements.map((ann: any, index: number) => (
-                  <div 
-                    key={ann.id}
-                    className={`absolute inset-0 flex flex-col justify-center transition-all duration-700 ease-in-out ${
-                      index === currentAnnIndex ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
-                    }`}
-                  >
-                    <h3 className="font-bold text-sm">{ann.title}</h3>
-                    <p className="text-xs text-white/80 mt-1 line-clamp-2">{ann.content}</p>
-                  </div>
-                ))}
-              </div>
-              
-              {announcements.length > 1 && (
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => prevAnnouncement()}
-                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <button 
-                    onClick={() => setIsPaused(!isPaused)}
-                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                  >
-                    {isPaused ? <Play size={16} /> : <Pause size={16} />}
-                  </button>
-                  <button 
-                    onClick={() => nextAnnouncement()}
-                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="dashboard-card border-none shadow-brand p-8 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-[#0A1F44]/5 rounded-full -mr-24 -mt-24 blur-3xl" />
-              
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-black text-[#0A1F44]">Wallet Balance</h2>
-                  <button 
-                    onClick={() => {
-                      setShowMain(!showMain);
-                      sessionStorage.setItem('showMainBalance', String(!showMain));
-                    }}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    {showMain ? <Eye size={20} className="text-[#0A1F44]" /> : <EyeOff size={20} className="text-gray-400" />}
-                  </button>
-                </div>
-                
-                <div className="text-5xl font-black text-[#0A1F44] mb-2">
-                  {showMain ? `₦${(walletBalance?.main_balance || user?.walletBalance || 0).toLocaleString()}` : '•••••••••'}
-                </div>
-                <p className="text-sm text-gray-400 font-medium">Main Balance</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="dashboard-card border-none shadow-brand p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#C58A17]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
-                
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">Cashback</h3>
-                    <button 
-                      onClick={() => {
-                        setShowCashback(!showCashback);
-                        sessionStorage.setItem('showCashbackBalance', String(!showCashback));
-                      }}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      {showCashback ? <Eye size={16} className="text-[#C58A17]" /> : <EyeOff size={16} className="text-gray-400" />}
-                    </button>
-                  </div>
-                  
-                  <div className="text-2xl font-black text-[#C58A17] mb-1">
-                    {showCashback ? `₦${(walletBalance?.cashback_balance || user?.cashbackBalance || 0).toLocaleString()}` : '••••'}
-                  </div>
-                  
-                  <button 
-                    onClick={() => handleWithdraw('cashback')}
-                    disabled={processingWithdrawal || (walletBalance?.cashback_balance || user?.cashbackBalance || 0) <= 0}
-                    className="mt-3 w-full py-2 rounded-xl bg-[#C58A17]/10 text-[#C58A17] font-black text-xs uppercase tracking-widest hover:bg-[#C58A17]/20 transition-all disabled:opacity-30"
-                  >
-                    {processingWithdrawal ? 'Withdrawing...' : 'Withdraw to Main'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="dashboard-card border-none shadow-brand p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#0A1F44]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
-                
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">Referral</h3>
-                    <button 
-                      onClick={() => {
-                        setShowReferral(!showReferral);
-                        sessionStorage.setItem('showReferralBalance', String(!showReferral));
-                      }}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      {showReferral ? <Eye size={16} className="text-[#0A1F44]" /> : <EyeOff size={16} className="text-gray-400" />}
-                    </button>
-                  </div>
-                  
-                  <div className="text-2xl font-black text-[#0A1F44] mb-1">
-                    {showReferral ? `₦${(walletBalance?.referral_balance || user?.referralBalance || 0).toLocaleString()}` : '••••'}
-                  </div>
-                  
-                  <button 
-                    onClick={() => handleWithdraw('referral')}
-                    disabled={processingWithdrawal || (walletBalance?.referral_balance || user?.referralBalance || 0) <= 0}
-                    className="mt-3 w-full py-2 rounded-xl bg-[#0A1F44]/10 text-[#0A1F44] font-black text-xs uppercase tracking-widest hover:bg-[#0A1F44]/20 transition-all disabled:opacity-30"
-                  >
-                    {processingWithdrawal ? 'Withdrawing...' : 'Withdraw to Main'}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="dashboard-card border-none shadow-brand p-6">
-              <h3 className="text-lg font-black text-[#0A1F44] mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-5 gap-4">
-                {actions.map((action) => (
-                  <Link key={action.href} href={action.href} className="group">
-                    <div className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-gray-50 border-2 border-transparent group-hover:border-[#0A1F44]/20 group-hover:bg-white transition-all">
-                      <div className="w-12 h-12 rounded-xl bg-[#0A1F44] flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                        <action.icon size={20} />
-                      </div>
-                      <span className="text-xs font-black text-[#0A1F44] text-center">{action.label}</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="dashboard-card border-none shadow-brand p-6">
-            <h3 className="text-lg font-black text-[#0A1F44] mb-4">Recent Transactions</h3>
-            {recent.length === 0 ? (
-              <p className="text-gray-400 text-sm">No recent transactions</p>
-            ) : (
-              <div className="space-y-3">
-                {recent.map((tx: any) => (
-                  <div key={tx.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
-                    <div>
-                      <p className="text-sm font-bold text-[#0A1F44]">{tx.description || tx.type}</p>
-                      <p className="text-xs text-gray-400">{new Date(tx.created_at).toLocaleDateString()}</p>
-                    </div>
-                    <span className={`text-sm font-black ${tx.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
-                      {tx.type === 'credit' ? '+' : '-'}₦{Number(tx.amount).toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+    <main className="space-y-5 pb-24 lg:pb-8">
+      <section className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#718096]">AsaforVTU workspace</p>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-[#012044]">Good to see you, {user.fullName?.split(' ')[0] || 'there'}.</h1>
         </div>
-    </div>
+        <Link href="/dashboard/transactions" className="inline-flex items-center gap-1 self-start text-sm font-bold text-[#036A97] transition hover:text-[#012044] sm:self-auto">View history <ArrowUpRight size={16} /></Link>
+      </section>
+
+      {announcements.length > 0 && (
+        <section onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)} className="relative overflow-hidden rounded-2xl border border-[#012044]/10 bg-[#012044] px-4 py-3 text-white shadow-[0_16px_30px_rgba(1,32,68,0.12)]">
+          <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full border-[20px] border-[#99BC0D]/15" />
+          <div className="relative flex items-center gap-3">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10 text-[#99BC0D]"><Megaphone size={17} /></div>
+            <div className="min-w-0 flex-1">
+              {announcements.map((announcement: any, index: number) => index === currentAnnIndex && <div key={announcement.id} className="animate-in fade-in slide-in-from-right-2 duration-300"><p className="text-sm font-bold">{announcement.title}</p><p className="mt-0.5 truncate text-xs text-white/70">{announcement.content}</p></div>)}
+            </div>
+            {announcements.length > 1 && <div className="flex shrink-0 items-center gap-0.5"><button aria-label="Previous announcement" onClick={prevAnnouncement} className="rounded-lg p-2 hover:bg-white/10"><ChevronLeft size={16} /></button><button aria-label="Pause announcements" onClick={() => setIsPaused(!isPaused)} className="rounded-lg p-2 hover:bg-white/10">{isPaused ? <Play size={16} /> : <Pause size={16} />}</button><button aria-label="Next announcement" onClick={nextAnnouncement} className="rounded-lg p-2 hover:bg-white/10"><ChevronRight size={16} /></button></div>}
+          </div>
+        </section>
+      )}
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(290px,0.85fr)]">
+        <div className="space-y-5">
+          <article className="relative overflow-hidden rounded-[26px] bg-[#012044] p-5 text-white shadow-[0_20px_45px_rgba(1,32,68,0.16)] sm:p-6">
+            <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full border-[28px] border-[#0291C0]/25" /><div className="pointer-events-none absolute -bottom-16 right-24 h-40 w-40 rounded-full border-[21px] border-[#99BC0D]/20" />
+            <div className="relative"><div className="flex items-center justify-between"><div className="flex items-center gap-2 text-sm text-white/65"><WalletCards size={17} /><span>Main wallet</span></div><button aria-label="Toggle main wallet balance" onClick={() => setVisibility('main', !showMain)} className="rounded-lg p-2 text-white/75 transition hover:bg-white/10">{showMain ? <Eye size={18} /> : <EyeOff size={18} />}</button></div><div className="mt-7 flex flex-wrap items-end justify-between gap-4"><div><p className="text-3xl font-extrabold tracking-tight sm:text-4xl">{showMain ? naira(mainBalance) : '••••••••'}</p><p className="mt-1 text-xs text-white/55">Available for your next top-up</p></div><Link href="/dashboard/wallet" className="inline-flex items-center gap-1.5 rounded-xl bg-[#99BC0D] px-3.5 py-2.5 text-sm font-extrabold text-[#012044] transition hover:bg-[#b6d837]">Fund wallet <ArrowUpRight size={16} /></Link></div></div>
+          </article>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              { key: 'cashback' as const, label: 'Cashback', value: cashbackBalance, visible: showCashback, accent: 'text-[#D69B04]', surface: 'bg-[#FFFDF5]', button: 'bg-[#D69B04] text-white', details: 'Earned reward balance' },
+              { key: 'referral' as const, label: 'Referral', value: referralBalance, visible: showReferral, accent: 'text-[#036A97]', surface: 'bg-[#F3FAFC]', button: 'bg-[#036A97] text-white', details: 'Referral reward balance' },
+            ].map((card) => <article key={card.key} className={`relative overflow-hidden rounded-2xl border border-[#E8EDF2] ${card.surface} p-4`}><Sparkles className={`absolute -right-3 -top-3 h-16 w-16 opacity-10 ${card.accent}`} /><div className="relative"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#718096]">{card.label}</p><button aria-label={`Toggle ${card.label} balance`} onClick={() => setVisibility(card.key, !card.visible)} className={`rounded-lg p-1.5 ${card.accent} hover:bg-white/70`}>{card.visible ? <Eye size={15} /> : <EyeOff size={15} />}</button></div><p className={`mt-3 text-2xl font-extrabold ${card.accent}`}>{card.visible ? naira(card.value) : '••••'}</p><p className="mt-0.5 text-xs text-[#718096]">{card.details}</p><button onClick={() => handleWithdraw(card.key)} disabled={processingWithdrawal || card.value <= 0} className={`mt-4 w-full rounded-xl px-3 py-2 text-xs font-bold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35 ${card.button}`}>{processingWithdrawal ? 'Transferring…' : 'Move to main wallet'}</button></div></article>)}
+          </div>
+
+          <section className="rounded-2xl border border-[#E8EDF2] bg-white p-4 sm:p-5"><div className="mb-4 flex items-center justify-between"><div><p className="text-base font-extrabold text-[#012044]">Top up quickly</p><p className="text-xs text-[#718096]">Choose a service to continue</p></div><Link href="/dashboard/services" className="text-xs font-bold text-[#036A97] hover:text-[#012044]">All services</Link></div><div className="grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-3">{actions.map((action) => <Link key={action.href} href={action.href} className="group rounded-xl p-2 text-center transition hover:bg-[#FFF7F4]"><span className={`mx-auto grid h-10 w-10 place-items-center rounded-xl text-white shadow-sm transition duration-200 group-hover:-translate-y-0.5 ${action.tone}`}><action.icon size={18} /></span><span className="mt-2 block text-[11px] font-bold leading-tight text-[#012044]">{action.label}</span></Link>)}</div></section>
+        </div>
+
+        <aside className="rounded-2xl border border-[#E8EDF2] bg-white p-4 sm:p-5"><div className="flex items-start justify-between"><div><p className="text-base font-extrabold text-[#012044]">Recent activity</p><p className="mt-0.5 text-xs text-[#718096]">Your latest wallet entries</p></div><Receipt size={19} className="text-[#0291C0]" /></div>{recent.length === 0 ? <div className="mt-7 rounded-xl bg-[#FFF7F4] px-4 py-8 text-center"><p className="text-sm font-bold text-[#012044]">No activity yet</p><p className="mt-1 text-xs text-[#718096]">Your completed purchases will appear here.</p></div> : <div className="mt-4 divide-y divide-[#E8EDF2]">{recent.map((transaction: any) => { const isCredit = transaction.type === 'credit'; return <div key={transaction.id} className="flex items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="truncate text-sm font-bold text-[#012044]">{transaction.description || transaction.type}</p><p className="mt-0.5 text-xs text-[#718096]">{new Date(transaction.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}</p></div><span className={`shrink-0 text-sm font-extrabold ${isCredit ? 'text-[#147115]' : 'text-[#D06945]'}`}>{isCredit ? '+' : '-'}{naira(transaction.amount)}</span></div>; })}</div>}<Link href="/dashboard/transactions" className="mt-4 inline-flex w-full items-center justify-center gap-1 rounded-xl border border-[#E8EDF2] px-3 py-2.5 text-xs font-bold text-[#036A97] transition hover:border-[#036A97] hover:bg-[#F3FAFC]">All transactions <ArrowUpRight size={14} /></Link></aside>
+      </section>
+    </main>
   );
 }

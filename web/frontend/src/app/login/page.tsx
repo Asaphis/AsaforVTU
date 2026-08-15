@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { SiGoogle, SiApple } from "react-icons/si";
-import { AuthLayout } from "@/components/auth/AuthLayout";
+import { FerixasAuthShell } from "@/components/ferixas/FerixasAuthShell";
 import { useAuthForm } from "@/hooks/useAuthForm";
 
 export default function LoginPage() {
@@ -46,24 +46,11 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthLayout>
-      <div className="w-full space-y-10 p-10 bg-white/80 backdrop-blur-xl rounded-[3rem] shadow-2xl border border-slate-100 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-accent to-primary"></div>
+    <FerixasAuthShell eyebrow="ASAFORVTU ACCOUNT" title="Welcome back. Sign in to continue.">
+      <div className="w-full space-y-8">
         <div className="space-y-2">
-          <div className="lg:hidden flex items-center justify-center gap-3 mb-6">
-            <img
-              src="/logo.png"
-              alt="AsaforVTU Logo"
-              className="h-12 w-12 object-contain"
-            />
-            <span className="font-black text-2xl text-slate-900 tracking-tight">AsaforVTU</span>
-          </div>
-          <h1 className="text-center text-4xl font-black text-slate-950 tracking-tight">
-            Welcome Back
-          </h1>
-          <p className="text-center text-slate-500 font-semibold">
-            Sign in to your secure account
-          </p>
+          <h2 className="text-3xl font-extrabold tracking-[-.04em] text-[#012044]">Sign in to AsaforVTU.</h2>
+          <p className="mt-2 text-slate-500">Use your verified account to continue.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -220,6 +207,6 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
-    </AuthLayout>
+    </FerixasAuthShell>
   );
 }

@@ -1,309 +1,37 @@
 'use client';
 
+/* Ferixas service purchase flow: focused mobile-data order form driven by live provider plans. */
 import { useEffect, useState } from 'react';
-import { Wifi, Smartphone, ChevronRight, ArrowRightLeft } from 'lucide-react';
+import { Wifi, Smartphone, ChevronDown, ArrowRightLeft } from 'lucide-react';
 import { useService } from '@/hooks/useServices';
 import { useAuth } from '@/contexts/AuthContext';
-import { purchaseData, getAdminSettings } from '@/lib/services';
+import { purchaseData, getAdminSettings, getServicePlans } from '@/lib/services';
 import TransactionPinModal from '@/components/dashboard/TransactionPinModal';
 import TransactionResultModal from '@/components/dashboard/TransactionResultModal';
-import { getServicePlans } from '@/lib/services';
 
-export interface DataPlan {
-  id: string;
-  name: string;
-  price: number;
-  networkId: number;
-  variation_id: string;
-}
-
-const NETWORKS = [
-  { label: 'MTN', value: 'MTN', id: 1 },
-  { label: 'Glo', value: 'GLO', id: 2 },
-  { label: 'Airtel', value: 'AIRTEL', id: 4 },
-  { label: '9mobile', value: '9MOBILE', id: 3 },
-];
+export interface DataPlan { id: string; name: string; price: number; networkId: number; variation_id: string; }
+const NETWORKS = [{ label: 'MTN', value: 'MTN', id: 1 }, { label: 'Glo', value: 'GLO', id: 2 }, { label: 'Airtel', value: 'AIRTEL', id: 4 }, { label: '9mobile', value: '9MOBILE', id: 3 }];
+const inputClass = 'w-full rounded-xl border border-[#E8EDF2] bg-white px-3 py-3 text-sm font-medium text-[#012044] outline-none transition placeholder:text-[#718096] focus:border-[#036A97] focus:ring-2 focus:ring-[#036A97]/10';
 
 export default function DataPage() {
   const { user } = useAuth();
   const { service, loading, error } = useService('data');
   const [network, setNetwork] = useState(NETWORKS[0]);
   const [phone, setPhone] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState<DataPlan | undefined>(undefined);
+  const [selectedPlan, setSelectedPlan] = useState<DataPlan | undefined>();
   const [dynamicPlans, setDynamicPlans] = useState<Record<string, DataPlan[]>>({});
   const [showPinModal, setShowPinModal] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [adminSettings, setAdminSettings] = useState<any>(null);
-  const [loadingSettings, setLoadingSettings] = useState(true);
-  
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const settings = await getAdminSettings();
-        setAdminSettings(settings);
-        // If MTN is disabled, select first enabled network
-        if (settings?.airtimeNetworks) {
-          if (settings.airtimeNetworks['MTN']?.enabled === false) {
-            const firstEnabled = NETWORKS.find(n => settings.airtimeNetworks[n.value]?.enabled !== false);
-            if (firstEnabled) setNetwork(firstEnabled);
-          }
-        }
-      } catch (e) {
-        console.error("Failed to load admin settings", e);
-      } finally {
-        setLoadingSettings(false);
-      }
-    };
-    loadSettings();
-  }, []);
-  
-  const [resultModal, setResultModal] = useState<{
-    open: boolean;
-    status: 'success' | 'error';
-    title: string;
-    message: string;
-    transactionId?: string;
-  }>({
-    open: false,
-    status: 'success',
-    title: '',
-    message: ''
-  });
+  const [resultModal, setResultModal] = useState({ open: false, status: 'success' as 'success' | 'error', title: '', message: '', transactionId: undefined as string | undefined });
 
-  useEffect(() => {
-    let mounted = true;
-    const loadPlans = async () => {
-      const rows = await getServicePlans();
-      if (!mounted || rows.length === 0) return;
-      // Group by network and map to DataPlan shape
-      const byNet: Record<string, DataPlan[]> = {};
-      for (const r of rows) {
-        const netKey = (r.network || '').toUpperCase();
-        const varId = r.metadata?.variation_id ? String(r.metadata.variation_id) : '';
-        const netId = r.metadata?.networkId ? Number(r.metadata.networkId) : undefined;
-        if (!varId || !netId) continue; // require provider mapping
-        const dp: DataPlan = {
-          id: `${netKey}_${varId}`,
-          name: r.name || 'Plan',
-          price: Number(r.priceUser || 0),
-          networkId: netId,
-          variation_id: varId
-        };
-        byNet[netKey] = byNet[netKey] ? [...byNet[netKey], dp] : [dp];
-      }
-      setDynamicPlans(byNet);
-      const initial = byNet[NETWORKS[0].value] || [];
-      setSelectedPlan(initial[0]);
-    };
-    loadPlans();
-    return () => { mounted = false; };
-  }, []);
+  useEffect(() => { const loadSettings = async () => { try { const settings = await getAdminSettings(); setAdminSettings(settings); if (settings?.airtimeNetworks?.MTN?.enabled === false) { const firstEnabled = NETWORKS.find((item) => settings.airtimeNetworks[item.value]?.enabled !== false); if (firstEnabled) setNetwork(firstEnabled); } } catch (loadError) { console.error('Failed to load admin settings', loadError); } }; loadSettings(); }, []);
+  useEffect(() => { let mounted = true; const loadPlans = async () => { const rows = await getServicePlans(); if (!mounted || rows.length === 0) return; const byNetwork: Record<string, DataPlan[]> = {}; for (const row of rows) { const key = (row.network || '').toUpperCase(); const variationId = row.metadata?.variation_id ? String(row.metadata.variation_id) : ''; const networkId = row.metadata?.networkId ? Number(row.metadata.networkId) : undefined; if (!variationId || !networkId) continue; const plan = { id: `${key}_${variationId}`, name: row.name || 'Plan', price: Number(row.priceUser || 0), networkId, variation_id: variationId }; byNetwork[key] = byNetwork[key] ? [...byNetwork[key], plan] : [plan]; } setDynamicPlans(byNetwork); setSelectedPlan((byNetwork[NETWORKS[0].value] || [])[0]); }; loadPlans(); return () => { mounted = false; }; }, []);
 
-  const handlePurchase = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phone || !selectedPlan) return;
-    setShowPinModal(true);
-  };
+  const handlePurchase = (event: React.FormEvent) => { event.preventDefault(); if (!phone || !selectedPlan) return; setShowPinModal(true); };
+  const onPinSuccess = async (transactionPin: string) => { if (!user || !service || !selectedPlan) return; setProcessing(true); try { const result = await purchaseData(user.uid, selectedPlan.price, { planId: selectedPlan.variation_id, providerPlanId: selectedPlan.variation_id, phone, network: network.value, networkId: network.id, transactionPin }); if (result.success) { setResultModal({ open: true, status: 'success', title: 'Data purchase complete', message: `${selectedPlan.name} was sent to ${phone}.`, transactionId: result.transactionId }); setPhone(''); } else setResultModal({ open: true, status: 'error', title: 'Transaction failed', message: result.message || 'Unable to complete this purchase. Please try again.', transactionId: result.transactionId }); } catch (purchaseError: any) { setResultModal({ open: true, status: 'error', title: 'System error', message: purchaseError.message || 'An unexpected error occurred.', transactionId: undefined }); } finally { setProcessing(false); } };
 
-  const onPinSuccess = async (transactionPin: string) => {
-    if (!user || !service || !selectedPlan) return;
-    
-    setProcessing(true);
-    try {
-      // Use variation_id as the planId for the backend provider
-      const planId = selectedPlan.variation_id;
-      const result = await purchaseData(
-        user.uid,
-        selectedPlan.price,
-          {
-          planId,
-          providerPlanId: selectedPlan.variation_id,
-          phone,
-          network: network.value,
-          networkId: network.id,
-          transactionPin
-        }
-      );
-      if (result.success) {
-        setResultModal({
-          open: true,
-          status: 'success',
-          title: 'Purchase Successful',
-          message: `You have successfully purchased ${selectedPlan.name} for ${phone}.`,
-          transactionId: result.transactionId
-        });
-        setPhone('');
-      } else {
-        setResultModal({
-          open: true,
-          status: 'error',
-          title: 'Transaction Failed',
-          message: result.message || 'Unable to complete your purchase. Please try again.',
-          transactionId: result.transactionId
-        });
-      }
-    } catch (err: any) {
-      setResultModal({
-        open: true,
-        status: 'error',
-        title: 'System Error',
-        message: err.message || 'An unexpected error occurred.',
-      });
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  return (
-    <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
-          {loading ? (
-            <div className="dashboard-card text-center py-24 border-none shadow-brand relative overflow-hidden">
-              <div className="tech-pattern absolute inset-0 opacity-[0.05]" />
-              <div className="relative z-10">
-                <div className="w-20 h-20 border-8 border-[#C58A17]/10 border-t-[#C58A17] rounded-[2rem] animate-spin mx-auto mb-6 shadow-2xl" />
-                <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-[10px]">Synchronizing Data Nodes...</p>
-              </div>
-            </div>
-          ) : error ? (
-            <div className="dashboard-card text-center py-16 text-red-500 border-none shadow-brand bg-red-50/30">
-              <p className="font-black uppercase tracking-widest">Protocol Sync Error: {error}</p>
-            </div>
-          ) : !service ? (
-            <div className="dashboard-card text-center py-16 text-gray-400 border-none shadow-brand">
-              <p className="font-black uppercase tracking-widest">Service Interface Offline</p>
-            </div>
-          ) : (
-            <>
-              <div className="text-center mb-12">
-                <div className="w-24 h-24 rounded-[2.5rem] bg-gray-50 flex items-center justify-center text-[#0B4F6C] mx-auto mb-8 shadow-2xl shadow-[#0B4F6C]/10 border-8 border-white group hover:-rotate-12 transition-transform duration-500">
-                  <Wifi size={48} className="group-hover:scale-110 transition-transform" />
-                </div>
-                <h1 className="text-5xl font-black text-[#0B4F6C] tracking-tighter uppercase">
-                  {service.name}
-                </h1>
-                <div className="h-1.5 w-12 bg-[#C58A17] rounded-full mx-auto mt-4" />
-                <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-6 max-w-xs mx-auto leading-relaxed">High-Frequency Broadband Provisioning</p>
-              </div>
-
-              <form onSubmit={handlePurchase} className="dashboard-card border-none shadow-brand p-8 lg:p-12 space-y-10 relative overflow-hidden">
-                <div className="tech-pattern absolute inset-0 opacity-[0.03]" />
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#C58A17]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
-                
-                <div className="space-y-8 relative z-10">
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 flex items-center gap-2">
-                       <div className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" /> Network Infrastructure
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {NETWORKS.map(n => {
-                        const isEnabled = adminSettings?.airtimeNetworks?.[n.value]?.enabled !== false;
-                        return (
-                          <button
-                            key={n.value}
-                            type="button"
-                            disabled={!isEnabled}
-                            onClick={() => {
-                              setNetwork(n);
-                              const plans = (dynamicPlans[n.value] || []);
-                              setSelectedPlan(plans[0]);
-                            }}
-                            className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] border-2 transition-all ${
-                              network.value === n.value 
-                                ? 'bg-[#0B4F6C] border-[#0B4F6C] text-white shadow-2xl shadow-[#0B4F6C]/30 scale-[1.05]' 
-                                : isEnabled
-                                  ? 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-100 hover:bg-white shadow-inner'
-                                  : 'bg-gray-100 border-transparent text-gray-300 cursor-not-allowed grayscale'
-                            }`}
-                          >
-                            {n.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 flex items-center gap-2">
-                       <div className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" /> Recipient Terminal
-                    </label>
-                    <div className="relative group">
-                       <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#0B4F6C] transition-colors">
-                          <Smartphone size={20} />
-                       </div>
-                       <input 
-                         type="tel" 
-                         placeholder="080 0000 0000" 
-                         className="w-full pl-16 pr-6 py-5 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0B4F6C]/20 focus:bg-white focus:outline-none transition-all font-black text-[#0B4F6C] text-xl tracking-[0.2em] placeholder:text-gray-200 shadow-inner"
-                         value={phone}
-                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                         required
-                         minLength={11}
-                       />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 flex items-center gap-2">
-                       <div className="w-1.5 h-1.5 rounded-full bg-[#C58A17]" /> Allocation Plan
-                    </label>
-                    <div className="relative">
-                      <select 
-                        className="w-full px-6 py-5 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0B4F6C]/20 focus:bg-white focus:outline-none transition-all font-black text-[#0B4F6C] text-lg appearance-none shadow-inner"
-                        value={selectedPlan?.variation_id || ''}
-                        onChange={(e) => {
-                            const plans = (dynamicPlans[network.value] || []);
-                            const plan = plans.find(p => p.variation_id === e.target.value) || plans[0];
-                            setSelectedPlan(plan);
-                        }}
-                      >
-                        {(dynamicPlans[network.value] || []).map(plan => (
-                          <option key={plan.variation_id} value={plan.variation_id}>
-                            {plan.name} - ₦{plan.price.toLocaleString()}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                         <ChevronRight size={20} className="rotate-90" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-6 rounded-[2rem] bg-[#0B4F6C]/5 border border-[#0B4F6C]/5 flex justify-between items-center group overflow-hidden relative">
-                    <div className="tech-pattern absolute inset-0 opacity-[0.02]" />
-                    <span className="text-[10px] font-black text-[#0B4F6C]/60 uppercase tracking-[0.2em] relative z-10">Liquidity Status</span>
-                    <span className="text-xl font-black text-[#0B4F6C] relative z-10 tracking-tighter">₦{user?.walletBalance?.toLocaleString() ?? '0.00'}</span>
-                  </div>
-                </div>
-
-                <button 
-                    type="submit" 
-                    className="w-full py-6 rounded-2xl bg-[#C58A17] text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-[#A67513] transition-all shadow-2xl shadow-[#C58A17]/30 disabled:opacity-30 relative z-10 group" 
-                    disabled={!service.enabled || adminSettings?.airtimeNetworks?.[network.value]?.enabled === false || processing}
-                >
-                  <span className="flex items-center justify-center gap-3">
-                     {processing ? 'EXECUTING PROTOCOL...' : (service.enabled && adminSettings?.airtimeNetworks?.[network.value]?.enabled !== false) ? `INITIATE ${network.label} TOPUP` : 'OFFLINE'}
-                     {!processing && <ArrowRightLeft size={18} className="group-hover:rotate-90 transition-transform duration-500" />}
-                  </span>
-                </button>
-              </form>
-            </>
-          )}
-
-          <TransactionPinModal 
-            isOpen={showPinModal} 
-            onClose={() => setShowPinModal(false)} 
-            onSuccess={onPinSuccess}
-          />
-          
-          <TransactionResultModal
-            isOpen={resultModal.open}
-            onClose={() => setResultModal(prev => ({ ...prev, open: false }))}
-            status={resultModal.status}
-            title={resultModal.title}
-            message={resultModal.message}
-            transactionId={resultModal.transactionId}
-            actionLabel="Done"
-          />
-        </div>
-  );
+  const networkEnabled = adminSettings?.airtimeNetworks?.[network.value]?.enabled !== false;
+  const plans = dynamicPlans[network.value] || [];
+  return <main className="mx-auto max-w-3xl space-y-5 pb-24 lg:pb-8">{loading ? <div className="rounded-2xl border border-[#E8EDF2] bg-white p-10 text-center"><div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-[#E8EDF2] border-t-[#036A97]" /><p className="mt-4 text-sm font-bold text-[#012044]">Loading data plans…</p></div> : error ? <div className="rounded-2xl border border-[#F0C1B5] bg-[#FFF6F3] p-5 text-sm font-medium text-[#B3442D]">Unable to load data service: {error}</div> : !service ? <div className="rounded-2xl border border-[#E8EDF2] bg-white p-8 text-center text-sm text-[#718096]">This service is currently unavailable.</div> : <><section><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#718096]">Services / Data</p><div className="mt-2 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#F3FAFC] text-[#036A97]"><Wifi size={20} /></span><div><h1 className="text-2xl font-extrabold tracking-tight text-[#012044]">Buy data.</h1><p className="text-sm text-[#718096]">Select a network, plan, and phone number.</p></div></div></section><form onSubmit={handlePurchase} className="overflow-hidden rounded-2xl border border-[#E8EDF2] bg-white"><div className="space-y-5 p-5 sm:p-6"><div><p className="text-sm font-extrabold text-[#012044]">1. Choose network</p><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{NETWORKS.map((item) => { const enabled = adminSettings?.airtimeNetworks?.[item.value]?.enabled !== false; return <button key={item.value} type="button" disabled={!enabled} onClick={() => { setNetwork(item); setSelectedPlan((dynamicPlans[item.value] || [])[0]); }} className={`rounded-xl px-3 py-3 text-sm font-bold transition ${network.value === item.value ? 'bg-[#012044] text-white' : enabled ? 'border border-[#E8EDF2] bg-white text-[#012044] hover:border-[#036A97]' : 'cursor-not-allowed bg-[#F5F5F5] text-[#A8B2BD]'}`}>{item.label}</button>; })}</div></div><div className="grid gap-4 sm:grid-cols-2"><label><span className="text-sm font-extrabold text-[#012044]">2. Phone number</span><span className="relative mt-2 block"><Smartphone size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#718096]" /><input type="tel" value={phone} onChange={(event) => setPhone(event.target.value.replace(/\D/g, '').slice(0, 11))} placeholder="080 0000 0000" required minLength={11} className={`${inputClass} pl-9`} /></span></label><label><span className="text-sm font-extrabold text-[#012044]">3. Select plan</span><span className="relative mt-2 block"><select value={selectedPlan?.variation_id || ''} onChange={(event) => setSelectedPlan(plans.find((plan) => plan.variation_id === event.target.value) || plans[0])} className={`${inputClass} appearance-none pr-9`} disabled={plans.length === 0}>{plans.length === 0 ? <option value="">No plans available</option> : plans.map((plan) => <option key={plan.variation_id} value={plan.variation_id}>{plan.name} — ₦{plan.price.toLocaleString()}</option>)}</select><ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#718096]" /></span></label></div><div className="flex items-center justify-between rounded-xl bg-[#FFF7F4] px-4 py-3"><span className="text-sm font-medium text-[#718096]">Wallet balance</span><span className="text-base font-extrabold text-[#012044]">₦{Number(user?.walletBalance || 0).toLocaleString()}</span></div></div><footer className="border-t border-[#E8EDF2] bg-[#FFFDFB] p-4 sm:px-6"><button type="submit" disabled={!service.enabled || !networkEnabled || processing || !selectedPlan} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#036A97] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#012044] disabled:cursor-not-allowed disabled:opacity-40">{processing ? 'Processing purchase…' : networkEnabled && service.enabled ? `Buy ${network.label} data` : 'Service unavailable'} {!processing && <ArrowRightLeft size={16} />}</button></footer></form></>}<TransactionPinModal isOpen={showPinModal} onClose={() => setShowPinModal(false)} onSuccess={onPinSuccess} /><TransactionResultModal isOpen={resultModal.open} onClose={() => setResultModal((current) => ({ ...current, open: false }))} status={resultModal.status} title={resultModal.title} message={resultModal.message} transactionId={resultModal.transactionId} actionLabel="Done" /></main>;
 }

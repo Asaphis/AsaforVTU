@@ -1,13 +1,15 @@
 'use client';
 
+/* Ferixas service purchase flow: focused exam PIN order form with live transaction-PIN confirmation. */
 import { useState } from 'react';
-import { GraduationCap } from 'lucide-react';
+import { GraduationCap, Ticket } from 'lucide-react';
 import { useService } from '@/hooks/useServices';
 import { useAuth } from '@/contexts/AuthContext';
 import { processTransaction } from '@/lib/services';
 import TransactionPinModal from '@/components/dashboard/TransactionPinModal';
 
 const UNIT_PRICE = 3500;
+const boards = [['waec', 'WAEC Result Checker'], ['neco', 'NECO Result Token'], ['nabteb', 'NABTEB Result Checker'], ['jamb', 'JAMB PIN']];
 
 export default function ExamPinsPage() {
   const { service, loading, error } = useService('exam-pins');
@@ -18,51 +20,9 @@ export default function ExamPinsPage() {
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState('');
   const total = UNIT_PRICE * quantity;
-
-  const purchase = async (transactionPin: string) => {
-    if (!user || !service) return;
-    setProcessing(true);
-    setMessage('');
-    try {
-      const result = await processTransaction(user.uid, total, 'exam-pins', {
-        examType, quantity, transactionPin, requestId: `EXAM_${Date.now()}`
-      });
-      setMessage(result.success ? `Purchase successful. ${result.data?.pins ? 'Your PINs are available in the transaction result.' : 'The provider is processing your order.'}` : result.message);
-      if (result.success) await refreshUser();
-    } catch (err: any) {
-      setMessage(err?.message || 'Exam PIN purchase failed');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  if (loading) return <div className="p-8 text-center">Loading service...</div>;
-  if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
-  if (!service) return <div className="p-8 text-center text-gray-500">Service currently unavailable</div>;
-
-  return (
-    <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="text-center mb-10">
-        <div className="w-20 h-20 rounded-[2rem] bg-[#0A1F44] flex items-center justify-center text-[#F97316] mx-auto mb-6 shadow-xl"><GraduationCap size={40} /></div>
-        <h1 className="text-4xl font-black text-[#0A1F44] tracking-tight uppercase">{service.name}</h1>
-        <p className="text-gray-400 font-medium mt-2">{service.description || 'Purchase examination result-checking PINs.'}</p>
-      </div>
-      <form onSubmit={(event) => { event.preventDefault(); setShowPinModal(true); }} className="dashboard-card border-none shadow-brand p-10 space-y-8">
-        <div className="space-y-2">
-          <label className="text-xs font-bold text-gray-500">Exam board</label>
-          <select value={examType} onChange={(event) => setExamType(event.target.value)} className="w-full px-5 py-4 rounded-2xl bg-gray-50 font-bold">
-            <option value="waec">WAEC Result Checker</option><option value="neco">NECO Result Token</option><option value="nabteb">NABTEB Result Checker</option><option value="jamb">JAMB PIN</option>
-          </select>
-        </div>
-        <div className="space-y-2">
-          <label className="text-xs font-bold text-gray-500">Quantity</label>
-          <div className="grid grid-cols-5 gap-3">{[1, 2, 3, 4, 5].map(value => <button type="button" key={value} onClick={() => setQuantity(value)} className={`py-3 rounded-xl font-black ${quantity === value ? 'bg-[#0A1F44] text-white' : 'bg-gray-50 text-gray-500'}`}>{value}</button>)}</div>
-        </div>
-        <div className="p-5 rounded-2xl bg-[#0A1F44]/5 flex justify-between"><span className="font-bold text-gray-500">Total cost</span><span className="font-black text-[#0A1F44]">₦{total.toLocaleString()}</span></div>
-        {message && <p className="rounded-xl bg-gray-50 p-4 text-sm font-semibold text-gray-700">{message}</p>}
-        <button type="submit" disabled={!service.enabled || processing} className="w-full py-5 rounded-2xl bg-[#F97316] text-white font-black disabled:opacity-30">{processing ? 'PROCESSING...' : service.enabled ? 'PURCHASE PIN NOW' : 'COMING SOON'}</button>
-      </form>
-      <TransactionPinModal isOpen={showPinModal} onClose={() => setShowPinModal(false)} onSuccess={purchase} />
-    </div>
-  );
+  const purchase = async (transactionPin: string) => { if (!user || !service) return; setProcessing(true); setMessage(''); try { const result = await processTransaction(user.uid, total, 'exam-pins', { examType, quantity, transactionPin, requestId: `EXAM_${Date.now()}` }); setMessage(result.success ? `Purchase successful. ${result.data?.pins ? 'Your PINs are available in the transaction result.' : 'The provider is processing your order.'}` : result.message); if (result.success) await refreshUser(); } catch (purchaseError: any) { setMessage(purchaseError?.message || 'Exam PIN purchase failed.'); } finally { setProcessing(false); } };
+  if (loading) return <main className="mx-auto max-w-3xl"><div className="rounded-2xl border border-[#E8EDF2] bg-white p-10 text-center"><div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-[#E8EDF2] border-t-[#036A97]" /><p className="mt-4 text-sm font-bold text-[#012044]">Loading exam PIN service…</p></div></main>;
+  if (error) return <main className="mx-auto max-w-3xl"><div className="rounded-2xl border border-[#F0C1B5] bg-[#FFF6F3] p-5 text-sm font-medium text-[#B3442D]">{error}</div></main>;
+  if (!service) return <main className="mx-auto max-w-3xl"><div className="rounded-2xl border border-[#E8EDF2] bg-white p-8 text-center text-sm text-[#718096]">This service is currently unavailable.</div></main>;
+  return <main className="mx-auto max-w-3xl space-y-5 pb-24 lg:pb-8"><section><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#718096]">Services / Exam PINs</p><div className="mt-2 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#FFF8E8] text-[#D69B04]"><GraduationCap size={20} /></span><div><h1 className="text-2xl font-extrabold tracking-tight text-[#012044]">Buy exam PINs.</h1><p className="text-sm text-[#718096]">Choose an exam board and the quantity you need.</p></div></div></section><form onSubmit={(event) => { event.preventDefault(); setShowPinModal(true); }} className="overflow-hidden rounded-2xl border border-[#E8EDF2] bg-white"><div className="space-y-5 p-5 sm:p-6"><label className="block"><span className="text-sm font-extrabold text-[#012044]">1. Exam board</span><select value={examType} onChange={(event) => setExamType(event.target.value)} className="mt-2 w-full rounded-xl border border-[#E8EDF2] bg-white px-3 py-3 text-sm font-medium text-[#012044] outline-none focus:border-[#036A97] focus:ring-2 focus:ring-[#036A97]/10">{boards.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><div><p className="text-sm font-extrabold text-[#012044]">2. Quantity</p><div className="mt-3 grid grid-cols-5 gap-2">{[1, 2, 3, 4, 5].map((value) => <button type="button" key={value} onClick={() => setQuantity(value)} className={`rounded-xl py-3 text-sm font-extrabold transition ${quantity === value ? 'bg-[#012044] text-white' : 'border border-[#E8EDF2] bg-white text-[#012044] hover:border-[#036A97]'}`}>{value}</button>)}</div></div><div className="flex items-center justify-between rounded-xl bg-[#FFF7F4] px-4 py-3"><span className="inline-flex items-center gap-2 text-sm font-medium text-[#718096]"><Ticket size={16} className="text-[#D69B04]" />Total cost</span><span className="text-lg font-extrabold text-[#012044]">₦{total.toLocaleString()}</span></div>{message && <p className="rounded-xl border border-[#E8EDF2] bg-[#FFFDFB] px-4 py-3 text-sm font-medium text-[#012044]">{message}</p>}</div><footer className="border-t border-[#E8EDF2] bg-[#FFFDFB] p-4 sm:px-6"><button type="submit" disabled={!service.enabled || processing} className="w-full rounded-xl bg-[#036A97] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#012044] disabled:cursor-not-allowed disabled:opacity-40">{processing ? 'Processing purchase…' : service.enabled ? 'Purchase PIN' : 'Service unavailable'}</button></footer></form><TransactionPinModal isOpen={showPinModal} onClose={() => setShowPinModal(false)} onSuccess={purchase} /></main>;
 }

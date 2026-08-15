@@ -47,8 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      <div className="fixed inset-0 tech-pattern pointer-events-none opacity-[0.03]" />
+    <div className="min-h-screen bg-[#FFF7F4]">
       {/** Mobile drawer */}
       <MobileSidebar
         openLabel="Menu"
@@ -56,7 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onLogout={async () => { await signOut(); router.replace('/login'); }}
         items={{ primary: primaryItems, services: serviceItems, account: accountItems }}
       />
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-72 bg-gradient-to-b from-white via-white to-slate-50/50 backdrop-blur-xl border-r border-slate-200/60 flex-col overflow-y-auto z-40 transition-all duration-300">
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-72 bg-[#012044] border-r border-[#013E67] flex-col overflow-y-auto z-40">
         <div className="flex flex-col h-full">
           <div className="p-8">
             <BrandLockup inverse />
@@ -67,49 +66,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 key={href}
                 href={href}
                 className={`flex items-center gap-4 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 group ${
-                  pathname === href ? 'bg-[#0B4F6C] text-white shadow-xl shadow-[#0B4F6C]/25 scale-[1.02]' : 'text-slate-500 hover:bg-slate-100/80 hover:text-[#0B4F6C]'
+                  pathname === href ? 'bg-[#036A97] text-white shadow-lg shadow-black/20' : 'text-slate-300 hover:bg-white/10 hover:text-white'
                 }`}
               >
-                <Icon size={20} className={`${pathname === href ? 'text-white' : 'text-slate-400 group-hover:text-[#0B4F6C]'} transition-colors`} />
+                <Icon size={20} className={`${pathname === href ? 'text-white' : 'text-[#0291C0] group-hover:text-white'} transition-colors`} />
                 {label}
               </Link>
             ))}
-            <div className="px-5 pt-10 pb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400/80">Digital Services</div>
+            <div className="px-5 pt-10 pb-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#99BC0D]">Digital Services</div>
             <div className="space-y-1.5">
               {serviceItems.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
                   className={`flex items-center gap-4 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 group ${
-                    pathname === href ? 'bg-[#0B4F6C] text-white shadow-xl shadow-[#0B4F6C]/25 scale-[1.02]' : 'text-slate-500 hover:bg-slate-100/80 hover:text-[#0B4F6C]'
+                    pathname === href ? 'bg-[#036A97] text-white shadow-lg shadow-black/20' : 'text-slate-300 hover:bg-white/10 hover:text-white'
                   }`}
                 >
-                  <Icon size={20} className={`${pathname === href ? 'text-white' : 'text-slate-400 group-hover:text-[#0B4F6C]'} transition-colors`} />
+                  <Icon size={20} className={`${pathname === href ? 'text-white' : 'text-[#0291C0] group-hover:text-white'} transition-colors`} />
                   {label}
                 </Link>
               ))}
             </div>
           </nav>
-          <div className="mt-auto p-6 bg-slate-50/50 border-t border-slate-100/80">
-            <div className="px-5 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400/80">System</div>
+          <div className="mt-auto p-6 border-t border-white/10">
+            <div className="px-5 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#99BC0D]">Account</div>
             <nav className="space-y-1.5">
               {accountItems.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
                   className={`flex items-center gap-4 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 group ${
-                    pathname === href ? 'bg-[#0B4F6C] text-white shadow-xl shadow-[#0B4F6C]/25' : 'text-slate-500 hover:bg-white hover:shadow-sm hover:text-[#0B4F6C]'
+                    pathname === href ? 'bg-[#036A97] text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white'
                   }`}
                 >
-                  <Icon size={18} className={`${pathname === href ? 'text-white' : 'text-slate-400 group-hover:text-[#0B4F6C]'} transition-colors`} />
+                  <Icon size={18} className={`${pathname === href ? 'text-white' : 'text-[#0291C0] group-hover:text-white'} transition-colors`} />
                   {label}
                 </Link>
               ))}
               <button
                 onClick={async () => { await signOut(); router.replace('/login'); }}
-                className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-red-500 font-bold text-sm hover:bg-red-50/80 transition-all duration-300 mt-6 group border border-transparent hover:border-red-100"
+                className="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-red-200 font-bold text-sm hover:bg-red-400/10 transition-all mt-6 group"
               >
-                <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500 group-hover:bg-red-100 group-hover:scale-110 transition-all">
+                  <div className="w-8 h-8 rounded-lg bg-red-400/10 flex items-center justify-center text-red-200 transition-all">
                   <LogOut size={16} />
                 </div>
                 Logout Account
@@ -118,8 +117,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </aside>
-      <main className="md:ml-72 transition-all duration-300 relative z-10 min-h-screen flex flex-col bg-gray-50/30">
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <main className="md:ml-72 relative z-10 min-h-screen flex flex-col bg-[#FFF7F4]">
+        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#E8EDF2]">
           <div className="mx-auto px-8 py-4 flex items-center justify-between">
             <div className="flex items-center gap-6">
               <button className="md:hidden p-3 rounded-2xl bg-white border border-gray-100 shadow-sm active:scale-90 transition-transform" onClick={() => (document.getElementById('mobile-sidebar-toggle') as HTMLButtonElement)?.click()}>
@@ -182,10 +181,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
         </header>
-        <div className="px-8 py-8">
+        <div className="px-5 py-6 pb-24 md:px-8 md:py-8">
           {children}
         </div>
       </main>
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-center justify-around border-t border-[#E8EDF2] bg-white/95 px-2 backdrop-blur md:hidden">
+        {[
+          { href: '/dashboard', label: 'Home', icon: Home },
+          { href: '/dashboard/services', label: 'Services', icon: PhoneCall },
+          { href: '/dashboard/wallet', label: 'Wallet', icon: CreditCard },
+          { href: '/dashboard/transactions', label: 'Transactions', icon: Activity },
+        ].map(({ href, label, icon: Icon }) => {
+          const selected = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+          return <Link key={href} href={href} className={`flex min-w-0 flex-col items-center gap-1 px-2 text-[10px] font-bold ${selected ? 'text-[#036A97]' : 'text-slate-400'}`}><Icon size={19}/><span className="max-w-[64px] truncate">{label}</span></Link>;
+        })}
+        <button onClick={() => (document.getElementById('mobile-sidebar-toggle') as HTMLButtonElement)?.click()} className="flex min-w-0 flex-col items-center gap-1 px-2 text-[10px] font-bold text-slate-400"><Menu size={19}/><span>More</span></button>
+      </nav>
     </div>
   );
 }

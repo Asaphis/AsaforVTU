@@ -1,10 +1,14 @@
 'use client';
 
+/* Ferixas service purchase flow: compact prepaid-electricity token order form using the live transaction API. */
 import { useState, useEffect } from 'react';
-import { Zap } from 'lucide-react';
+import { Zap, Gauge } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getServices, processTransaction } from '@/lib/services';
 import TransactionPinModal from '@/components/dashboard/TransactionPinModal';
+
+const DISCO_OPTIONS = [['ikeja-electric', 'Ikeja Electric (IKEDC)'], ['eko-electric', 'Eko Electric (EKEDC)'], ['abuja-electric', 'Abuja Electric (AEDC)'], ['ibadan-electric', 'Ibadan Electric (IBEDC)'], ['kano-electric', 'Kano Electric (KEDCO)'], ['portharcourt-electric', 'Port Harcourt Electric (PHED)'], ['jos-electric', 'Jos Electric (JED)'], ['kaduna-electric', 'Kaduna Electric (KAEDCO)'], ['enugu-electric', 'Enugu Electric (EEDC)']];
+const inputClass = 'mt-2 w-full rounded-xl border border-[#E8EDF2] bg-white px-3 py-3 text-sm font-medium text-[#012044] outline-none placeholder:text-[#718096] focus:border-[#036A97] focus:ring-2 focus:ring-[#036A97]/10';
 
 export default function ElectricityPage() {
   const { user, refreshUser } = useAuth();
@@ -15,154 +19,11 @@ export default function ElectricityPage() {
   const [amount, setAmount] = useState('');
   const [showPinModal, setShowPinModal] = useState(false);
   const [processing, setProcessing] = useState(false);
-
-  useEffect(() => {
-    const loadServices = async () => {
-      try {
-        const allServices = await getServices();
-        // Find electricity service
-        const electricityService = allServices.find(s => s.slug === 'electricity' || s.category?.toLowerCase().includes('electricity'));
-        setServices(electricityService ? [electricityService] : allServices);
-      } catch (e) {
-        console.error('Failed to load services:', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadServices();
-  }, []);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    
-    const balance = user.walletBalance || 0;
-    if (balance < Number(amount)) {
-      alert('Insufficient wallet balance');
-      return;
-    }
-
-    setShowPinModal(true);
-  };
-
-  const onPinSuccess = async (transactionPin: string) => {
-    if (!user) return;
-    setProcessing(true);
-    try {
-      const result = await processTransaction(
-        user.uid,
-        Number(amount),
-        'electricity',
-        { 
-          customerId: meterNumber,
-          serviceId: provider,
-          variationId: 'prepaid',
-          meterNumber,
-          transactionPin,
-          requestId: `ELEC_${Date.now()}`
-        }
-      );
-      
-      if (result.success) {
-        alert('Payment successful!');
-        setMeterNumber('');
-        setAmount('');
-        refreshUser();
-      } else {
-        alert(`Transaction failed: ${result.message}`);
-      }
-    } catch (err: any) {
-      alert(`Error: ${err.message}`);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  if (loading) return <div className="p-8 text-center">Loading service...</div>;
-  if (services.length === 0) return <div className="p-8 text-center text-red-500">Electricity service not available</div>;
-
+  useEffect(() => { const loadServices = async () => { try { const allServices = await getServices(); const electricityService = allServices.find((item) => item.slug === 'electricity' || item.category?.toLowerCase().includes('electricity')); setServices(electricityService ? [electricityService] : allServices); } catch (loadError) { console.error('Failed to load services:', loadError); } finally { setLoading(false); } }; loadServices(); }, []);
+  const handleSubmit = (event: React.FormEvent) => { event.preventDefault(); if (!user) return; if ((user.walletBalance || 0) < Number(amount)) { alert('Insufficient wallet balance.'); return; } setShowPinModal(true); };
+  const onPinSuccess = async (transactionPin: string) => { if (!user) return; setProcessing(true); try { const result = await processTransaction(user.uid, Number(amount), 'electricity', { customerId: meterNumber, serviceId: provider, variationId: 'prepaid', meterNumber, transactionPin, requestId: `ELEC_${Date.now()}` }); if (result.success) { alert('Payment successful.'); setMeterNumber(''); setAmount(''); await refreshUser(); } else alert(`Transaction failed: ${result.message}`); } catch (purchaseError: any) { alert(`Error: ${purchaseError.message}`); } finally { setProcessing(false); } };
+  if (loading) return <main className="mx-auto max-w-3xl"><div className="rounded-2xl border border-[#E8EDF2] bg-white p-10 text-center"><div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-[#E8EDF2] border-t-[#036A97]" /><p className="mt-4 text-sm font-bold text-[#012044]">Loading electricity service…</p></div></main>;
+  if (services.length === 0) return <main className="mx-auto max-w-3xl"><div className="rounded-2xl border border-[#F0C1B5] bg-[#FFF6F3] p-5 text-sm font-medium text-[#B3442D]">Electricity service is not available.</div></main>;
   const service = services[0];
-
-  return (
-    <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="text-center mb-10">
-        <div className="w-20 h-20 rounded-[2rem] bg-[#0A1F44] flex items-center justify-center text-[#F97316] mx-auto mb-6 shadow-xl shadow-blue-900/20">
-          <Zap size={40} />
-        </div>
-        <h1 className="text-4xl font-black text-[#0A1F44] tracking-tight uppercase">
-          {service.name || 'Electricity'}
-        </h1>
-        <p className="text-gray-400 font-medium mt-2">{service.description || 'Pay electricity bills across all networks instantly.'}</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="dashboard-card border-none shadow-brand p-10 space-y-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#F97316]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
-        
-        <div className="space-y-6 relative z-10">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Select Provider (Disco)</label>
-            <select 
-              value={provider}
-              onChange={(e) => setProvider(e.target.value)}
-              className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0A1F44]/20 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44] appearance-none"
-            >
-              <option value="ikeja-electric">Ikeja Electric (IKEDC)</option>
-              <option value="eko-electric">Eko Electric (EKEDC)</option>
-              <option value="abuja-electric">Abuja Electric (AEDC)</option>
-              <option value="ibadan-electric">Ibadan Electric (IBEDC)</option>
-              <option value="kano-electric">Kano Electric (KEDCO)</option>
-              <option value="portharcourt-electric">Port Harcourt Electric (PHED)</option>
-              <option value="jos-electric">Jos Electric (JED)</option>
-              <option value="kaduna-electric">Kaduna Electric (KAEDCO)</option>
-              <option value="enugu-electric">Enugu Electric (EEDC)</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Meter Number</label>
-            <input 
-              type="text" 
-              value={meterNumber}
-              onChange={(e) => setMeterNumber(e.target.value)}
-              placeholder="Enter meter number"
-              className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0A1F44]/20 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44] text-lg"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Payment Amount (₦)</label>
-            <input 
-              type="number" 
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="Enter amount"
-              min="100"
-              className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0A1F44]/20 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44] text-lg"
-              required
-            />
-          </div>
-
-          <div className="p-5 rounded-2xl bg-[#0A1F44]/5 border border-[#0A1F44]/5 flex justify-between items-center">
-            <span className="text-[10px] font-black text-[#0A1F44]/60 uppercase tracking-widest">Available Balance</span>
-            <span className="text-lg font-black text-[#0A1F44]">₦{(user?.walletBalance || 0).toLocaleString()}</span>
-          </div>
-        </div>
-
-        <button 
-          type="submit" 
-          disabled={!service.is_active || processing}
-          className="w-full py-5 rounded-2xl bg-[#0A1F44] text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-[#0A1F44]/90 transition-all shadow-xl shadow-blue-900/20 disabled:opacity-30 relative z-10"
-        >
-          {processing ? 'PROCESSING...' : 'PAY BILL NOW'}
-        </button>
-      </form>
-
-      <TransactionPinModal 
-        isOpen={showPinModal}
-        onClose={() => setShowPinModal(false)}
-        onSuccess={onPinSuccess}
-      />
-    </div>
-  );
+  return <main className="mx-auto max-w-3xl space-y-5 pb-24 lg:pb-8"><section><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#718096]">Services / Electricity</p><div className="mt-2 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#EAF5C7] text-[#416000]"><Zap size={20} /></span><div><h1 className="text-2xl font-extrabold tracking-tight text-[#012044]">Buy electricity token.</h1><p className="text-sm text-[#718096]">Choose your distributor and enter your meter number.</p></div></div></section><form onSubmit={handleSubmit} className="overflow-hidden rounded-2xl border border-[#E8EDF2] bg-white"><div className="space-y-5 p-5 sm:p-6"><div className="grid gap-4 sm:grid-cols-2"><label><span className="text-sm font-extrabold text-[#012044]">1. Electricity provider</span><select value={provider} onChange={(event) => setProvider(event.target.value)} className={inputClass}>{DISCO_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label><span className="text-sm font-extrabold text-[#012044]">2. Meter number</span><span className="relative block"><Gauge size={16} className="pointer-events-none absolute left-3 top-[1.15rem] text-[#718096]" /><input type="text" value={meterNumber} onChange={(event) => setMeterNumber(event.target.value)} placeholder="Enter meter number" required className={`${inputClass} pl-9`} /></span></label></div><label className="block max-w-sm"><span className="text-sm font-extrabold text-[#012044]">3. Amount</span><input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Enter amount" min="100" required className={inputClass} /></label><div className="flex items-center justify-between rounded-xl bg-[#FFF7F4] px-4 py-3"><span className="text-sm font-medium text-[#718096]">Wallet balance</span><span className="text-base font-extrabold text-[#012044]">₦{Number(user?.walletBalance || 0).toLocaleString()}</span></div></div><footer className="border-t border-[#E8EDF2] bg-[#FFFDFB] p-4 sm:px-6"><button type="submit" disabled={!service.is_active || processing} className="w-full rounded-xl bg-[#036A97] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#012044] disabled:cursor-not-allowed disabled:opacity-40">{processing ? 'Processing payment…' : 'Buy token'}</button></footer></form><TransactionPinModal isOpen={showPinModal} onClose={() => setShowPinModal(false)} onSuccess={onPinSuccess} /></main>;
 }

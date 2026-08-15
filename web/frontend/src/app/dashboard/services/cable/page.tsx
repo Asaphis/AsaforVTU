@@ -1,13 +1,15 @@
 'use client';
 
+/* Ferixas service purchase flow: compact cable-TV subscription workspace with the existing live provider call. */
 import { useState } from 'react';
-import { Tv } from 'lucide-react';
+import { Tv, CreditCard, ArrowRightLeft } from 'lucide-react';
 import { useService } from '@/hooks/useServices';
 import { useAuth } from '@/contexts/AuthContext';
 import { processTransaction } from '@/lib/services';
 import TransactionPinModal from '@/components/dashboard/TransactionPinModal';
 
 const CABLE_PROVIDERS = ['DSTV', 'GOTV', 'Startimes'];
+const inputClass = 'mt-2 w-full rounded-xl border border-[#E8EDF2] bg-white px-3 py-3 text-sm font-medium text-[#012044] outline-none placeholder:text-[#718096] focus:border-[#036A97] focus:ring-2 focus:ring-[#036A97]/10';
 
 export default function CablePage() {
   const { user } = useAuth();
@@ -17,146 +19,7 @@ export default function CablePage() {
   const [amount, setAmount] = useState('');
   const [showPinModal, setShowPinModal] = useState(false);
   const [processing, setProcessing] = useState(false);
-
-  const handlePurchase = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!smartcardNumber || !amount) return;
-    setShowPinModal(true);
-  };
-
-  const onPinSuccess = async (transactionPin: string) => {
-    if (!user || !service) return;
-    
-    setProcessing(true);
-    try {
-      const result = await processTransaction(
-        user.uid,
-        Number(amount),
-        'cable',
-        {
-          customerId: smartcardNumber,
-          serviceId: provider.toLowerCase(),
-          planId: provider.toLowerCase(),
-          providerPlanId: provider.toLowerCase(),
-          smartcardNumber,
-          transactionPin
-        }
-      );
-
-      if (result.success) {
-        alert('Cable subscription successful!');
-        setSmartcardNumber('');
-        setAmount('');
-      } else {
-        alert(`Transaction failed: ${result.message}`);
-      }
-    } catch (err: any) {
-      alert(`Error: ${err.message}`);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  return (
-    <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          {loading ? (
-            <div className="dashboard-card text-center py-20 animate-pulse bg-gray-50 border-none">
-              <div className="w-16 h-16 bg-gray-100 rounded-2xl mx-auto mb-4" />
-              <div className="h-4 w-32 bg-gray-100 mx-auto rounded" />
-            </div>
-          ) : error ? (
-            <div className="dashboard-card text-center py-20 border-red-100 bg-red-50/30">
-              <p className="text-red-500 font-bold uppercase tracking-widest text-sm">Error loading service</p>
-              <p className="text-xs text-red-400 mt-2">{error}</p>
-            </div>
-          ) : !service ? (
-            <div className="dashboard-card text-center py-20 bg-gray-50 border-none">
-              <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">Service currently unavailable</p>
-            </div>
-          ) : (
-            <>
-              <div className="text-center mb-10">
-                <div className="w-20 h-20 rounded-[2rem] bg-[#0A1F44] flex items-center justify-center text-[#F97316] mx-auto mb-6 shadow-xl shadow-blue-900/20">
-                  <Tv size={40} />
-                </div>
-                <h1 className="text-4xl font-black text-[#0A1F44] tracking-tight uppercase">
-                  {service.name}
-                </h1>
-                <p className="text-gray-400 font-medium mt-2">{service.description || 'Quick and easy cable TV subscriptions.'}</p>
-              </div>
-
-              <form onSubmit={handlePurchase} className="dashboard-card border-none shadow-brand p-10 space-y-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#F97316]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
-                
-                <div className="space-y-6 relative z-10">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Select Provider</label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {CABLE_PROVIDERS.map(p => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setProvider(p)}
-                          className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all ${
-                            provider === p 
-                              ? 'bg-[#0A1F44] border-[#0A1F44] text-white shadow-lg shadow-blue-900/20 scale-[1.05]' 
-                              : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-200'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Smartcard / IUC Number</label>
-                    <input 
-                      type="text" 
-                      placeholder="Enter number" 
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0A1F44]/20 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44] text-lg"
-                      value={smartcardNumber}
-                      onChange={(e) => setSmartcardNumber(e.target.value.replace(/\D/g, ''))}
-                      required
-                      minLength={10}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Plan Amount (₦)</label>
-                    <input 
-                      type="number" 
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#0A1F44]/20 focus:bg-white focus:outline-none transition-all font-bold text-[#0A1F44] text-lg"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      min="1000"
-                      required
-                      placeholder="e.g. 3500"
-                    />
-                  </div>
-
-                  <div className="p-5 rounded-2xl bg-[#0A1F44]/5 border border-[#0A1F44]/5 flex justify-between items-center">
-                    <span className="text-[10px] font-black text-[#0A1F44]/60 uppercase tracking-widest">Available Balance</span>
-                    <span className="text-lg font-black text-[#0A1F44]">₦{user?.walletBalance?.toLocaleString() ?? '0.00'}</span>
-                  </div>
-                </div>
-
-                <button 
-                    type="submit" 
-                    className="w-full py-5 rounded-2xl bg-[#F97316] text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-[#F97316]/90 transition-all shadow-xl shadow-orange-900/20 disabled:opacity-30 relative z-10" 
-                    disabled={!service.enabled || processing}
-                >
-                  {processing ? 'PROCESSING...' : service.enabled ? 'SUBSCRIBE NOW' : 'COMING SOON'}
-                </button>
-              </form>
-            </>
-          )}
-
-          <TransactionPinModal 
-            isOpen={showPinModal} 
-            onClose={() => setShowPinModal(false)} 
-            onSuccess={onPinSuccess}
-          />
-        </div>
-  );
+  const handlePurchase = (event: React.FormEvent) => { event.preventDefault(); if (!smartcardNumber || !amount) return; setShowPinModal(true); };
+  const onPinSuccess = async (transactionPin: string) => { if (!user || !service) return; setProcessing(true); try { const result = await processTransaction(user.uid, Number(amount), 'cable', { customerId: smartcardNumber, serviceId: provider.toLowerCase(), planId: provider.toLowerCase(), providerPlanId: provider.toLowerCase(), smartcardNumber, transactionPin }); if (result.success) { alert('Cable subscription successful.'); setSmartcardNumber(''); setAmount(''); } else alert(`Transaction failed: ${result.message}`); } catch (purchaseError: any) { alert(`Error: ${purchaseError.message}`); } finally { setProcessing(false); } };
+  return <main className="mx-auto max-w-3xl space-y-5 pb-24 lg:pb-8">{loading ? <div className="rounded-2xl border border-[#E8EDF2] bg-white p-10 text-center"><div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-[#E8EDF2] border-t-[#036A97]" /><p className="mt-4 text-sm font-bold text-[#012044]">Loading cable service…</p></div> : error ? <div className="rounded-2xl border border-[#F0C1B5] bg-[#FFF6F3] p-5 text-sm font-medium text-[#B3442D]">Unable to load cable service: {error}</div> : !service ? <div className="rounded-2xl border border-[#E8EDF2] bg-white p-8 text-center text-sm text-[#718096]">This service is currently unavailable.</div> : <><section><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#718096]">Services / Cable TV</p><div className="mt-2 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#FFF8E8] text-[#D69B04]"><Tv size={20} /></span><div><h1 className="text-2xl font-extrabold tracking-tight text-[#012044]">Renew cable TV.</h1><p className="text-sm text-[#718096]">Choose your provider and enter the smartcard number.</p></div></div></section><form onSubmit={handlePurchase} className="overflow-hidden rounded-2xl border border-[#E8EDF2] bg-white"><div className="space-y-5 p-5 sm:p-6"><div><p className="text-sm font-extrabold text-[#012044]">1. Select provider</p><div className="mt-3 grid grid-cols-3 gap-2">{CABLE_PROVIDERS.map((item) => <button key={item} type="button" onClick={() => setProvider(item)} className={`rounded-xl px-3 py-3 text-sm font-bold transition ${provider === item ? 'bg-[#012044] text-white' : 'border border-[#E8EDF2] bg-white text-[#012044] hover:border-[#036A97]'}`}>{item}</button>)}</div></div><div className="grid gap-4 sm:grid-cols-2"><label><span className="text-sm font-extrabold text-[#012044]">2. Smartcard / IUC number</span><span className="relative block"><CreditCard size={16} className="pointer-events-none absolute left-3 top-[1.15rem] text-[#718096]" /><input type="text" value={smartcardNumber} onChange={(event) => setSmartcardNumber(event.target.value.replace(/\D/g, ''))} placeholder="Enter number" required minLength={10} className={`${inputClass} pl-9`} /></span></label><label><span className="text-sm font-extrabold text-[#012044]">3. Amount</span><input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min="1000" required placeholder="e.g. 3500" className={inputClass} /></label></div><div className="flex items-center justify-between rounded-xl bg-[#FFF7F4] px-4 py-3"><span className="text-sm font-medium text-[#718096]">Wallet balance</span><span className="text-base font-extrabold text-[#012044]">₦{Number(user?.walletBalance || 0).toLocaleString()}</span></div></div><footer className="border-t border-[#E8EDF2] bg-[#FFFDFB] p-4 sm:px-6"><button type="submit" disabled={!service.enabled || processing} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#036A97] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#012044] disabled:cursor-not-allowed disabled:opacity-40">{processing ? 'Processing subscription…' : service.enabled ? 'Renew subscription' : 'Service unavailable'} {!processing && <ArrowRightLeft size={16} />}</button></footer></form></>}<TransactionPinModal isOpen={showPinModal} onClose={() => setShowPinModal(false)} onSuccess={onPinSuccess} /></main>;
 }
