@@ -8,9 +8,12 @@ router.use(authenticate);
 
 router.get('/', async (req, res) => {
   try {
-    const wallet = await walletService.getWalletByUserId(req.user.id);
+    let wallet = await walletService.getWalletByUserId(req.user.id);
     if (!wallet) {
-      return res.status(404).json({ error: 'Wallet not found' });
+      wallet = await walletService.createWallet(req.user.id);
+    }
+    if (!wallet) {
+      return res.status(500).json({ error: 'Unable to provision wallet' });
     }
     res.json({
       main_balance: wallet.main_balance,

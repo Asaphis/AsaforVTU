@@ -73,7 +73,7 @@ export const resetPassword = async (token: string, password: string) => parse(aw
 
 export const getWallet = () => parse<Wallet>(apiRequest("/api/wallet"));
 export const getWalletHistory = () => parse<any[]>(apiRequest("/api/wallet/history"));
-export const getTransactions = () => parse<any[]>(apiRequest("/api/transactions"));
+export const getTransactions = async () => { const payload = await parse<any>(apiRequest("/api/transactions")); return Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []); };
 export const getAnnouncements = async () => { try { return await parse<any[]>(await apiRequest("/api/announcements")); } catch { return []; } };
 export const getServices = async () => { try { return await parse<ServiceItem[]>(await apiRequest("/api/services")); } catch { return []; } };
 export const getPlans = async () => { try { const plans = await parse<any[]>(await apiRequest("/api/plans")); return plans.map(plan => ({ ...plan, price_user: Number(plan.price_user ?? plan.priceUser ?? 0), priceUser: Number(plan.price_user ?? plan.priceUser ?? 0) })) as ServicePlan[]; } catch { return []; } };
