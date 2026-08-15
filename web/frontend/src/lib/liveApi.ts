@@ -1,5 +1,5 @@
 // Production customer API contract: preserves the existing Ferixas backend endpoints and token-refresh behavior.
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://vtuapi.ferixas.com").replace(/\/$/, "");
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_VTU_BACKEND_URL || "https://vtuapi.ferixas.com").replace(/\/$/, "");
 
 export type LiveUser = {
   id: string; email: string; full_name: string; username: string; phone?: string; role?: string;
