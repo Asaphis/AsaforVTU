@@ -236,6 +236,19 @@ const loginUser = async (email, password) => {
 
     console.log('[loginUser] Last login updated');
 
+    try {
+      const notificationService = require('./notificationService');
+      await notificationService.sendNotification(
+        user.id,
+        'Welcome back',
+        'You signed in successfully. Review your wallet, activity, and support updates.',
+        'account',
+        { event: 'login', login_at: new Date().toISOString() }
+      );
+    } catch (notificationError) {
+      console.error('[Auth] Login notification failed:', notificationError.message);
+    }
+
     // Generate tokens
     const accessToken = generateToken(user.id, user.email, user.role);
     const refreshToken = await generateRefreshToken(user.id);

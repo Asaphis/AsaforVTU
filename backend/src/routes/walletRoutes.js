@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const walletService = require('../services/walletService');
+const notificationService = require('../services/notificationService');
 
 const router = express.Router();
 
@@ -48,6 +49,11 @@ router.post('/transfer', async (req, res) => {
       return res.status(400).json({ error: 'Invalid source wallet type' });
     }
     const result = await walletService.transferWalletBalance(req.user.id, fromWalletType, 'main', amount, 'Transfer to main wallet');
+    try {
+      await notificationService.sendNotification(req.user.id, 'Wallet balance transferred', `₦${Number(amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })} was moved from your ${fromWalletType} balance to your main wallet.`, 'wallet', { amount: Number(amount), fromWalletType, toWalletType: 'main' });
+    } catch (notificationError) {
+      console.error('[Wallet Routes] Transfer notification failed:', notificationError.message);
+    }
     res.json({ success: true, result });
   } catch (error) {
     console.error('[Wallet Routes] Transfer error:', error);

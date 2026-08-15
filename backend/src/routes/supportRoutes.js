@@ -88,13 +88,24 @@ router.get('/tickets', async (req, res) => {
 router.get('/tickets/:id/messages', async (req, res) => {
   try {
     if (!await ownedTicket(req.params.id, req.user.id)) return res.status(404).json({ error: 'Ticket not found' });
-    const result = await pool.query(
-      `SELECT sm.*, COALESCE(json_agg(json_build_object('id', sa.id, 'original_name', sa.original_name, 'mime_type', sa.mime_type, 'size_bytes', sa.size_bytes)
-       ORDER BY sa.created_at) FILTER (WHERE sa.id IS NOT NULL), '[]'::json) AS attachments
-       FROM support_messages sm LEFT JOIN support_attachments sa ON sa.message_id = sm.id
-       WHERE sm.ticket_id = $1 GROUP BY sm.id ORDER BY sm.created_at ASC`,
-      [req.params.id]
-    );
+    let result;
+    try {
+      result = await pool.query(
+        `SELECT sm.*, COALESCE(json_agg(json_build_object('id', sa.id, 'original_name', sa.original_name, 'mime_type', sa.mime_type, 'size_bytes', sa.size_bytes)
+         ORDER BY sa.created_at) FILTER (WHERE sa.id IS NOT NULL), '[]'::json) AS attachments
+         FROM support_messages sm LEFT JOIN support_attachments sa ON sa.message_id = sm.id
+         WHERE sm.ticket_id = $1 GROUP BY sm.id ORDER BY sm.created_at ASC`,
+        [req.params.id]
+      );
+    } catch (error) {
+      if (error.code !== '42P01') throw error;
+      console.warn('[Support Routes] support_attachments migration is missing; returning messages without attachments.');
+      result = await pool.query(
+        `SELECT sm.*, '[]'::json AS attachments FROM support_messages sm
+         WHERE sm.ticket_id = $1 ORDER BY sm.created_at ASC`,
+        [req.params.id]
+      );
+    }
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
