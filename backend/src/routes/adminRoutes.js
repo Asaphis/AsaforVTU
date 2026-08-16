@@ -96,6 +96,9 @@ router.get('/wallet/logs', adminController.getWalletLogs);
 // Wallet deposits
 router.get('/wallet/deposits', adminController.getWalletDeposits);
 
+// Audit trail
+router.get('/audit', adminController.getAdminAudit);
+
 // Plans management
 router.get('/plans', adminController.getPlans);
 router.post('/plans', adminController.createPlan);

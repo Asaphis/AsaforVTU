@@ -407,21 +407,25 @@ const listUsers = async (req, res) => {
     const search = req.query.search;
     
     let query = `
-      SELECT id, email, full_name, username, phone, 
-             is_active, is_admin, role, email_verified,
-             created_at, last_login_at
-      FROM users
+      SELECT u.id, u.email, u.full_name, u.username, u.phone,
+             u.is_active, u.is_admin, u.role, u.email_verified,
+             u.created_at, u.last_login_at,
+             COALESCE(w.main_balance, 0) AS main_balance,
+             COALESCE(w.cashback_balance, 0) AS cashback_balance,
+             COALESCE(w.referral_balance, 0) AS referral_balance
+      FROM users u
+      LEFT JOIN wallets w ON w.user_id = u.id
     `;
     const params = [];
     let paramIndex = 1;
     
     if (search) {
-      query += ` WHERE (email ILIKE $${paramIndex} OR full_name ILIKE $${paramIndex} OR username ILIKE $${paramIndex})`;
+      query += ` WHERE (u.email ILIKE $${paramIndex} OR u.full_name ILIKE $${paramIndex} OR u.username ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
     
-    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    query += ` ORDER BY u.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
     
     const result = await pool.query(query, params);
@@ -896,6 +900,28 @@ const fixGhostWallets = async (req, res) => {
   }
 };
 
+const getAdminAudit = async (_req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, admin_email, action, target_type, target_id, details, created_at
+       FROM admin_audit_log
+       ORDER BY created_at DESC
+       LIMIT 200`
+    );
+    res.json(result.rows.map(row => ({
+      id: row.id,
+      action: row.action,
+      actor: row.admin_email,
+      detail: row.details?.description || row.details?.reference || JSON.stringify(row.details || {}),
+      level: /delete|debit|suspend|failed|reject/i.test(row.action) ? 'warning' : 'success',
+      createdAt: row.created_at
+    })));
+  } catch (error) {
+    console.error('[Admin Controller] Get audit log error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const serializePlan = (plan) => ({
   ...plan,
   priceUser: Number(plan.price_user),
@@ -1023,6 +1049,7 @@ module.exports = {
   fixGhostWallets,
   getWalletLogs,
   getWalletDeposits,
+  getAdminAudit,
   getPlans,
   createPlan,
   updatePlan,
