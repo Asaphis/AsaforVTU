@@ -71,7 +71,11 @@ const financeSummary = async ({ userId = null, start = null, end = null } = {}) 
   if (end) { params.push(end); filters.push(`t.created_at <= $${params.length}`); }
   const summary = await pool.query(
     `SELECT COALESCE(SUM(t.amount), 0) AS deposits,
-            COALESCE(SUM(COALESCE(NULLIF(t.metadata->>'provider_cost', '')::numeric, 0)), 0) AS provider_cost,
+            COALESCE(SUM(CASE
+              WHEN COALESCE(t.metadata->>'provider_cost', '') ~ '^-?[0-9]+(\\.[0-9]+)?$'
+              THEN (t.metadata->>'provider_cost')::numeric
+              ELSE 0
+            END), 0) AS provider_cost,
             COUNT(*) AS transaction_count
      FROM transactions t WHERE ${filters.join(' AND ')}`,
     params
@@ -103,7 +107,11 @@ const getFinanceAnalytics = async (req, res) => {
     ]);
     const recent = await pool.query(
       `SELECT t.id, t.user_id AS "userId", COALESCE(u.email, '') AS "user", t.amount AS "userPrice",
-              COALESCE(NULLIF(t.metadata->>'provider_cost', '')::numeric, 0) AS "providerCost",
+              CASE
+                WHEN COALESCE(t.metadata->>'provider_cost', '') ~ '^-?[0-9]+(\\.[0-9]+)?$'
+                THEN (t.metadata->>'provider_cost')::numeric
+                ELSE 0
+              END AS "providerCost",
               t.type, t.type AS "serviceType", true AS "isService", t.status, t.created_at AS "createdAt",
               t.metadata->>'failure_source' AS "failureSource", t.metadata->>'failure_reason' AS "failureReason"
        FROM transactions t LEFT JOIN users u ON u.id = t.user_id
