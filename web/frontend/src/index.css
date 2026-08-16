@@ -80,3 +80,5 @@ body{background:#FFF7F4;color:#162337}.app-shell{background:#F8FBFC}.app-content
 
 /* Keep registration pairs compact on narrow screens; other auth forms remain unchanged. */
 @media(max-width:560px){.auth-form--register .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.auth-form--register .form-field>small{font-size:8px;line-height:1.25}.auth-form--register .form-field>b{font-size:10px}.auth-form--register .form-field input{padding-left:9px;padding-right:9px;font-size:12px}}
+
+@media(max-width:560px){.auth-form--register .form-grid{gap:4px;margin:0}.auth-form--register .form-field{margin:5px 0}.auth-form--register .form-field>b{margin-bottom:3px}.auth-form--register .form-field>small{margin-top:2px;font-size:8px;line-height:1.15}.auth-form--register .terms{margin:8px 0}}
