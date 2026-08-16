@@ -24,6 +24,47 @@ router.get('/unread-count', async (req, res) => {
   }
 });
 
+router.post('/devices', async (req, res) => {
+  try {
+    const token = String(req.body?.token || '').trim();
+    const platform = String(req.body?.platform || '').trim().toLowerCase();
+    if (token.length < 20 || token.length > 4096) {
+      return res.status(400).json({ error: 'A valid device token is required.' });
+    }
+    if (!['android', 'ios'].includes(platform)) {
+      return res.status(400).json({ error: 'Device platform must be android or ios.' });
+    }
+    const result = await require('../config/database').query(
+      `INSERT INTO notification_devices (user_id, token, platform, is_active, last_seen_at)
+       VALUES ($1, $2, $3, TRUE, CURRENT_TIMESTAMP)
+       ON CONFLICT (token) DO UPDATE
+       SET user_id = EXCLUDED.user_id,
+           platform = EXCLUDED.platform,
+           is_active = TRUE,
+           last_seen_at = CURRENT_TIMESTAMP
+       RETURNING id, platform, is_active, last_seen_at`,
+      [req.user.id, token, platform]
+    );
+    return res.status(201).json({ device: result.rows[0] });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/devices', async (req, res) => {
+  try {
+    const token = String(req.body?.token || '').trim();
+    if (!token) return res.status(400).json({ error: 'Device token is required.' });
+    await require('../config/database').query(
+      'UPDATE notification_devices SET is_active = FALSE WHERE user_id = $1 AND token = $2',
+      [req.user.id, token]
+    );
+    return res.status(204).end();
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 router.patch('/:id/read', async (req, res) => {
   try {
     res.json(await notificationService.markNotificationAsRead(req.params.id, req.user.id));

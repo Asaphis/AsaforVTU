@@ -1,6 +1,6 @@
 # AsaforVTU Mobile App
 
-This is a Flutter project that opens the live [AsaforVTU customer platform](https://vtu.ferixas.com) in a branded mobile wrapper for Android and iOS. It starts on the public landing page so customers can explore the service before choosing **Create Account** or **Sign In**.
+This is a Flutter project that opens the live [AsaforVTU customer platform](https://vtu.ferixas.com/login) in a branded mobile wrapper for Android and iOS. It starts at the authenticated **Sign In** screen, exactly as a mobile application should.
 
 ## Project Overview
 
@@ -47,7 +47,7 @@ To change the website URL that the app loads:
 1. Open `lib/main.dart`.
 2. Find the line:
    ```dart
-   ..loadRequest(Uri.parse('https://vtu.ferixas.com'));
+   ..loadRequest(Uri.parse('https://vtu.ferixas.com/login'));
    ```
 3. Update the URL to your new address.
 4. Also update the Deep Link domain in `android/app/src/main/AndroidManifest.xml`:

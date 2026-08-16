@@ -1,4 +1,4 @@
-package com.asaforvtu.webview_app
+package com.ferixas.asaforvtu
 
 import io.flutter.embedding.android.FlutterActivity
 

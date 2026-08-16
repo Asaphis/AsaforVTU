@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { deliverPushNotification } = require('./pushNotificationService');
 
 // Create notification
 const createNotification = async (notificationData) => {
@@ -20,7 +21,18 @@ const createNotification = async (notificationData) => {
 };
 
 const sendNotification = async (userId, title, message, type = 'transaction', metadata = {}) => {
-  return createNotification({ user_id: userId, type, title, message, metadata });
+  const notification = await createNotification({ user_id: userId, type, title, message, metadata });
+  Promise.resolve(
+    deliverPushNotification({
+      userId,
+      notificationId: notification.id,
+      title,
+      message,
+      type,
+      metadata,
+    })
+  ).catch((error) => console.error('[Notification Service] Push delivery failed:', error.message));
+  return notification;
 };
 
 // Get notifications by user ID

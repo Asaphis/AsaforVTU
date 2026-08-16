@@ -6,6 +6,7 @@ const walletService = require('../services/walletService');
 const transactionService = require('../services/transactionService');
 const paymentService = require('../services/paymentService');
 const providerService = require('../services/providerService');
+const communicationController = require('../controllers/communicationController');
 
 const router = express.Router();
 
@@ -68,6 +69,9 @@ router.post('/profile/update', adminController.updateAdminProfile);
 router.post('/profile/password', adminController.changeAdminPassword);
 
 // Support & Announcements
+router.get('/communications/status', communicationController.getStatus);
+router.get('/communications/deliveries', communicationController.listDeliveries);
+router.post('/communications/send', communicationController.sendCampaign);
 router.get('/support/tickets', adminController.getTickets);
 router.get('/support/tickets/:id/messages', adminController.getTicketMessages);
 router.post('/support/tickets/create', adminController.createTicket);

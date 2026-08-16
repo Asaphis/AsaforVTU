@@ -1,4 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -7,23 +12,29 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'dart:io';
+import 'push_notification_service.dart';
 
 const productionCustomerUrl = 'https://vtu.ferixas.com';
+const productionSignInUrl = '$productionCustomerUrl/login';
 const productionCustomerHost = 'vtu.ferixas.com';
 
-void main() {
-  runApp(MaterialApp(
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF0A1F44),
-        primary: const Color(0xFF0A1F44),
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  runApp(
+    MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF0A1F44),
+          primary: const Color(0xFF0A1F44),
+        ),
+        useMaterial3: true,
       ),
-      useMaterial3: true,
+      home: const SplashScreen(),
     ),
-    home: const SplashScreen(),
-  ));
+  );
 }
 
 class SplashScreen extends StatefulWidget {
@@ -32,7 +43,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scale;
   late final Animation<double> _fade;
@@ -42,15 +54,32 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000));
-    _scale = Tween<double>(begin: 0.82, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
-    _fade = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
-    _glow = Tween<double>(begin: 0.0, end: 12.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-    _ring = Tween<double>(begin: 0.9, end: 1.15).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+    _scale = Tween<double>(
+      begin: 0.82,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+    _fade = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+    _glow = Tween<double>(
+      begin: 0.0,
+      end: 12.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _ring = Tween<double>(
+      begin: 0.9,
+      end: 1.15,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
     Future.delayed(const Duration(milliseconds: 2200), () {
       if (mounted) {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const WebViewApp()));
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const WebViewApp()),
+        );
       }
     });
   }
@@ -89,7 +118,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF0A1F44).withValues(alpha: 0.12),
+                              color: const Color(
+                                0xFF0A1F44,
+                              ).withValues(alpha: 0.12),
                               blurRadius: 24 * (_glow.value / 12.0),
                               spreadRadius: 2,
                             ),
@@ -106,36 +137,25 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: const Color(0xFF0A1F44).withValues(alpha: 0.08 * _fade.value),
+                                    color: const Color(
+                                      0xFF0A1F44,
+                                    ).withValues(alpha: 0.08 * _fade.value),
                                     width: 6,
                                   ),
                                 ),
                               ),
                             ),
-                            ClipOval(
-                              child: Image.asset(
-                                'assets/logo.png',
-                                width: 140,
-                                height: 140,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stack) {
-                                  return Container(
-                                    width: 140,
-                                    height: 140,
-                                    color: Colors.white,
-                                    child: Center(
-                                      child: Text(
-                                        'A',
-                                        style: TextStyle(
-                                          fontSize: 64,
-                                          fontWeight: FontWeight.w900,
-                                          color: const Color(0xFF0A1F44).withValues(alpha: 0.9),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
+                            Image.asset(
+                              'assets/logo.png',
+                              width: 170,
+                              height: 170,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stack) =>
+                                  const Icon(
+                                    Icons.public,
+                                    color: Color(0xFF0A1F44),
+                                    size: 88,
+                                  ),
                             ),
                           ],
                         ),
@@ -226,6 +246,7 @@ class _Dot extends StatelessWidget {
     );
   }
 }
+
 class WebViewApp extends StatefulWidget {
   const WebViewApp({super.key});
 
@@ -257,6 +278,7 @@ class _WebViewAppState extends State<WebViewApp> {
   void initState() {
     super.initState();
     _initWebView();
+    unawaited(_initPushNotifications());
     _initAppLinks();
     _initConnectivity();
   }
@@ -296,6 +318,7 @@ class _WebViewAppState extends State<WebViewApp> {
             setState(() {
               _isLoading = false;
             });
+            unawaited(_syncPushTokenFromAuthenticatedSession());
           },
           onWebResourceError: (WebResourceError error) {
             debugPrint('Web resource error: ${error.description}');
@@ -305,7 +328,9 @@ class _WebViewAppState extends State<WebViewApp> {
               _hasRealConnection().then((ok) {
                 if (!ok) {
                   if (mounted) {
-                    setState(() { _isOffline = true; });
+                    setState(() {
+                      _isOffline = true;
+                    });
                   }
                 }
               });
@@ -314,7 +339,9 @@ class _WebViewAppState extends State<WebViewApp> {
           onNavigationRequest: (NavigationRequest request) async {
             final Uri uri = Uri.parse(request.url);
             // Handle external schemes
-            if (uri.scheme == 'mailto' || uri.scheme == 'tel' || uri.scheme == 'sms') {
+            if (uri.scheme == 'mailto' ||
+                uri.scheme == 'tel' ||
+                uri.scheme == 'sms') {
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri);
               }
@@ -324,18 +351,69 @@ class _WebViewAppState extends State<WebViewApp> {
           },
         ),
       )
-      // Start every new session on the public landing page. The landing page
-      // provides the approved branded interface and lets the customer choose
-      // whether to create an account or sign in.
-      ..loadRequest(Uri.parse(productionCustomerUrl));
+      // The mobile product is an authenticated application. Every new session
+      // starts at the live sign-in screen, while website links still open inside
+      // the app through the production deep-link host.
+      ..loadRequest(Uri.parse(productionSignInUrl));
 
     if (controller.platform is AndroidWebViewController) {
-      AndroidWebViewController.enableDebugging(true);
+      if (!kReleaseMode) AndroidWebViewController.enableDebugging(true);
       (controller.platform as AndroidWebViewController)
           .setMediaPlaybackRequiresUserGesture(false);
     }
 
     _controller = controller;
+  }
+
+  Future<void> _initPushNotifications() async {
+    try {
+      await PushNotificationService.instance.initialize(
+        onOpenDestination: _openNotificationDestination,
+      );
+      await _syncPushTokenFromAuthenticatedSession();
+    } catch (error) {
+      debugPrint('Push notifications are unavailable on this device: $error');
+    }
+  }
+
+  Future<void> _syncPushTokenFromAuthenticatedSession() async {
+    try {
+      final rawValue = await _controller.runJavaScriptReturningResult(
+        'window.localStorage.getItem("access_token") || "";',
+      );
+      final accessToken = _decodeJavaScriptString(rawValue);
+      if (accessToken.isNotEmpty) {
+        await PushNotificationService.instance.registerAuthenticatedDevice(
+          accessToken,
+        );
+      }
+    } catch (error) {
+      debugPrint('Push-token session sync deferred: $error');
+    }
+  }
+
+  String _decodeJavaScriptString(Object? rawValue) {
+    final value = rawValue?.toString() ?? '';
+    if (value.isEmpty || value == 'null') return '';
+    try {
+      final decoded = jsonDecode(value);
+      return decoded is String ? decoded : '';
+    } catch (_) {
+      return value.replaceAll('"', '');
+    }
+  }
+
+  void _openNotificationDestination(String destination) {
+    final relative = destination.startsWith('/')
+        ? destination
+        : '/$destination';
+    final candidate = Uri.tryParse(destination);
+    final target = candidate != null && candidate.hasScheme
+        ? candidate
+        : Uri.parse('$productionCustomerUrl$relative');
+    if (target.host == productionCustomerHost) {
+      _controller.loadRequest(target);
+    }
   }
 
   Future<void> _initAppLinks() async {
@@ -353,20 +431,34 @@ class _WebViewAppState extends State<WebViewApp> {
     final initialHas = !initial.contains(ConnectivityResult.none);
     if (!initialHas) {
       final ok = await _hasRealConnection();
-      setState(() { _isOffline = !ok; });
+      setState(() {
+        _isOffline = !ok;
+      });
     } else {
-      setState(() { _isOffline = false; });
+      setState(() {
+        _isOffline = false;
+      });
     }
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
-      bool hasConnection = results.any((result) => result != ConnectivityResult.none);
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      results,
+    ) {
+      bool hasConnection = results.any(
+        (result) => result != ConnectivityResult.none,
+      );
       if (hasConnection) {
         if (_isOffline) {
-          setState(() { _isOffline = false; });
+          setState(() {
+            _isOffline = false;
+          });
           _controller.reload();
         }
       } else {
         _hasRealConnection().then((ok) {
-          if (mounted) setState(() { _isOffline = !ok; });
+          if (mounted) {
+            setState(() {
+              _isOffline = !ok;
+            });
+          }
         });
       }
     });
@@ -399,9 +491,7 @@ class _WebViewAppState extends State<WebViewApp> {
             children: [
               if (!_isOffline) WebViewWidget(controller: _controller),
               if (_isLoading && !_isOffline)
-                const Center(
-                  child: CircularProgressIndicator(),
-                ),
+                const Center(child: CircularProgressIndicator()),
               if (_isOffline)
                 Center(
                   child: Column(
@@ -411,7 +501,10 @@ class _WebViewAppState extends State<WebViewApp> {
                       const SizedBox(height: 16),
                       const Text(
                         'No Internet Connection',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       const Text('Please check your network settings.'),

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1015226685928",
+    "project_id": "asaforvtu-3f8c7",
+    "storage_bucket": "asaforvtu-3f8c7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1015226685928:android:b11a09037ad8f97643ac5d",
+        "android_client_info": {
+          "package_name": "com.ferixas.asaforvtu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpNMnXQFEvOBQ31coDCM1QvlSoKbEDh-M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

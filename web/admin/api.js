@@ -388,6 +388,22 @@ export const api = {
   },
   async createAnnouncement(input) { return request('/api/admin/announcements', { method: 'POST', body: { title: input.title, content: input.content, priority: input.type === 'warning' ? 'warning' : 'info' } }); },
   async deleteAnnouncement(id) { return request(`/api/admin/announcements/${encodeURIComponent(id)}`, { method: 'DELETE' }); },
+  async getCommunicationStatus() { return request('/api/admin/communications/status'); },
+  async listCommunicationDeliveries() { return request('/api/admin/communications/deliveries?limit=50'); },
+  async sendCommunication(input) {
+    return request('/api/admin/communications/send', {
+      method: 'POST',
+      body: {
+        title: input.title,
+        message: input.message,
+        channels: input.channels,
+        audience: input.audience,
+        userIds: input.userIds || [],
+        destination: input.destination || '/dashboard/notifications',
+        imageUrl: input.imageUrl || '',
+      }
+    });
+  },
 
   async reconcile(reference, force = false) {
     const result = await request('/api/admin/payments/reconcile', { method: 'POST', body: { tx_ref: reference, force: Boolean(force) } });
