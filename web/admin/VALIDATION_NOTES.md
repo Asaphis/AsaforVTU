@@ -1,6 +1,6 @@
-# Authenticated Admin Simulator Validation Notes
+# Authenticated Admin Dashboard Validation Notes
 
-The former prototype was retired and replaced by the authenticated Ferixas administration simulator. The following checks were performed against the new implementation.
+The former admin implementation was retired and replaced by the authenticated Ferixas administration simulator. The following checks were performed against the new implementation.
 
 | Check | Result |
 | --- | --- |

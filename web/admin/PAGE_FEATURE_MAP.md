@@ -1,6 +1,6 @@
-# Ferixas Admin Simulator Feature Map
+# AsaforVTU Admin Dashboard Feature Map
 
-The authenticated simulator replaces the prior prototype. Every screen is deliberately grouped by its current live administrative responsibility and uses `mockApi.js` as its only source of records and state changes.
+The authenticated simulator replaces the prior admin dashboard. Every screen is deliberately grouped by its current live administrative responsibility and uses `mockApi.js` as its only source of records and state changes.
 
 | Navigation module | Simulator screen responsibilities | Existing backend capability boundary |
 | --- | --- | --- |

@@ -1,22 +1,22 @@
-# Ferixas AsaforVTU Admin Simulator
+# AsaforVTU Admin Dashboard
 
-This directory now contains the **complete replacement** for the former admin prototype. It is an authenticated, stateful front-end simulator for the Ferixas AsaforVTU administration platform. The old prototype layout and code path were replaced; this interface is not a visual patch of the previous design.
+This directory now contains the **complete replacement** for the former admin dashboard. It is an authenticated, stateful front-end administrator dashboard for the Ferixas AsaforVTU administration platform. The old admin dashboard layout and code path were replaced; this interface is not a visual patch of the previous design.
 
-The simulator starts on a login screen and stores only a local browser session. It never sends the simulator credential, transactions, customer data, or wallet actions to production services.
+The administrator dashboard starts on a login screen and stores only a local browser session. It never sends the administrator dashboard credential, transactions, customer data, or wallet actions to production services.
 
-## Simulator access
+## Administrator access
 
 | Field | Value |
 | --- | --- |
 | Email | `admin@ferixas.test` |
 | Password | `Admin@2026` |
-| Environment | Local simulator only |
+| Environment | Local administrator dashboard only |
 
-Use the **Sign out** control to return to login. Profile password changes update the simulator state for the open browser session only.
+Use the **Sign out** control to return to login. Profile password changes update the administrator dashboard state for the open browser session only.
 
 ## Full feature coverage
 
-| Module | Stateful simulator behavior | Future live administrative contract |
+| Module | Stateful administrator dashboard behavior | Future live administrative contract |
 | --- | --- | --- |
 | Command Center | Dashboard metrics, seven-day successful-flow trend, health, funding/ticket queue, recent activity | Stats and recent transaction routes |
 | Customers | Search, enrolment, customer profile, verification link, password reset, suspend/restore, wallet shortcut | Users, verification, password, suspend and wallet routes |
@@ -35,4 +35,4 @@ Use the **Sign out** control to return to login. Profile password changes update
 
 The simulation makes state changes locally so a review can safely demonstrate the expected front-end behavior. In production, wallet adjustments, funding approval, reconciliation, profile/password updates, ticket actions, customer access, and service pricing must continue to display completion only after the backend returns a confirmed success response.
 
-See `SIMULATOR_ARCHITECTURE.md` for the complete technical mapping, especially the Financial Intelligence fields and their current backend meaning. `VALIDATION_NOTES.md` records the functional checks run against the simulator.
+See `SIMULATOR_ARCHITECTURE.md` for the complete technical mapping, especially the Financial Intelligence fields and their current backend meaning. `VALIDATION_NOTES.md` records the functional checks run against the administrator dashboard.

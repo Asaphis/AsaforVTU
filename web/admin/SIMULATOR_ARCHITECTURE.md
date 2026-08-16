@@ -1,4 +1,4 @@
-# Ferixas Admin Simulator Architecture
+# AsaforVTU Admin Dashboard Architecture
 
 ## Purpose
 
