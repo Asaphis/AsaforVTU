@@ -7,7 +7,18 @@ const DEFAULT_REWARD = 10;
 class ReferralService {
   async getSettings() {
     const result = await pool.query("SELECT value FROM settings WHERE key = 'referral_settings'");
-    return result.rows[0]?.value || { enabled: true, reward_amount: DEFAULT_REWARD, daily_budget: 1000 };
+    return result.rows[0]?.value || { enabled: true, reward_amount: DEFAULT_REWARD, daily_budget: 1000, campaign_start_at: null, campaign_end_at: null };
+  }
+
+  isCampaignActive(settings, now = new Date()) {
+    if (settings.enabled === false) return false;
+    const start = settings.campaign_start_at ? new Date(settings.campaign_start_at) : null;
+    const end = settings.campaign_end_at ? new Date(settings.campaign_end_at) : null;
+    if (start && Number.isNaN(start.getTime())) return false;
+    if (end && Number.isNaN(end.getTime())) return false;
+    if (start && now < start) return false;
+    if (end && now > end) return false;
+    return true;
   }
 
   async getDailyUsage() {
@@ -20,7 +31,7 @@ class ReferralService {
 
   async processReferral(userId, transactionId) {
     const settings = await this.getSettings();
-    if (settings.enabled === false) return;
+    if (!this.isCampaignActive(settings)) return;
     const reward = Number(settings.reward_amount || DEFAULT_REWARD);
     if (!Number.isFinite(reward) || reward <= 0) return;
 
@@ -39,6 +50,7 @@ class ReferralService {
     if (!referrerId || row?.is_paid) return;
 
     const budget = Number(settings.daily_budget || 1000);
+    if (!Number.isFinite(budget) || budget <= 0) return;
     if (await this.getDailyUsage() + reward > budget) {
       await notificationService.sendNotification(referrerId, 'Referral Bonus Missed', 'The daily referral reward budget has been reached.', 'referral', { userId, transactionId });
       return;

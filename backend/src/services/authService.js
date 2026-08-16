@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const pool = require('../config/database');
 const { generateToken, generateRefreshToken } = require('../middleware/auth');
-const { sendVerificationEmail, sendPasswordResetEmail } = require('./emailService');
+const { sendVerificationEmail, sendPasswordResetEmail, sendReferralSignupEmail, sendAccountSecurityEmail } = require('./emailService');
 
 const SALT_ROUNDS = 10;
 
@@ -29,7 +29,7 @@ const registerUser = async (userData) => {
   const full_name = String(input.full_name ?? input.fullName ?? '').trim();
   const username = String(input.username || '').trim().toLowerCase();
   const phone = String(input.phone || '').trim() || null;
-  const pin = input.pin ?? input.transactionPin;
+  const pin = String(input.pin ?? input.transactionPin ?? '').trim();
   const referral_code = input.referral_code ?? input.referralUsername;
 
   if (!email || !password || !full_name || !username) {
@@ -37,6 +37,9 @@ const registerUser = async (userData) => {
     error.code = 'INVALID_REGISTRATION';
     throw error;
   }
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error('Enter a valid email address');
+  if (password.length < 8) throw new Error('Password must be at least 8 characters');
+  if (!/^\d{4,6}$/.test(pin)) throw new Error('Transaction PIN must contain 4 to 6 digits');
 
   const client = await pool.connect();
   
@@ -73,16 +76,18 @@ const registerUser = async (userData) => {
       }
     }
 
-    // Handle referral
+    // Handle referral; the stable referral code is canonical, while username remains a supported legacy alias.
     let referredBy = null;
+    let referralReferrer = null;
     if (referral_code) {
       const referralCheck = await client.query(
-        'SELECT id, referral_code FROM users WHERE upper(referral_code) = upper($1) OR lower(username) = lower($1) LIMIT 1',
+        'SELECT id, email, full_name, referral_code FROM users WHERE upper(referral_code) = upper($1) OR lower(username) = lower($1) LIMIT 1',
         [String(referral_code).trim()]
       );
 
       if (referralCheck.rows.length > 0) {
         referredBy = referralCheck.rows[0].referral_code;
+        referralReferrer = referralCheck.rows[0];
       }
     }
 
@@ -107,6 +112,15 @@ const registerUser = async (userData) => {
     );
 
     const user = userResult.rows[0];
+
+    if (referralReferrer) {
+      await client.query(
+        `INSERT INTO referrals (referrer_id, referred_id, referral_code, reward_amount, is_paid)
+         VALUES ($1, $2, $3, 0, false)
+         ON CONFLICT (referrer_id, referred_id) DO NOTHING`,
+        [referralReferrer.id, user.id, referredBy]
+      );
+    }
 
     // Create wallet for user
     await client.query(
@@ -149,6 +163,25 @@ const registerUser = async (userData) => {
       verificationSent = true;
     } catch (emailError) {
       console.error('[Auth] Verification email delivery failed:', emailError.message);
+    }
+
+    if (referralReferrer) {
+      try {
+        await sendReferralSignupEmail({ email: referralReferrer.email, name: referralReferrer.full_name, referredName: user.full_name });
+      } catch (emailError) {
+        console.error('[Auth] Referral signup email failed:', emailError.message);
+      }
+      try {
+        await require('./notificationService').sendNotification(
+          referralReferrer.id,
+          'Referral joined',
+          `${user.full_name} registered using your referral. Any reward remains subject to the active campaign rules.`,
+          'referral',
+          { referredUserId: user.id, referralCode: referredBy }
+        );
+      } catch (notificationError) {
+        console.error('[Auth] Referral signup notification failed:', notificationError.message);
+      }
     }
 
     const accessToken = generateToken(user.id, user.email, 'user');
@@ -471,8 +504,9 @@ const resetPassword = async (token, newPassword) => {
 
     // Find valid reset token
     const tokenResult = await client.query(
-      `SELECT user_id, expires_at FROM password_reset_tokens
-       WHERE token = $1 AND used_at IS NULL AND expires_at > CURRENT_TIMESTAMP`,
+      `SELECT prt.user_id, prt.expires_at, u.email, u.full_name
+       FROM password_reset_tokens prt JOIN users u ON u.id = prt.user_id
+       WHERE prt.token = $1 AND prt.used_at IS NULL AND prt.expires_at > CURRENT_TIMESTAMP`,
       [token]
     );
 
@@ -480,7 +514,7 @@ const resetPassword = async (token, newPassword) => {
       throw new Error('Invalid or expired reset token');
     }
 
-    const { user_id } = tokenResult.rows[0];
+    const { user_id, email, full_name } = tokenResult.rows[0];
 
     // Hash new password
     const passwordHash = await hashPassword(newPassword);
@@ -504,6 +538,11 @@ const resetPassword = async (token, newPassword) => {
     );
 
     await client.query('COMMIT');
+    try {
+      await sendAccountSecurityEmail({ email, name: full_name, action: 'password reset' });
+    } catch (emailError) {
+      console.error('[Auth] Password reset security email failed:', emailError.message);
+    }
 
     return { success: true, message: 'Password reset successfully' };
   } catch (error) {
@@ -560,13 +599,18 @@ const changePin = async (userId, currentPin, pin) => {
   if (!/^\d{4,6}$/.test(String(pin || ''))) {
     throw new Error('PIN must contain 4 to 6 digits');
   }
-  const existing = await pool.query('SELECT pin_hash FROM users WHERE id = $1', [userId]);
+  const existing = await pool.query('SELECT pin_hash, email, full_name FROM users WHERE id = $1', [userId]);
   if (existing.rows.length === 0) throw new Error('User not found');
   if (existing.rows[0].pin_hash && !(await bcrypt.compare(String(currentPin || ''), existing.rows[0].pin_hash))) {
     throw new Error('Current transaction PIN is incorrect');
   }
   const pinHash = await hashPassword(String(pin));
   await pool.query('UPDATE users SET pin_hash = $1 WHERE id = $2', [pinHash, userId]);
+  try {
+    await sendAccountSecurityEmail({ email: existing.rows[0].email, name: existing.rows[0].full_name, action: 'transaction PIN' });
+  } catch (emailError) {
+    console.error('[Auth] PIN security email failed:', emailError.message);
+  }
   return { success: true, message: 'Transaction PIN changed successfully' };
 };
 
@@ -604,6 +648,11 @@ const updateUserProfile = async (userId, updates) => {
     throw new Error('User not found');
   }
 
+  try {
+    await sendAccountSecurityEmail({ email: result.rows[0].email, name: result.rows[0].full_name, action: 'profile details' });
+  } catch (emailError) {
+    console.error('[Auth] Profile security email failed:', emailError.message);
+  }
   return result.rows[0];
 };
 
@@ -618,7 +667,7 @@ const changePassword = async (userId, currentPassword, newPassword) => {
     await client.query('BEGIN');
     // Get current password hash
     const userResult = await client.query(
-      'SELECT password_hash FROM users WHERE id = $1',
+      'SELECT password_hash, email, full_name FROM users WHERE id = $1',
       [userId]
     );
 
@@ -651,6 +700,11 @@ const changePassword = async (userId, currentPassword, newPassword) => {
     );
 
     await client.query('COMMIT');
+    try {
+      await sendAccountSecurityEmail({ email: user.email, name: user.full_name, action: 'password' });
+    } catch (emailError) {
+      console.error('[Auth] Password security email failed:', emailError.message);
+    }
     return { success: true, message: 'Password changed successfully' };
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});

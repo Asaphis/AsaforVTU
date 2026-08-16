@@ -173,13 +173,27 @@ const getWalletDeposits = async (req, res) => {
 const updateSettings = async (req, res) => {
   try {
     const incoming = req.body || {};
+    if (incoming.referralCampaignStartAt && incoming.referralCampaignEndAt && new Date(incoming.referralCampaignEndAt) < new Date(incoming.referralCampaignStartAt)) {
+      return res.status(400).json({ error: 'Referral campaign end must be after its start' });
+    }
     const body = { ...incoming };
     if (incoming.airtimeNetworks !== undefined) body.airtime_networks = incoming.airtimeNetworks;
     if (incoming.cashbackEnabled !== undefined) body.cashback_settings = { enabled: Boolean(incoming.cashbackEnabled) };
-    if (incoming.dailyReferralBudget !== undefined) body.referral_settings = { daily_budget: Number(incoming.dailyReferralBudget) };
+    if (incoming.dailyReferralBudget !== undefined || incoming.referralCampaignStartAt !== undefined || incoming.referralCampaignEndAt !== undefined) {
+      const existingReferral = await pool.query("SELECT value FROM settings WHERE key = 'referral_settings'");
+      const current = existingReferral.rows[0]?.value || {};
+      body.referral_settings = {
+        ...current,
+        ...(incoming.dailyReferralBudget !== undefined ? { daily_budget: Number(incoming.dailyReferralBudget) } : {}),
+        ...(incoming.referralCampaignStartAt !== undefined ? { campaign_start_at: incoming.referralCampaignStartAt || null } : {}),
+        ...(incoming.referralCampaignEndAt !== undefined ? { campaign_end_at: incoming.referralCampaignEndAt || null } : {})
+      };
+    }
     delete body.airtimeNetworks;
     delete body.cashbackEnabled;
     delete body.dailyReferralBudget;
+    delete body.referralCampaignStartAt;
+    delete body.referralCampaignEndAt;
 
     // Process each normalized setting key
     for (const [key, value] of Object.entries(body)) {

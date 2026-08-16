@@ -58,4 +58,22 @@ async function sendPasswordResetEmail({ email, token }) {
   });
 }
 
-module.exports = { sendEmail, sendVerificationEmail, sendPasswordResetEmail };
+async function sendReferralSignupEmail({ email, name, referredName }) {
+  return sendEmail({
+    to: email,
+    subject: 'Your referral joined Asafor VTU',
+    text: `${referredName || 'Someone'} joined Asafor VTU using your referral. Any eligible reward remains subject to the active referral campaign rules.`,
+    html: `<p>Hello ${name || 'there'},</p><p><strong>${referredName || 'Someone'}</strong> joined Asafor VTU using your referral.</p><p>Any reward is subject to the active campaign dates, budget, and qualifying purchase rules.</p>`
+  });
+}
+
+async function sendAccountSecurityEmail({ email, name, action }) {
+  return sendEmail({
+    to: email,
+    subject: `Asafor VTU security update: ${action}`,
+    text: `Hello ${name || 'there'}, your Asafor VTU ${action} was changed. If you did not make this change, contact support immediately.`,
+    html: `<p>Hello ${name || 'there'},</p><p>Your Asafor VTU <strong>${action}</strong> was changed.</p><p>If you did not make this change, contact support immediately.</p>`
+  });
+}
+
+module.exports = { sendEmail, sendVerificationEmail, sendPasswordResetEmail, sendReferralSignupEmail, sendAccountSecurityEmail };

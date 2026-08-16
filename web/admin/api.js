@@ -312,10 +312,10 @@ export const api = {
     const airtime = raw.airtime_networks || raw.airtimeNetworks || {};
     const cashback = raw.cashback_settings || raw.cashbackSettings || {};
     const referral = raw.referral_settings || raw.referralSettings || {};
-    return { airtimeNetworks: airtime, cashbackEnabled: Boolean(cashback.enabled), referralBudget: number(referral.daily_budget), webhook: '' };
+    return { airtimeNetworks: airtime, cashbackEnabled: Boolean(cashback.enabled), referralBudget: number(referral.daily_budget), referralCampaignStartAt: referral.campaign_start_at || '', referralCampaignEndAt: referral.campaign_end_at || '', webhook: '' };
   },
   async updateSettings(patch) {
-    return request('/api/admin/settings', { method: 'POST', body: { cashbackEnabled: Boolean(patch.cashbackEnabled), dailyReferralBudget: number(patch.referralBudget), ...(patch.airtimeNetworks ? { airtimeNetworks: patch.airtimeNetworks } : {}) } });
+    return request('/api/admin/settings', { method: 'POST', body: { cashbackEnabled: Boolean(patch.cashbackEnabled), dailyReferralBudget: number(patch.referralBudget), referralCampaignStartAt: patch.referralCampaignStartAt || null, referralCampaignEndAt: patch.referralCampaignEndAt || null, ...(patch.airtimeNetworks ? { airtimeNetworks: patch.airtimeNetworks } : {}) } });
   },
   async listNetworks() {
     const settings = await this.getSettings();
