@@ -90,7 +90,20 @@ router.post('/resend-verification', async (req, res) => {
   }
 });
 
-// Verify email
+// Verify email from a clickable email link.
+router.get('/verify-email', async (req, res) => {
+  try {
+    const token = String(req.query?.token || '').trim();
+    if (!token) return res.status(400).json({ error: 'Verification token is required', code: 'INVALID_VERIFICATION_TOKEN' });
+    const result = await verifyEmail(token);
+    res.json(result);
+  } catch (error) {
+    console.error('[Auth Routes] Verify email link error:', error);
+    res.status(400).json({ error: error.message || 'This verification link is invalid or expired', code: 'INVALID_VERIFICATION_TOKEN' });
+  }
+});
+
+// Verify email from an API request for backwards compatibility.
 router.post('/verify-email', async (req, res) => {
   try {
     const { token } = req.body;
