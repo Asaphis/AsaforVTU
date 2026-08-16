@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const pool = require('../config/database');
 const { generateToken, generateRefreshToken } = require('../middleware/auth');
-const { sendVerificationEmail, sendPasswordResetEmail, sendReferralSignupEmail, sendAccountSecurityEmail } = require('./emailService');
+const { sendVerificationOtpEmail, sendPasswordResetEmail, sendReferralSignupEmail, sendAccountSecurityEmail } = require('./emailService');
 
 const SALT_ROUNDS = 10;
 
@@ -55,7 +55,7 @@ const registerUser = async (userData) => {
     if (emailCheck.rows.length > 0) {
       const error = emailCheck.rows[0].email_verified
         ? new Error('Email already registered')
-        : new Error('This email is already registered but not verified. Please request a new verification email.');
+        : new Error('This email is already registered but not verified. Please request a new verification code.');
       error.code = emailCheck.rows[0].email_verified ? 'EMAIL_EXISTS' : 'EMAIL_NOT_VERIFIED';
       error.email = email;
       throw error;
@@ -128,41 +128,23 @@ const registerUser = async (userData) => {
       [user.id]
     );
 
-    // Handle referral reward
-    if (referredBy) {
-      const referrerResult = await client.query(
-        'SELECT id FROM users WHERE referral_code = $1',
-        [referredBy]
-      );
-
-      if (referrerResult.rows.length > 0) {
-        const referrerId = referrerResult.rows[0].id;
-
-        // Record referral
-        await client.query(
-          `INSERT INTO referrals (referrer_id, referred_id, referral_code)
-           VALUES ($1, $2, $3)`,
-          [referrerId, user.id, referredBy]
-        );
-      }
-    }
-
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const verificationCode = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
+    const verificationCodeHash = crypto.createHash('sha256').update(verificationCode).digest('hex');
+    const verificationExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
     await client.query(
-      `INSERT INTO email_verification_tokens (user_id, token, expires_at)
-       VALUES ($1, $2, $3)`,
-      [user.id, verificationToken, verificationExpiresAt]
+      `INSERT INTO email_verification_tokens (user_id, token, expires_at, attempts, last_sent_at)
+       VALUES ($1, $2, $3, 0, CURRENT_TIMESTAMP)`,
+      [user.id, verificationCodeHash, verificationExpiresAt]
     );
 
     await client.query('COMMIT');
 
     let verificationSent = false;
     try {
-      await sendVerificationEmail({ email: user.email, token: verificationToken });
+      await sendVerificationOtpEmail({ email: user.email, name: user.full_name, code: verificationCode });
       verificationSent = true;
     } catch (emailError) {
-      console.error('[Auth] Verification email delivery failed:', emailError.message);
+      console.error('[Auth] Verification OTP delivery failed:', emailError.message);
     }
 
     if (referralReferrer) {
@@ -184,10 +166,7 @@ const registerUser = async (userData) => {
       }
     }
 
-    const accessToken = generateToken(user.id, user.email, 'user');
-    const refreshToken = await generateRefreshToken(user.id);
-
-    return {
+        return {
       user: {
         id: user.id,
         email: user.email,
@@ -199,10 +178,7 @@ const registerUser = async (userData) => {
         created_at: user.created_at
       },
       verification_sent: verificationSent,
-      tokens: {
-        access_token: accessToken,
-        refresh_token: refreshToken
-      }
+      verification_required: true
     };
   } catch (error) {
     await client.query('ROLLBACK');
@@ -372,43 +348,39 @@ const logoutUser = async (refreshToken) => {
   );
 };
 
-// Verify email
-const verifyEmail = async (token) => {
+// Verify email with a one-time OTP.
+const verifyEmailOtp = async (email, code) => {
+  const normalizedEmail = String(email || '').toLowerCase().trim();
+  const normalizedCode = String(code || '').trim();
+  if (!/^\S+@\S+\.\S+$/.test(normalizedEmail) || !/^\d{6}$/.test(normalizedCode)) throw new Error('Enter the email and six-digit verification code');
+  const codeHash = crypto.createHash('sha256').update(normalizedCode).digest('hex');
   const client = await pool.connect();
-  
   try {
     await client.query('BEGIN');
-
-    // Find valid verification token
-    const tokenResult = await client.query(
-      `SELECT user_id, expires_at FROM email_verification_tokens
-       WHERE token = $1 AND verified_at IS NULL AND expires_at > CURRENT_TIMESTAMP`,
-      [token]
+    const userResult = await client.query('SELECT id, email_verified FROM users WHERE email = $1 FOR UPDATE', [normalizedEmail]);
+    if (!userResult.rows[0]) throw new Error('Invalid or expired verification code');
+    if (userResult.rows[0].email_verified) { await client.query('COMMIT'); return { success: true, message: 'Email is already verified' }; }
+    const activeResult = await client.query(
+      `SELECT id, user_id, token, attempts FROM email_verification_tokens
+       WHERE user_id = $1 AND verified_at IS NULL AND expires_at > CURRENT_TIMESTAMP
+       ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,
+      [userResult.rows[0].id]
     );
-
-    if (tokenResult.rows.length === 0) {
-      throw new Error('Invalid or expired verification token');
+    if (!activeResult.rows[0]) throw new Error('Invalid or expired verification code');
+    const active = activeResult.rows[0];
+    if (active.attempts >= 5) throw new Error('Too many incorrect codes. Request a new verification code.');
+    if (active.token !== codeHash) {
+      const nextAttempts = active.attempts + 1;
+      await client.query('UPDATE email_verification_tokens SET attempts = $1, expires_at = CASE WHEN $1 >= 5 THEN CURRENT_TIMESTAMP ELSE expires_at END WHERE id = $2', [nextAttempts, active.id]);
+      await client.query('COMMIT');
+      throw new Error(nextAttempts >= 5 ? 'Too many incorrect codes. Request a new verification code.' : 'Invalid verification code');
     }
-
-    const { user_id } = tokenResult.rows[0];
-
-    // Mark user as verified
-    await client.query(
-      'UPDATE users SET email_verified = TRUE WHERE id = $1',
-      [user_id]
-    );
-
-    // Mark token as verified
-    await client.query(
-      'UPDATE email_verification_tokens SET verified_at = CURRENT_TIMESTAMP WHERE token = $1',
-      [token]
-    );
-
+    await client.query('UPDATE users SET email_verified = TRUE WHERE id = $1', [active.user_id]);
+    await client.query('UPDATE email_verification_tokens SET verified_at = CURRENT_TIMESTAMP WHERE id = $1', [active.id]);
     await client.query('COMMIT');
-
     return { success: true, message: 'Email verified successfully' };
   } catch (error) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch {}
     throw error;
   } finally {
     client.release();
@@ -417,32 +389,22 @@ const verifyEmail = async (token) => {
 
 const resendVerificationEmail = async (email) => {
   const normalizedEmail = String(email || '').toLowerCase().trim();
-  if (!normalizedEmail) return { success: true, message: 'If the account exists, a verification link has been sent' };
-
+  if (!normalizedEmail) return { success: true, message: 'If the account exists, a verification code has been sent' };
   const client = await pool.connect();
   try {
-    const userResult = await client.query(
-      'SELECT id, email, email_verified FROM users WHERE email = $1',
-      [normalizedEmail]
-    );
-    if (userResult.rows.length === 0 || userResult.rows[0].email_verified) {
-      return { success: true, message: 'If the account exists, a verification link has been sent' };
-    }
-
+    const userResult = await client.query('SELECT id, email, full_name, email_verified FROM users WHERE email = $1', [normalizedEmail]);
+    if (userResult.rows.length === 0 || userResult.rows[0].email_verified) return { success: true, message: 'If the account exists, a verification code has been sent' };
     const user = userResult.rows[0];
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const activeResult = await client.query(`SELECT last_sent_at FROM email_verification_tokens WHERE user_id = $1 AND verified_at IS NULL AND expires_at > CURRENT_TIMESTAMP ORDER BY created_at DESC LIMIT 1`, [user.id]);
+    const lastSentAt = activeResult.rows[0]?.last_sent_at ? new Date(activeResult.rows[0].last_sent_at).getTime() : 0;
+    if (lastSentAt && Date.now() - lastSentAt < 60 * 1000) return { success: true, message: 'If the account exists, a verification code has been sent' };
+    const code = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
+    const codeHash = crypto.createHash('sha256').update(code).digest('hex');
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
     await client.query('UPDATE email_verification_tokens SET verified_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND verified_at IS NULL', [user.id]);
-    await client.query(
-      `INSERT INTO email_verification_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)`,
-      [user.id, token, expiresAt]
-    );
-    try {
-      await sendVerificationEmail({ email: user.email, token });
-    } catch (emailError) {
-      console.error('[Auth] Resend verification email failed:', emailError.message);
-    }
-    return { success: true, message: 'If the account exists, a verification link has been sent' };
+    await client.query(`INSERT INTO email_verification_tokens (user_id, token, expires_at, attempts, last_sent_at) VALUES ($1, $2, $3, 0, CURRENT_TIMESTAMP)`, [user.id, codeHash, expiresAt]);
+    try { await sendVerificationOtpEmail({ email: user.email, name: user.full_name, code }); } catch (emailError) { console.error('[Auth] Resend verification OTP failed:', emailError.message); }
+    return { success: true, message: 'If the account exists, a verification code has been sent' };
   } finally {
     client.release();
   }
@@ -719,7 +681,7 @@ module.exports = {
   loginUser,
   refreshAccessToken,
   logoutUser,
-  verifyEmail,
+  verifyEmailOtp,
   resendVerificationEmail,
   requestPasswordReset,
   resetPassword,

@@ -5,7 +5,7 @@ const {
   loginUser,
   refreshAccessToken,
   logoutUser,
-  verifyEmail,
+  verifyEmailOtp,
   requestPasswordReset,
   resetPassword,
   getUserById,
@@ -79,30 +79,26 @@ router.post('/logout', async (req, res) => {
   }
 });
 
-// Resend verification email. The response is intentionally generic.
+// Resend verification OTP. The response is intentionally generic.
 router.post('/resend-verification', async (req, res) => {
   try {
     const result = await resendVerificationEmail(req.body?.email);
     res.json(result);
   } catch (error) {
     console.error('[Auth Routes] Resend verification error:', error);
-    res.json({ success: true, message: 'If the account exists, a verification link has been sent' });
+    res.json({ success: true, message: 'If the account exists, a verification code has been sent' });
   }
 });
 
-// Verify email
+// Verify email with a one-time OTP. Link-based verification is no longer accepted.
 router.post('/verify-email', async (req, res) => {
   try {
-    const { token } = req.body;
-    
-    if (!token) {
-      return res.status(400).json({ error: 'Verification token is required' });
-    }
-
-    const result = await verifyEmail(token);
+    const { email, code } = req.body || {};
+    if (!email || !code) return res.status(400).json({ error: 'Email and verification code are required' });
+    const result = await verifyEmailOtp(email, code);
     res.json(result);
   } catch (error) {
-    console.error('[Auth Routes] Verify email error:', error);
+    console.error('[Auth Routes] Verify email OTP error:', error);
     res.status(400).json({ error: error.message });
   }
 });
