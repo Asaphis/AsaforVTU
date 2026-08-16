@@ -1,6 +1,6 @@
-# OSGHub VTU Mobile App
+# AsaforVTU Mobile App
 
-This is a Flutter project that wraps the [OSGHub VTU website](https://osghubvtu.onrender.com) into a native mobile application for Android and iOS.
+This is a Flutter project that opens the live [AsaforVTU customer platform](https://vtu.ferixas.com) in a branded mobile wrapper for Android and iOS. It starts on the public landing page so customers can explore the service before choosing **Create Account** or **Sign In**.
 
 ## Project Overview
 
@@ -10,7 +10,7 @@ This is a Flutter project that wraps the [OSGHub VTU website](https://osghubvtu.
   - Full-screen WebView integration
   - Native Splash Screen
   - Offline/No-Internet handling
-  - Deep Linking (Open `https://osghubvtu.onrender.com` links directly in the app)
+- Deep Linking (Open `https://vtu.ferixas.com` links directly in the app)
   - Native Navigation (Back button handling)
   - Loading Indicators
   - Brand Theme Integration
@@ -47,16 +47,16 @@ To change the website URL that the app loads:
 1. Open `lib/main.dart`.
 2. Find the line:
    ```dart
-   ..loadRequest(Uri.parse('https://osghubvtu.onrender.com'));
+   ..loadRequest(Uri.parse('https://vtu.ferixas.com'));
    ```
 3. Update the URL to your new address.
 4. Also update the Deep Link domain in `android/app/src/main/AndroidManifest.xml`:
    ```xml
-   <data android:scheme="https" android:host="osghubvtu.onrender.com" />
+   <data android:scheme="https" android:host="vtu.ferixas.com" />
    ```
 5. And for iOS in `ios/Runner/Runner.entitlements`:
    ```xml
-   <string>applinks:osghubvtu.onrender.com</string>
+   <string>applinks:vtu.ferixas.com</string>
    ```
 
 ### Updating App Icon and Splash Screen

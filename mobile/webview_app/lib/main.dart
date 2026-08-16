@@ -9,6 +9,9 @@ import 'package:app_links/app_links.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:io';
 
+const productionCustomerUrl = 'https://vtu.ferixas.com';
+const productionCustomerHost = 'vtu.ferixas.com';
+
 void main() {
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
@@ -239,7 +242,7 @@ class _WebViewAppState extends State<WebViewApp> {
   bool _isOffline = false;
   Future<bool> _hasRealConnection() async {
     try {
-      final result = await InternetAddress.lookup('asaforvtu.onrender.com');
+      final result = await InternetAddress.lookup(productionCustomerHost);
       if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) return true;
     } catch (_) {}
     try {
@@ -321,7 +324,10 @@ class _WebViewAppState extends State<WebViewApp> {
           },
         ),
       )
-      ..loadRequest(Uri.parse('https://asaforvtu.onrender.com/login'));
+      // Start every new session on the public landing page. The landing page
+      // provides the approved branded interface and lets the customer choose
+      // whether to create an account or sign in.
+      ..loadRequest(Uri.parse(productionCustomerUrl));
 
     if (controller.platform is AndroidWebViewController) {
       AndroidWebViewController.enableDebugging(true);
@@ -336,7 +342,7 @@ class _WebViewAppState extends State<WebViewApp> {
     _appLinks = AppLinks();
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
       debugPrint('Received deep link: $uri');
-      if (uri.toString().contains("asaforvtu.onrender.com")) {
+      if (uri.host == productionCustomerHost) {
         _controller.loadRequest(uri);
       }
     });
@@ -430,4 +436,3 @@ class _WebViewAppState extends State<WebViewApp> {
     );
   }
 }
-
