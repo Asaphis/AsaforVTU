@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { randomUUID } = require('crypto');
 const notificationService = require('../services/notificationService');
+const { sendSupportTicketCreatedEmail, sendSupportTeamTicketEmail } = require('../services/emailService');
 
 const router = express.Router();
 router.use(authenticate);
@@ -65,6 +66,14 @@ router.post('/tickets', upload.array('attachments', 3), async (req, res) => {
     const attachments = await createAttachments(client, ticket.id, messageResult.rows[0].id, req.user.id, req.files || []);
     await client.query('COMMIT');
     try { await notificationService.sendNotification(req.user.id, 'Support ticket created', `Your support ticket "${ticket.subject}" was received.`, 'support', { ticketId: ticket.id }); } catch (notificationError) { console.error('[Support Routes] Ticket notification failed:', notificationError.message); }
+    try {
+      const customer = await pool.query('SELECT email, full_name FROM users WHERE id = $1', [req.user.id]);
+      const recipient = customer.rows[0];
+      if (recipient?.email) await sendSupportTicketCreatedEmail({ email: recipient.email, name: recipient.full_name, subject: ticket.subject, ticketId: ticket.id });
+      await sendSupportTeamTicketEmail({ subject: ticket.subject, ticketId: ticket.id, customerName: recipient?.full_name, customerEmail: recipient?.email });
+    } catch (emailError) {
+      console.error('[Support Routes] Ticket email notification failed:', emailError.message);
+    }
     res.status(201).json({ ...ticket, attachments });
   } catch (error) {
     await client.query('ROLLBACK');

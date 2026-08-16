@@ -4,6 +4,7 @@ const flutterwaveService = require('../services/flutterwaveService');
 const transactionService = require('../services/transactionService');
 const paymentService = require('../services/paymentService');
 const notificationService = require('../services/notificationService');
+const { sendSupportFirstReplyEmail, sendSupportStatusEmail } = require('../services/emailService');
 
 const getStats = async (req, res) => {
   try {
@@ -592,9 +593,12 @@ const replyTicket = async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
     
-    const ticketResult = await pool.query('SELECT id, user_id, subject FROM support_tickets WHERE id = $1', [req.params.id]);
+    const ticketResult = await pool.query(`SELECT st.id, st.user_id, st.subject, st.status, u.email, u.full_name
+      FROM support_tickets st LEFT JOIN users u ON u.id = st.user_id WHERE st.id = $1`, [req.params.id]);
     if (!ticketResult.rows[0]) return res.status(404).json({ error: 'Ticket not found' });
     const ticket = ticketResult.rows[0];
+    const staffReplyCount = await pool.query('SELECT COUNT(*)::int AS count FROM support_messages WHERE ticket_id = $1 AND is_admin = true', [req.params.id]);
+    const firstStaffReply = Number(staffReplyCount.rows[0]?.count || 0) === 0;
     const result = await pool.query(
       `INSERT INTO support_messages (ticket_id, user_id, is_admin, message)
        VALUES ($1, $2, true, $3)
@@ -602,15 +606,21 @@ const replyTicket = async (req, res) => {
       [req.params.id, req.user.id, message]
     );
     try { await notificationService.sendNotification(ticket.user_id, 'Support replied', `Support replied to your ticket: ${ticket.subject}`, 'support', { ticketId: ticket.id, messageId: result.rows[0].id }); } catch (notificationError) { console.error('[Admin Controller] Support reply notification failed:', notificationError.message); }
-    
-    // Update ticket status
-    await pool.query(
-      `UPDATE support_tickets 
-       SET status = 'in_progress', updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $1 AND status = 'open'`,
-      [req.params.id]
-    );
-    
+    if (firstStaffReply && ticket.email) {
+      try { await sendSupportFirstReplyEmail({ email: ticket.email, name: ticket.full_name, subject: ticket.subject, ticketId: ticket.id }); } catch (emailError) { console.error('[Admin Controller] First support reply email failed:', emailError.message); }
+    }
+
+    // A first staff reply moves an open ticket into progress. Treat that as a real status transition.
+    if (ticket.status === 'open') {
+      await pool.query(
+        `UPDATE support_tickets SET status = 'in_progress', updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND status = 'open'`,
+        [req.params.id]
+      );
+      if (ticket.email) {
+        try { await sendSupportStatusEmail({ email: ticket.email, name: ticket.full_name, subject: ticket.subject, ticketId: ticket.id, status: 'in_progress' }); } catch (emailError) { console.error('[Admin Controller] Automatic support status email failed:', emailError.message); }
+      }
+    }
+
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('[Admin Controller] Reply ticket error:', error);
@@ -621,19 +631,25 @@ const replyTicket = async (req, res) => {
 const updateTicketStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    
-    if (!status) {
-      return res.status(400).json({ error: 'Status is required' });
+    const allowedStatuses = new Set(['open', 'in_progress', 'resolved', 'closed']);
+    if (!status || !allowedStatuses.has(status)) {
+      return res.status(400).json({ error: 'A valid ticket status is required' });
     }
-    
-    const ticketResult = await pool.query('SELECT id, user_id, subject FROM support_tickets WHERE id = $1', [req.params.id]);
+
+    const ticketResult = await pool.query(`SELECT st.id, st.user_id, st.subject, st.status, u.email, u.full_name
+      FROM support_tickets st LEFT JOIN users u ON u.id = st.user_id WHERE st.id = $1`, [req.params.id]);
     if (!ticketResult.rows[0]) return res.status(404).json({ error: 'Ticket not found' });
+    const ticket = ticketResult.rows[0];
+    if (ticket.status === status) return res.json({ success: true, changed: false, message: 'Ticket status is already set' });
     await pool.query(
       'UPDATE support_tickets SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [status, req.params.id]
     );
-    try { await notificationService.sendNotification(ticketResult.rows[0].user_id, 'Support ticket updated', `Your support ticket is now ${status}.`, 'support', { ticketId: req.params.id, status }); } catch (notificationError) { console.error('[Admin Controller] Support status notification failed:', notificationError.message); }
-    res.json({ success: true, message: 'Ticket status updated' });
+    try { await notificationService.sendNotification(ticket.user_id, 'Support ticket updated', `Your support ticket is now ${status}.`, 'support', { ticketId: req.params.id, status }); } catch (notificationError) { console.error('[Admin Controller] Support status notification failed:', notificationError.message); }
+    if (ticket.email) {
+      try { await sendSupportStatusEmail({ email: ticket.email, name: ticket.full_name, subject: ticket.subject, ticketId: ticket.id, status }); } catch (emailError) { console.error('[Admin Controller] Support status email failed:', emailError.message); }
+    }
+    res.json({ success: true, changed: true, message: 'Ticket status updated' });
   } catch (error) {
     console.error('[Admin Controller] Update ticket status error:', error);
     res.status(500).json({ error: error.message });

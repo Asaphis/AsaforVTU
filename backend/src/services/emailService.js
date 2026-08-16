@@ -6,6 +6,8 @@ const frontendUrl = () => (
 ).replace(/\/$/, '');
 
 const emailFrom = () => process.env.EMAIL_FROM || process.env.RESEND_FROM || 'no-reply@asaforvtu.com';
+const supportInbox = () => process.env.SUPPORT_EMAIL || process.env.SUPPORT_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || '';
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 
 async function sendEmail({ to, subject, html, text }) {
   if (!to) throw new Error('Recipient email is required');
@@ -72,8 +74,46 @@ async function sendAccountSecurityEmail({ email, name, action }) {
     to: email,
     subject: `Asafor VTU security update: ${action}`,
     text: `Hello ${name || 'there'}, your Asafor VTU ${action} was changed. If you did not make this change, contact support immediately.`,
-    html: `<p>Hello ${name || 'there'},</p><p>Your Asafor VTU <strong>${action}</strong> was changed.</p><p>If you did not make this change, contact support immediately.</p>`
+    html: `<p>Hello ${escapeHtml(name || 'there')},</p><p>Your Asafor VTU <strong>${escapeHtml(action)}</strong> was changed.</p><p>If you did not make this change, contact support immediately.</p>`
   });
 }
 
-module.exports = { sendEmail, sendVerificationEmail, sendPasswordResetEmail, sendReferralSignupEmail, sendAccountSecurityEmail };
+async function sendSupportTicketCreatedEmail({ email, name, subject, ticketId }) {
+  return sendEmail({
+    to: email,
+    subject: `Support ticket received: ${subject}`,
+    text: `Hello ${name || 'there'}, your support ticket "${subject}" was received. Ticket ID: ${ticketId}.`,
+    html: `<p>Hello ${escapeHtml(name || 'there')},</p><p>Your support ticket <strong>${escapeHtml(subject)}</strong> was received.</p><p>Ticket ID: <code>${escapeHtml(ticketId)}</code></p>`
+  });
+}
+
+async function sendSupportTeamTicketEmail({ subject, ticketId, customerName, customerEmail }) {
+  const to = supportInbox();
+  if (!to) return { delivered: false, skipped: true };
+  return sendEmail({
+    to,
+    subject: `New support ticket: ${subject}`,
+    text: `A new support ticket was opened by ${customerName || 'a customer'} (${customerEmail || 'no email'}). Subject: ${subject}. Ticket ID: ${ticketId}.`,
+    html: `<p>A new support ticket was opened.</p><p><strong>Customer:</strong> ${escapeHtml(customerName || 'Unknown')} (${escapeHtml(customerEmail || 'unknown')})</p><p><strong>Subject:</strong> ${escapeHtml(subject)}</p><p><strong>Ticket ID:</strong> <code>${escapeHtml(ticketId)}</code></p>`
+  });
+}
+
+async function sendSupportFirstReplyEmail({ email, name, subject, ticketId }) {
+  return sendEmail({
+    to: email,
+    subject: `Support replied to your ticket: ${subject}`,
+    text: `Hello ${name || 'there'}, support has replied to your ticket "${subject}". Ticket ID: ${ticketId}. Sign in to view the reply.`,
+    html: `<p>Hello ${escapeHtml(name || 'there')},</p><p>Support has replied to your ticket <strong>${escapeHtml(subject)}</strong>.</p><p>Ticket ID: <code>${escapeHtml(ticketId)}</code>. Sign in to view the reply.</p>`
+  });
+}
+
+async function sendSupportStatusEmail({ email, name, subject, ticketId, status }) {
+  return sendEmail({
+    to: email,
+    subject: `Support ticket updated: ${subject}`,
+    text: `Hello ${name || 'there'}, your support ticket "${subject}" is now ${status}. Ticket ID: ${ticketId}.`,
+    html: `<p>Hello ${escapeHtml(name || 'there')},</p><p>Your support ticket <strong>${escapeHtml(subject)}</strong> is now <strong>${escapeHtml(status)}</strong>.</p><p>Ticket ID: <code>${escapeHtml(ticketId)}</code>.</p>`
+  });
+}
+
+module.exports = { sendEmail, sendVerificationEmail, sendPasswordResetEmail, sendReferralSignupEmail, sendAccountSecurityEmail, sendSupportTicketCreatedEmail, sendSupportTeamTicketEmail, sendSupportFirstReplyEmail, sendSupportStatusEmail };
