@@ -1,4 +1,4 @@
-import { api } from './api.js';
+import { api } from './api.js?release=45c0307-r2';
 
 const app = document.querySelector('#app');
 const ui = {

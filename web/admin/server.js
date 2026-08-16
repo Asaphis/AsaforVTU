@@ -4,6 +4,7 @@ const path = require('path');
 
 const root = __dirname;
 const port = Number(process.env.PORT || 5003);
+const release = process.env.ADMIN_RELEASE || '45c0307-r2';
 const backendUrl = String(
   process.env.VTU_BACKEND_URL ||
   process.env.BACKEND_URL ||
@@ -78,6 +79,7 @@ async function proxyApi(req, res) {
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'same-origin',
+      'X-Admin-Release': release,
     });
     if (req.method === 'HEAD') return res.end();
     return res.end(responseBody);
@@ -108,9 +110,10 @@ const server = http.createServer(async (req, res) => {
     const extension = path.extname(filePath).toLowerCase();
     res.writeHead(200, {
       'Content-Type': contentTypes[extension] || 'application/octet-stream',
-      'Cache-Control': extension === '.html' ? 'no-cache, no-store, must-revalidate' : 'public, max-age=3600',
+      'Cache-Control': ['.html', '.js', '.css'].includes(extension) ? 'no-cache, no-store, must-revalidate' : 'public, max-age=3600',
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'same-origin',
+      'X-Admin-Release': release,
       'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'",
       'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
     });
