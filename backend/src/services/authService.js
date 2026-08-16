@@ -461,6 +461,9 @@ const requestPasswordReset = async (email) => {
 
 // Reset password
 const resetPassword = async (token, newPassword) => {
+  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    throw new Error('Password must be at least 8 characters');
+  }
   const client = await pool.connect();
   
   try {
@@ -547,15 +550,20 @@ const getUserById = async (userId) => {
 
 // Verify transaction PIN server-side. The stored hash never leaves the backend.
 const verifyPin = async (userId, pin) => {
-  if (!/^\\d{4,6}$/.test(String(pin || ''))) return false;
+  if (!/^\d{4,6}$/.test(String(pin || ''))) return false;
   const result = await pool.query('SELECT pin_hash FROM users WHERE id = $1', [userId]);
   if (result.rows.length === 0 || !result.rows[0].pin_hash) return false;
   return bcrypt.compare(String(pin), result.rows[0].pin_hash);
 };
 
-const changePin = async (userId, pin) => {
-  if (!/^\\d{4,6}$/.test(String(pin || ''))) {
+const changePin = async (userId, currentPin, pin) => {
+  if (!/^\d{4,6}$/.test(String(pin || ''))) {
     throw new Error('PIN must contain 4 to 6 digits');
+  }
+  const existing = await pool.query('SELECT pin_hash FROM users WHERE id = $1', [userId]);
+  if (existing.rows.length === 0) throw new Error('User not found');
+  if (existing.rows[0].pin_hash && !(await bcrypt.compare(String(currentPin || ''), existing.rows[0].pin_hash))) {
+    throw new Error('Current transaction PIN is incorrect');
   }
   const pinHash = await hashPassword(String(pin));
   await pool.query('UPDATE users SET pin_hash = $1 WHERE id = $2', [pinHash, userId]);
@@ -601,9 +609,13 @@ const updateUserProfile = async (userId, updates) => {
 
 // Change password
 const changePassword = async (userId, currentPassword, newPassword) => {
+  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    throw new Error('Password must be at least 8 characters');
+  }
   const client = await pool.connect();
   
   try {
+    await client.query('BEGIN');
     // Get current password hash
     const userResult = await client.query(
       'SELECT password_hash FROM users WHERE id = $1',
@@ -638,7 +650,11 @@ const changePassword = async (userId, currentPassword, newPassword) => {
       [userId]
     );
 
+    await client.query('COMMIT');
     return { success: true, message: 'Password changed successfully' };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
   } finally {
     client.release();
   }

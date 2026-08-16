@@ -185,7 +185,7 @@ router.post('/change-pin', authenticate, async (req, res) => {
     if (req.body?.pin !== req.body?.confirm_pin) {
       return res.status(400).json({ success: false, error: 'PINs do not match' });
     }
-    res.json(await changePin(req.user.id, req.body?.pin));
+    res.json(await changePin(req.user.id, req.body?.current_pin, req.body?.pin));
   } catch (error) {
     console.error('[Auth Routes] Change PIN error:', error);
     res.status(400).json({ success: false, error: error.message });

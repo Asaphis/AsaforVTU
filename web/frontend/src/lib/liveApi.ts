@@ -91,7 +91,7 @@ export const purchase = (type: string, amount: number, details: Record<string, u
 export const verifyPin = async (pin: string) => (await apiRequest("/api/auth/verify-pin", { method: "POST", body: JSON.stringify({ pin }) })).ok;
 export const updateProfile = (updates: Record<string, unknown>) => parse<LiveUser>(apiRequest("/api/auth/profile", { method: "PUT", body: JSON.stringify(updates) }));
 export const changePassword = (current_password: string, new_password: string) => parse(apiRequest("/api/auth/change-password", { method: "POST", body: JSON.stringify({ current_password, new_password }) }));
-export const changePin = (pin: string, confirm_pin: string) => parse(apiRequest("/api/auth/change-pin", { method: "POST", body: JSON.stringify({ pin, confirm_pin }) }));
+export const changePin = (current_pin: string, pin: string, confirm_pin: string) => parse(apiRequest("/api/auth/change-pin", { method: "POST", body: JSON.stringify({ current_pin, pin, confirm_pin }) }));
 export const getTickets = async () => { try { return await parse<any[]>(await apiRequest("/api/support/tickets")); } catch { return []; } };
 export const getTicketMessages = async (ticketId: string) => { try { return await parse<any[]>(await apiRequest(`/api/support/tickets/${ticketId}/messages`)); } catch { return []; } };
 const ticketForm = (values: Record<string, string>, attachments: File[]) => { const form = new FormData(); Object.entries(values).forEach(([key, value]) => form.append(key, value)); attachments.forEach(file => form.append("attachments", file)); return form; };
