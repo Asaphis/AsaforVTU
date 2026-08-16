@@ -80,7 +80,7 @@ const financeSummary = async ({ userId = null, start = null, end = null } = {}) 
      FROM transactions t WHERE ${filters.join(' AND ')}`,
     params
   );
-  return summary.rows[0];
+  return summary;
 };
 
 const resolveFinanceUser = async (req) => {
