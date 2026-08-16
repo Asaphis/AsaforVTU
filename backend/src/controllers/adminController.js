@@ -180,7 +180,7 @@ const updateSettings = async (req, res) => {
     const body = { ...incoming };
     if (incoming.airtimeNetworks !== undefined) body.airtime_networks = incoming.airtimeNetworks;
     if (incoming.cashbackEnabled !== undefined) body.cashback_settings = { enabled: Boolean(incoming.cashbackEnabled) };
-    if (incoming.automatedFundingEnabled !== undefined || incoming.manualBankName !== undefined || incoming.manualAccountName !== undefined || incoming.manualAccountNumber !== undefined || incoming.manualFundingInstructions !== undefined) {
+    if (incoming.automatedFundingEnabled !== undefined || incoming.manualBankName !== undefined || incoming.manualAccountName !== undefined || incoming.manualAccountNumber !== undefined || incoming.manualWhatsappNumber !== undefined || incoming.manualFundingInstructions !== undefined) {
       const existingFunding = await pool.query("SELECT value FROM settings WHERE key = 'wallet_funding_settings'");
       const currentFunding = existingFunding.rows[0]?.value || {};
       const mergedFunding = {
@@ -189,6 +189,7 @@ const updateSettings = async (req, res) => {
         ...(incoming.manualBankName !== undefined ? { manual_bank_name: String(incoming.manualBankName).trim() } : {}),
         ...(incoming.manualAccountName !== undefined ? { manual_account_name: String(incoming.manualAccountName).trim() } : {}),
         ...(incoming.manualAccountNumber !== undefined ? { manual_account_number: String(incoming.manualAccountNumber).trim() } : {}),
+        ...(incoming.manualWhatsappNumber !== undefined ? { manual_whatsapp_number: String(incoming.manualWhatsappNumber).trim() } : {}),
         ...(incoming.manualFundingInstructions !== undefined ? { manual_instructions: String(incoming.manualFundingInstructions).trim() } : {})
       };
       if (mergedFunding.automated_enabled === false && (!mergedFunding.manual_bank_name || !mergedFunding.manual_account_name || !mergedFunding.manual_account_number)) {
@@ -215,6 +216,7 @@ const updateSettings = async (req, res) => {
     delete body.manualBankName;
     delete body.manualAccountName;
     delete body.manualAccountNumber;
+    delete body.manualWhatsappNumber;
     delete body.manualFundingInstructions;
 
     // Process each normalized setting key

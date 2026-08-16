@@ -83,7 +83,7 @@ export const markNotificationRead = (id: string) => parse<LiveNotification>(apiR
 export const markAllNotificationsRead = () => parse<{ notifications: number }>(apiRequest("/api/notifications/read-all", { method: "POST" }));
 export const getServices = async () => { try { return await parse<ServiceItem[]>(await apiRequest("/api/services")); } catch { return []; } };
 export const getPlans = async () => { try { const plans = await parse<any[]>(await apiRequest("/api/plans")); return plans.map(plan => ({ ...plan, price_user: Number(plan.price_user ?? plan.priceUser ?? 0), priceUser: Number(plan.price_user ?? plan.priceUser ?? 0) })) as ServicePlan[]; } catch { return []; } };
-export type FundingOptions = { automated_enabled: boolean; manual: { bank_name: string; account_name: string; account_number: string; instructions: string } };
+export type FundingOptions = { automated_enabled: boolean; manual: { bank_name: string; account_name: string; account_number: string; whatsapp_number: string; instructions: string } };
 export const getFundingOptions = () => parse<FundingOptions>(apiRequest("/api/payments/funding-options"));
 export const initiateFunding = (amount: number) => parse<{ tx_ref: string; link: string }>(apiRequest("/api/payments/initiate", { method: "POST", body: JSON.stringify({ amount }) }));
 export const verifyFunding = (tx_ref: string) => parse<{ success: boolean; message: string }>(apiRequest("/api/payments/verify", { method: "POST", body: JSON.stringify({ tx_ref }) }));

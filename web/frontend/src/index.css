@@ -95,3 +95,8 @@ body{background:#FFF7F4;color:#162337}.app-shell{background:#F8FBFC}.app-content
 .manual-funding-panel dt{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#718094}
 .manual-funding-panel dd{margin:0;font-weight:700;text-align:right;color:#162b45;overflow-wrap:anywhere}
 @media (max-width:640px){.manual-funding-panel dl div{display:block}.manual-funding-panel dd{text-align:left;margin-top:3px}}
+
+.manual-copy-button{margin-left:10px;border:0;border-radius:8px;padding:5px 8px;background:var(--blue);color:var(--ink);font-size:10px;font-weight:700}
+.manual-copy-button:disabled{display:none}
+.manual-funding-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+@media (max-width:640px){.manual-funding-actions{display:grid}.manual-funding-actions .asf-btn{width:100%}}
