@@ -180,6 +180,22 @@ const updateSettings = async (req, res) => {
     const body = { ...incoming };
     if (incoming.airtimeNetworks !== undefined) body.airtime_networks = incoming.airtimeNetworks;
     if (incoming.cashbackEnabled !== undefined) body.cashback_settings = { enabled: Boolean(incoming.cashbackEnabled) };
+    if (incoming.automatedFundingEnabled !== undefined || incoming.manualBankName !== undefined || incoming.manualAccountName !== undefined || incoming.manualAccountNumber !== undefined || incoming.manualFundingInstructions !== undefined) {
+      const existingFunding = await pool.query("SELECT value FROM settings WHERE key = 'wallet_funding_settings'");
+      const currentFunding = existingFunding.rows[0]?.value || {};
+      const mergedFunding = {
+        ...currentFunding,
+        ...(incoming.automatedFundingEnabled !== undefined ? { automated_enabled: Boolean(incoming.automatedFundingEnabled) } : {}),
+        ...(incoming.manualBankName !== undefined ? { manual_bank_name: String(incoming.manualBankName).trim() } : {}),
+        ...(incoming.manualAccountName !== undefined ? { manual_account_name: String(incoming.manualAccountName).trim() } : {}),
+        ...(incoming.manualAccountNumber !== undefined ? { manual_account_number: String(incoming.manualAccountNumber).trim() } : {}),
+        ...(incoming.manualFundingInstructions !== undefined ? { manual_instructions: String(incoming.manualFundingInstructions).trim() } : {})
+      };
+      if (mergedFunding.automated_enabled === false && (!mergedFunding.manual_bank_name || !mergedFunding.manual_account_name || !mergedFunding.manual_account_number)) {
+        return res.status(400).json({ error: 'Configure the manual bank name, account name, and account number before disabling automated funding.' });
+      }
+      body.wallet_funding_settings = mergedFunding;
+    }
     if (incoming.dailyReferralBudget !== undefined || incoming.referralCampaignStartAt !== undefined || incoming.referralCampaignEndAt !== undefined) {
       const existingReferral = await pool.query("SELECT value FROM settings WHERE key = 'referral_settings'");
       const current = existingReferral.rows[0]?.value || {};
@@ -195,6 +211,11 @@ const updateSettings = async (req, res) => {
     delete body.dailyReferralBudget;
     delete body.referralCampaignStartAt;
     delete body.referralCampaignEndAt;
+    delete body.automatedFundingEnabled;
+    delete body.manualBankName;
+    delete body.manualAccountName;
+    delete body.manualAccountNumber;
+    delete body.manualFundingInstructions;
 
     // Process each normalized setting key
     for (const [key, value] of Object.entries(body)) {

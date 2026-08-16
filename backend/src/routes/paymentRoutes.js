@@ -2,14 +2,41 @@ const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const paymentService = require('../services/paymentService');
 const flutterwaveService = require('../services/flutterwaveService');
+const pool = require('../config/database');
 
 const router = express.Router();
 router.use(authenticate);
+
+const defaultFundingSettings = {
+  automated_enabled: true,
+  manual_bank_name: '',
+  manual_account_name: '',
+  manual_account_number: '',
+  manual_instructions: 'Transfer the amount to the account shown and contact Support with your proof of payment.'
+};
+const getFundingSettings = async () => {
+  const result = await pool.query("SELECT value FROM settings WHERE key = 'wallet_funding_settings'");
+  return { ...defaultFundingSettings, ...(result.rows[0]?.value || {}) };
+};
+
+router.get('/funding-options', async (req, res) => {
+  try {
+    const settings = await getFundingSettings();
+    res.json({ automated_enabled: settings.automated_enabled !== false, manual: { bank_name: settings.manual_bank_name, account_name: settings.manual_account_name, account_number: settings.manual_account_number, instructions: settings.manual_instructions } });
+  } catch (error) {
+    console.error('[Payment Routes] Funding options error:', error);
+    res.status(500).json({ error: 'Unable to load wallet funding options.' });
+  }
+});
 
 router.post('/initiate', async (req, res) => {
   try {
     const amount = Number(req.body?.amount);
     if (!Number.isFinite(amount) || amount < 100) return res.status(400).json({ error: 'Invalid amount. Minimum is ₦100.' });
+    const fundingSettings = await getFundingSettings();
+    if (fundingSettings.automated_enabled === false) {
+      return res.status(409).json({ code: 'AUTOMATED_FUNDING_DISABLED', error: 'Automated wallet funding is temporarily unavailable. Use the manual bank-transfer instructions instead.', funding_mode: 'manual', manual: { bank_name: fundingSettings.manual_bank_name, account_name: fundingSettings.manual_account_name, account_number: fundingSettings.manual_account_number, instructions: fundingSettings.manual_instructions } });
+    }
 
     const txRef = flutterwaveService.generateReference();
     const payment = await paymentService.createPayment({

@@ -86,3 +86,12 @@ body{background:#FFF7F4;color:#162337}.app-shell{background:#F8FBFC}.app-content
 @media(max-width:560px){.auth-card:has(.auth-form--register){align-items:flex-start;padding-top:58px}}
 
 @media(max-width:560px){.auth-card:has(.auth-form--login){align-items:flex-start;padding-top:58px}}
+
+.manual-funding-panel{margin:14px 0;padding:18px;border:1px solid rgba(193,139,39,.28);border-radius:18px;background:rgba(255,248,226,.72)}
+.manual-funding-panel h3{margin:10px 0 6px;color:#162b45}
+.manual-funding-panel p{margin:6px 0 12px;line-height:1.55;color:#536477}
+.manual-funding-panel dl{display:grid;gap:8px;margin:14px 0}
+.manual-funding-panel dl div{display:flex;justify-content:space-between;gap:16px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.82)}
+.manual-funding-panel dt{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#718094}
+.manual-funding-panel dd{margin:0;font-weight:700;text-align:right;color:#162b45;overflow-wrap:anywhere}
+@media (max-width:640px){.manual-funding-panel dl div{display:block}.manual-funding-panel dd{text-align:left;margin-top:3px}}
