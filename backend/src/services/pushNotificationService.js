@@ -90,7 +90,12 @@ const deliverPushNotification = async ({ userId, notificationId, title, message,
     data: dataPayload(type, metadata, destination, notificationId),
     android: {
       priority: 'high',
-      notification: { channelId: 'asaforvtu_account_alerts', sound: 'default', imageUrl },
+      notification: {
+        channelId: 'asaforvtu_account_alerts',
+        sound: 'default',
+        icon: 'ic_stat_asaforvtu',
+        imageUrl,
+      },
     },
     apns: {
       payload: { aps: { sound: 'default', contentAvailable: true } },

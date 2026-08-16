@@ -22,17 +22,23 @@ const createNotification = async (notificationData) => {
 
 const sendNotification = async (userId, title, message, type = 'transaction', metadata = {}) => {
   const notification = await createNotification({ user_id: userId, type, title, message, metadata });
-  Promise.resolve(
-    deliverPushNotification({
+  let push = { delivered: false, reason: 'not_attempted' };
+  try {
+    // Await the provider result so admin campaigns and delivery history reflect
+    // the real FCM outcome instead of marking every in-app record as queued.
+    push = await deliverPushNotification({
       userId,
       notificationId: notification.id,
       title,
       message,
       type,
       metadata,
-    })
-  ).catch((error) => console.error('[Notification Service] Push delivery failed:', error.message));
-  return notification;
+    });
+  } catch (error) {
+    console.error('[Notification Service] Push delivery failed:', error.message);
+    push = { delivered: false, reason: error.message };
+  }
+  return { ...notification, push };
 };
 
 // Get notifications by user ID

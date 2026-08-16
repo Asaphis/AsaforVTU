@@ -107,17 +107,21 @@ const sendCampaign = async (req, res) => {
       [req.user.id, title, message, JSON.stringify(channels), audience, destination, imageUrl, JSON.stringify({ recipientCount: recipients.rows.length })]
     );
 
-    const summary = { recipients: recipients.rows.length, push: { queued: 0, failed: 0 }, email: { sent: 0, failed: 0, skipped: 0 } };
+    const summary = { recipients: recipients.rows.length, push: { sent: 0, failed: 0, noDevices: 0 }, email: { sent: 0, failed: 0, skipped: 0 } };
     for (const user of recipients.rows) {
       if (channels.includes('push')) {
         try {
-          await notificationService.sendNotification(user.id, title, message, 'announcement', {
+          const notification = await notificationService.sendNotification(user.id, title, message, 'announcement', {
             campaignId: campaign.rows[0].id,
             deep_link: destination,
             image_url: imageUrl || undefined,
           });
-          await recordDelivery(campaign.rows[0].id, user.id, 'push', 'queued', destination);
-          summary.push.queued += 1;
+          const delivery = notification.push || { delivered: false, reason: 'unknown' };
+          const status = delivery.delivered ? 'sent' : delivery.reason === 'no_registered_devices' ? 'skipped' : 'failed';
+          await recordDelivery(campaign.rows[0].id, user.id, 'push', status, destination, JSON.stringify(delivery));
+          if (status === 'sent') summary.push.sent += 1;
+          else if (status === 'skipped') summary.push.noDevices += 1;
+          else summary.push.failed += 1;
         } catch (error) {
           await recordDelivery(campaign.rows[0].id, user.id, 'push', 'failed', destination, error.message);
           summary.push.failed += 1;

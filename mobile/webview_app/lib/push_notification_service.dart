@@ -93,10 +93,10 @@ class PushNotificationService {
     });
   }
 
-  Future<void> registerAuthenticatedDevice(String accessToken) async {
+  Future<bool> registerAuthenticatedDevice(String accessToken) async {
     _authenticatedAccessToken = accessToken;
     final token = _deviceToken ?? await _messaging.getToken();
-    if (token == null || token.isEmpty || accessToken.isEmpty) return;
+    if (token == null || token.isEmpty || accessToken.isEmpty) return false;
 
     try {
       final response = await http
@@ -112,11 +112,14 @@ class PushNotificationService {
           .timeout(const Duration(seconds: 8));
       if (response.statusCode < 200 || response.statusCode >= 300) {
         debugPrint('Push-token registration deferred: ${response.statusCode}');
+        return false;
       }
+      return true;
     } catch (error) {
       // The app remains fully usable if the registration endpoint is offline,
       // unavailable during rollout, or the device has no network connection.
       debugPrint('Push-token registration deferred: $error');
+      return false;
     }
   }
 
@@ -135,7 +138,7 @@ class PushNotificationService {
               'Important AsaforVTU account and transaction notifications.',
           importance: Importance.high,
           priority: Priority.high,
-          icon: '@mipmap/launcher_icon',
+          icon: '@drawable/ic_stat_asaforvtu',
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,

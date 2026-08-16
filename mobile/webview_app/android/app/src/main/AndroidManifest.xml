@@ -7,6 +7,15 @@
         android:label="AsaforVTU"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="asaforvtu_account_alerts" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_asaforvtu" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/asaforvtu_notification_color" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

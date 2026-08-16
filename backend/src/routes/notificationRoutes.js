@@ -34,7 +34,14 @@ router.post('/devices', async (req, res) => {
     if (!['android', 'ios'].includes(platform)) {
       return res.status(400).json({ error: 'Device platform must be android or ios.' });
     }
-    const result = await require('../config/database').query(
+    const database = require('../config/database');
+    // A reinstall can produce a new FCM token. Keep the newest installation
+    // active for this user/platform and retire stale tokens immediately.
+    await database.query(
+      'UPDATE notification_devices SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND platform = $2 AND token <> $3',
+      [req.user.id, platform, token]
+    );
+    const result = await database.query(
       `INSERT INTO notification_devices (user_id, token, platform, is_active, last_seen_at)
        VALUES ($1, $2, $3, TRUE, CURRENT_TIMESTAMP)
        ON CONFLICT (token) DO UPDATE
@@ -55,8 +62,8 @@ router.delete('/devices', async (req, res) => {
   try {
     const token = String(req.body?.token || '').trim();
     if (!token) return res.status(400).json({ error: 'Device token is required.' });
-    await require('../config/database').query(
-      'UPDATE notification_devices SET is_active = FALSE WHERE user_id = $1 AND token = $2',
+      await require('../config/database').query(
+      'UPDATE notification_devices SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND token = $2',
       [req.user.id, token]
     );
     return res.status(204).end();

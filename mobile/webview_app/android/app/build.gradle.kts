@@ -7,6 +7,10 @@ if (releasePropertiesFile.exists()) {
     releaseProperties.load(FileInputStream(releasePropertiesFile))
 }
 
+check(releasePropertiesFile.exists()) {
+    "A production AsaforVTU build requires android/key.properties and the Ferixas release keystore."
+}
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -47,15 +51,21 @@ android {
                 keyPassword = releaseProperties["keyPassword"] as String
                 storeFile = rootProject.file(releaseProperties["storeFile"] as String)
                 storePassword = releaseProperties["storePassword"] as String
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = true
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = if (releasePropertiesFile.exists()) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
-            isMinifyEnabled = true
-            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
+            isDebuggable = false
+            isJniDebuggable = false
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 
