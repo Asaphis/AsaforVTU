@@ -120,6 +120,10 @@ app.get('/api/plans', async (req, res) => {
     // Transform to match expected format
     const transformedPlans = plans.map(plan => ({
       id: plan.id,
+      serviceId: plan.service_id,
+      service_id: plan.service_id,
+      serviceSlug: plan.service_slug,
+      service_slug: plan.service_slug,
       network: plan.network,
       networkKey: plan.network_key,
       name: plan.name,
@@ -129,6 +133,7 @@ app.get('/api/plans', async (req, res) => {
       priceApi: Number(plan.price_api),
       active: plan.is_active,
       metadata: plan.metadata,
+      variationId: plan.metadata?.variation_id || null,
       createdAt: plan.created_at
     }));
     
