@@ -4,8 +4,8 @@ const pool = require('../src/config/database');
 const providerService = require('../src/services/providerService');
 
 const APPLY = process.argv.includes('--apply');
-const ESTIMATE = process.argv.find((arg) => arg.startsWith('--estimate-provider-cost='));
-const ESTIMATE_RATE = ESTIMATE ? Number(ESTIMATE.split('=')[1]) : null;
+const PROFIT_MARGIN = Number(process.env.SEED_PROFIT_MARGIN || '0.10');
+if (!Number.isFinite(PROFIT_MARGIN) || PROFIT_MARGIN <= 0) throw new Error('SEED_PROFIT_MARGIN must be a positive number, for example 0.10');
 const cataloguePath = path.join(__dirname, '../data/mtn_catalogue.json');
 
 function normalize(value) {
@@ -107,19 +107,21 @@ async function main() {
 
     const id = String(match.id);
     usedIds.add(id);
-    const actualProviderCost = providerCost(match.item);
-    const estimatedProviderCost = ESTIMATE_RATE && ESTIMATE_RATE > 0 && ESTIMATE_RATE < 1
-      ? Math.round((Number(plan.priceUser) * ESTIMATE_RATE) * 100) / 100
-      : null;
-    const cost = actualProviderCost ?? estimatedProviderCost;
-    const source = actualProviderCost !== null ? 'provider_api' : 'estimated_seed';
-    const profit = cost === null ? null : Math.round((Number(plan.priceUser) - cost) * 100) / 100;
-    const margin = cost === null || Number(plan.priceUser) <= 0 ? null : Math.round((profit / Number(plan.priceUser)) * 100000) / 1000;
+    const cost = providerCost(match.item);
+    if (cost === null || cost <= 0) {
+      results.push({ status: 'missing_cost', plan: plan.name, providerPlanId: id, cataloguePrice: plan.priceUser });
+      continue;
+    }
+    const customerPrice = Math.ceil((cost * (1 + PROFIT_MARGIN)) / 5) * 5;
+    const profit = Math.round((customerPrice - cost) * 100) / 100;
+    const margin = Math.round((profit / customerPrice) * 100000) / 1000;
+    const source = 'provider_api';
     results.push({
-      status: cost === null ? 'missing_cost' : 'matched',
+      status: 'matched',
       plan: plan.name,
       providerPlanId: id,
-      customerPrice: Number(plan.priceUser),
+      cataloguePrice: Number(plan.priceUser),
+      customerPrice,
       providerCost: cost,
       profit,
       margin,
@@ -128,7 +130,7 @@ async function main() {
       duration: plan.duration
     });
 
-    if (!APPLY || cost === null) continue;
+    if (!APPLY) continue;
     const metadata = {
       variation_id: id,
       provider_plan_id: id,
@@ -146,14 +148,14 @@ async function main() {
         `UPDATE service_plans SET network = 'MTN', name = $1, sub_type = $2, price_user = $3, price_api = $4,
          provider_cost = $4, profit_amount = $5, profit_margin_percent = $6, pricing_source = $7,
          provider_plan_id = $8, metadata = $9, is_active = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $10`,
-        [plan.name, plan.category, plan.priceUser, cost, profit, margin, source, id, JSON.stringify(metadata), existing.rows[0].id]
+        [plan.name, plan.category, customerPrice, cost, profit, margin, source, id, JSON.stringify(metadata), existing.rows[0].id]
       );
     } else {
       await client.query(
         `INSERT INTO service_plans (service_id, network, network_key, name, type, sub_type, price_user, price_api,
          provider_cost, profit_amount, profit_margin_percent, pricing_source, provider_plan_id, is_active, metadata)
          VALUES ($1, 'MTN', 'mtn', $2, 'data', $3, $4, $5, $5, $6, $7, $8, $9, TRUE, $10)`,
-        [serviceId, plan.name, plan.category, plan.priceUser, cost, profit, margin, source, id, JSON.stringify(metadata)]
+        [serviceId, plan.name, plan.category, customerPrice, cost, profit, margin, source, id, JSON.stringify(metadata)]
       );
     }
   }
@@ -163,16 +165,9 @@ async function main() {
       return acc;
     }, {});
     console.log(JSON.stringify({ mode: APPLY ? 'apply' : 'preview', total: results.length, summary, results }, null, 2));
-    if (summary.unmatched || summary.missing_cost) {
-      if (APPLY && transactionStarted) await client.query('ROLLBACK');
-      if (APPLY) throw new Error(`Seed aborted: ${summary.unmatched || 0} unmatched and ${summary.missing_cost || 0} missing provider-cost rows; no plans were changed.`);
-      process.exitCode = 2;
-    } else if (APPLY && transactionStarted) {
-      await client.query('COMMIT');
-    } else if (transactionStarted) {
-      await client.query('ROLLBACK');
-    }
-    if (!APPLY) console.log('\\nPreview only. Re-run with --apply after reviewing the matches.');
+    if (APPLY && !summary.matched) throw new Error('Seed aborted: no provider-backed plans matched; no plans were changed.');
+    if (APPLY && transactionStarted) await client.query('COMMIT');
+    if (!APPLY) console.log(`\\nPreview only. Provider cost is authoritative; customer price uses ${(PROFIT_MARGIN * 100).toFixed(1)}% profit markup. Re-run with --apply after reviewing the matches.`);
   } catch (error) {
     if (transactionStarted) await client.query('ROLLBACK').catch(() => {});
     throw error;
