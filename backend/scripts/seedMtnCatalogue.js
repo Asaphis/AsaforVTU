@@ -72,8 +72,8 @@ function matchVariation(plan, variations, usedIds) {
   return ranked[0];
 }
 
-async function findDataService() {
-  const result = await pool.query("SELECT id FROM services WHERE slug = 'data' LIMIT 1");
+async function findDataService(db) {
+  const result = await db.query("SELECT id FROM services WHERE slug = 'data' LIMIT 1");
   if (!result.rows[0]) throw new Error("The 'data' service does not exist. Run the normal database migrations first.");
   return result.rows[0].id;
 }
@@ -87,11 +87,18 @@ async function main() {
   const variations = Array.isArray(providerResult.data) ? providerResult.data : [];
   if (!variations.length) throw new Error('Provider returned no MTN data variations; no plans were changed.');
 
-  const serviceId = await findDataService();
-  const usedIds = new Set();
-  const results = [];
+  const client = await pool.connect();
+  let transactionStarted = false;
+  try {
+    if (APPLY) {
+      await client.query('BEGIN');
+      transactionStarted = true;
+    }
+    const serviceId = await findDataService(client);
+    const usedIds = new Set();
+    const results = [];
 
-  for (const plan of catalogue) {
+    for (const plan of catalogue) {
     const match = matchVariation(plan, variations, usedIds);
     if (!match) {
       results.push({ status: 'unmatched', plan: plan.name, customerPrice: plan.priceUser });
@@ -130,19 +137,19 @@ async function main() {
       pricing_source: source,
       imported_by: 'seedMtnCatalogue'
     };
-    const existing = await pool.query(
+    const existing = await client.query(
       `SELECT id FROM service_plans WHERE service_id = $1 AND network_key = 'mtn' AND type = 'data' AND (provider_plan_id = $2 OR metadata->>'variation_id' = $2 OR name = $3) LIMIT 1`,
       [serviceId, id, plan.name]
     );
     if (existing.rows[0]) {
-      await pool.query(
+      await client.query(
         `UPDATE service_plans SET network = 'MTN', name = $1, sub_type = $2, price_user = $3, price_api = $4,
          provider_cost = $4, profit_amount = $5, profit_margin_percent = $6, pricing_source = $7,
          provider_plan_id = $8, metadata = $9, is_active = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $10`,
         [plan.name, plan.category, plan.priceUser, cost, profit, margin, source, id, JSON.stringify(metadata), existing.rows[0].id]
       );
     } else {
-      await pool.query(
+      await client.query(
         `INSERT INTO service_plans (service_id, network, network_key, name, type, sub_type, price_user, price_api,
          provider_cost, profit_amount, profit_margin_percent, pricing_source, provider_plan_id, is_active, metadata)
          VALUES ($1, 'MTN', 'mtn', $2, 'data', $3, $4, $5, $5, $6, $7, $8, $9, TRUE, $10)`,
@@ -151,13 +158,27 @@ async function main() {
     }
   }
 
-  const summary = results.reduce((acc, row) => {
-    acc[row.status] = (acc[row.status] || 0) + 1;
-    return acc;
-  }, {});
-  console.log(JSON.stringify({ mode: APPLY ? 'apply' : 'preview', total: results.length, summary, results }, null, 2));
-  if (!APPLY) console.log('\nPreview only. Re-run with --apply after reviewing the matches.');
-  if (summary.unmatched || summary.missing_cost) process.exitCode = 2;
+    const summary = results.reduce((acc, row) => {
+      acc[row.status] = (acc[row.status] || 0) + 1;
+      return acc;
+    }, {});
+    console.log(JSON.stringify({ mode: APPLY ? 'apply' : 'preview', total: results.length, summary, results }, null, 2));
+    if (summary.unmatched || summary.missing_cost) {
+      if (APPLY && transactionStarted) await client.query('ROLLBACK');
+      if (APPLY) throw new Error(`Seed aborted: ${summary.unmatched || 0} unmatched and ${summary.missing_cost || 0} missing provider-cost rows; no plans were changed.`);
+      process.exitCode = 2;
+    } else if (APPLY && transactionStarted) {
+      await client.query('COMMIT');
+    } else if (transactionStarted) {
+      await client.query('ROLLBACK');
+    }
+    if (!APPLY) console.log('\\nPreview only. Re-run with --apply after reviewing the matches.');
+  } catch (error) {
+    if (transactionStarted) await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 main().catch((error) => {
