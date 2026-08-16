@@ -61,7 +61,8 @@ dev_dependencies:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/logo.png"
+  image_path: "assets/app_icon.png"
+  remove_alpha_ios: true
   min_sdk_android: 21
 
 
@@ -78,12 +79,14 @@ flutter:
 
   assets:
     - assets/logo.png
+    - assets/app_icon.png
+    - assets/splash_logo.png
 
 flutter_native_splash:
   color: "#ffffff"
-  image: assets/logo.png
+  image: assets/splash_logo.png
   android_12:
-    image: assets/logo.png
+    image: assets/splash_logo.png
     color: "#ffffff"
 
   # An image asset can refer to one or more resolution-specific "variants", see

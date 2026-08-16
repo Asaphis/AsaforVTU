@@ -12,6 +12,7 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'page_loading_overlay.dart';
 import 'push_notification_service.dart';
 
 const productionCustomerUrl = 'https://vtu.ferixas.com';
@@ -56,12 +57,12 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1200),
     );
     _scale = Tween<double>(
-      begin: 0.82,
+      begin: 0.94,
       end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _fade = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -75,7 +76,7 @@ class _SplashScreenState extends State<SplashScreen>
       end: 1.15,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
-    Future.delayed(const Duration(milliseconds: 2200), () {
+    Future.delayed(const Duration(milliseconds: 3000), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const WebViewApp()),
@@ -132,8 +133,8 @@ class _SplashScreenState extends State<SplashScreen>
                             Transform.scale(
                               scale: _ring.value,
                               child: Container(
-                                width: 160,
-                                height: 160,
+                                width: 210,
+                                height: 210,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
@@ -146,9 +147,9 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                             ),
                             Image.asset(
-                              'assets/logo.png',
-                              width: 170,
-                              height: 170,
+                              'assets/splash_logo.png',
+                              width: 230,
+                              height: 230,
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stack) =>
                                   const Icon(
@@ -261,6 +262,7 @@ class _WebViewAppState extends State<WebViewApp> {
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   bool _isLoading = true;
   bool _isOffline = false;
+  Timer? _loadingFinishTimer;
   Future<bool> _hasRealConnection() async {
     try {
       final result = await InternetAddress.lookup(productionCustomerHost);
@@ -303,21 +305,15 @@ class _WebViewAppState extends State<WebViewApp> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
-            if (progress == 100) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
+            if (progress < 100) _beginPageLoading();
+            if (progress == 100) _finishPageLoadingAfterSettle();
           },
           onPageStarted: (String url) {
-            setState(() {
-              _isLoading = true;
-            });
+            _beginPageLoading();
           },
           onPageFinished: (String url) {
-            setState(() {
-              _isLoading = false;
-            });
+            _finishPageLoadingAfterSettle();
+            unawaited(_installPageLoadingBridge());
             unawaited(_syncPushTokenFromAuthenticatedSession());
           },
           onWebResourceError: (WebResourceError error) {
@@ -363,6 +359,57 @@ class _WebViewAppState extends State<WebViewApp> {
     }
 
     _controller = controller;
+  }
+
+  void _beginPageLoading() {
+    _loadingFinishTimer?.cancel();
+    if (mounted && !_isLoading) {
+      setState(() => _isLoading = true);
+    }
+  }
+
+  void _finishPageLoadingAfterSettle() {
+    _loadingFinishTimer?.cancel();
+    _loadingFinishTimer = Timer(const Duration(milliseconds: 420), () {
+      if (mounted && !_isOffline) setState(() => _isLoading = false);
+    });
+  }
+
+  Future<void> _installPageLoadingBridge() async {
+    const script = '''
+      (() => {
+        if (window.__asaforVtuLoadingBridge) return;
+        window.__asaforVtuLoadingBridge = true;
+        let activeRequests = 0;
+        let hideTimer;
+        const rootId = 'asafor-vtu-route-loader';
+        const addStyles = () => {
+          if (document.getElementById('asafor-vtu-route-loader-style')) return;
+          const style = document.createElement('style');
+          style.id = 'asafor-vtu-route-loader-style';
+          style.textContent = '#'+rootId+'{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.92);opacity:0;pointer-events:none;transition:opacity .22s ease}#'+rootId+'.show{opacity:1;pointer-events:auto}#'+rootId+' div{display:flex;align-items:center;gap:11px;padding:13px 16px;border:1px solid #e4edf4;border-radius:14px;background:#fff;box-shadow:0 12px 36px rgba(10,31,68,.12);color:#0a1f44;font:600 13px system-ui,-apple-system,sans-serif}#'+rootId+' i{width:16px;height:16px;border:2px solid #d7e5f5;border-top-color:#0a1f44;border-radius:50%;animation:asafor-vtu-spin .7s linear infinite}@keyframes asafor-vtu-spin{to{transform:rotate(360deg)}}';
+          document.head.appendChild(style);
+        };
+        const loader = () => {
+          addStyles();
+          let node = document.getElementById(rootId);
+          if (!node) { node = document.createElement('div'); node.id = rootId; node.innerHTML = '<div><i></i><span>Loading securely…</span></div>'; document.body.appendChild(node); }
+          return node;
+        };
+        const show = () => { clearTimeout(hideTimer); requestAnimationFrame(() => loader().classList.add('show')); };
+        const hide = () => { hideTimer = setTimeout(() => loader().classList.remove('show'), 320); };
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = (...args) => { activeRequests += 1; show(); return originalFetch(...args).finally(() => { activeRequests = Math.max(0, activeRequests - 1); if (!activeRequests) hide(); }); };
+        ['pushState','replaceState'].forEach((name) => { const original = history[name]; history[name] = function(...args){ show(); const result = original.apply(this,args); hide(); return result; }; });
+        window.addEventListener('popstate', () => { show(); hide(); });
+        document.addEventListener('click', (event) => { const anchor = event.target.closest && event.target.closest('a[href]'); if (anchor && anchor.origin === location.origin) show(); }, true);
+      })();
+    ''';
+    try {
+      await _controller.runJavaScript(script);
+    } catch (error) {
+      debugPrint('Website loading bridge deferred: $error');
+    }
   }
 
   Future<void> _initPushNotifications() async {
@@ -466,6 +513,7 @@ class _WebViewAppState extends State<WebViewApp> {
 
   @override
   void dispose() {
+    _loadingFinishTimer?.cancel();
     _linkSubscription?.cancel();
     _connectivitySubscription?.cancel();
     super.dispose();
@@ -490,8 +538,7 @@ class _WebViewAppState extends State<WebViewApp> {
           child: Stack(
             children: [
               if (!_isOffline) WebViewWidget(controller: _controller),
-              if (_isLoading && !_isOffline)
-                const Center(child: CircularProgressIndicator()),
+              if (_isLoading && !_isOffline) const PageLoadingOverlay(),
               if (_isOffline)
                 Center(
                   child: Column(

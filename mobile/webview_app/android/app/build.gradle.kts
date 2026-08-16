@@ -1,3 +1,12 @@
+import java.io.FileInputStream
+import java.util.Properties
+
+val releaseProperties = Properties()
+val releasePropertiesFile = rootProject.file("key.properties")
+if (releasePropertiesFile.exists()) {
+    releaseProperties.load(FileInputStream(releasePropertiesFile))
+}
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -31,12 +40,28 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            if (releasePropertiesFile.exists()) {
+                keyAlias = releaseProperties["keyAlias"] as String
+                keyPassword = releaseProperties["keyPassword"] as String
+                storeFile = rootProject.file(releaseProperties["storeFile"] as String)
+                storePassword = releaseProperties["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (releasePropertiesFile.exists()) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
         }
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 }
 
