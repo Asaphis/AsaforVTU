@@ -1,0 +1,450 @@
+[
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "75mb (Gifting) (1 days)",
+    "duration": "1 days",
+    "priceUser": 75.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "110MB (Gifting) (1 days)",
+    "duration": "1 days",
+    "priceUser": 99.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "230MB (Gifting) (1 days)",
+    "duration": "1 days",
+    "priceUser": 199.0
+  },
+  {
+    "network": "MTN",
+    "category": "Awoof",
+    "name": "1GB 1 DAY (dont buy if owing )",
+    "duration": "1 day",
+    "priceUser": 250.0
+  },
+  {
+    "network": "MTN",
+    "category": "GIFTING",
+    "name": "1GB 30 DAYS (dont buy if owing )",
+    "duration": "30 days",
+    "priceUser": 280.0
+  },
+  {
+    "network": "MTN",
+    "category": "SME",
+    "name": "500MB (SME) (30 days)",
+    "duration": "30 days",
+    "priceUser": 290.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "500mb (Gifting) (1 days)",
+    "duration": "1 days",
+    "priceUser": 355.0
+  },
+  {
+    "network": "MTN",
+    "category": "SME weekly",
+    "name": "1GBB (SME weekly) (7 days)",
+    "duration": "7 days",
+    "priceUser": 389.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting For only MTN pulse users",
+    "name": "750mb (Gifting For only MTN pulse users) (3 days)",
+    "duration": "3 days",
+    "priceUser": 449.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +YouTube 1.1GB",
+    "name": "MTN Gifting +YouTube 1.1GB 500MBB 7 days",
+    "duration": "7 days",
+    "priceUser": 494.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +1.5mins free call",
+    "name": "1GB (Gifting +1.5mins free call) (1 days)",
+    "duration": "1 days",
+    "priceUser": 495.0
+  },
+  {
+    "network": "MTN",
+    "category": "SME",
+    "name": "1GB (SME) (30 days)",
+    "duration": "30 days",
+    "priceUser": 539.0
+  },
+  {
+    "network": "MTN",
+    "category": "Awoof",
+    "name": "2.5 gb 1 day gifting",
+    "duration": "1 day",
+    "priceUser": 545.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +YouTube 100mb",
+    "name": "1.5GB (Gifting +YouTube 100mb) (2 days)",
+    "duration": "2 days",
+    "priceUser": 585.0
+  },
+  {
+    "network": "MTN",
+    "category": "SME2",
+    "name": "1GB (SME2) (30 days)",
+    "duration": "30 days",
+    "priceUser": 669.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "2gb (Gifting) (2 days)",
+    "duration": "2 days",
+    "priceUser": 730.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting For only MTN pulse users",
+    "name": "1.2GB (Gifting For only MTN pulse users) (7 days)",
+    "duration": "7 days",
+    "priceUser": 749.0
+  },
+  {
+    "network": "MTN",
+    "category": "SME",
+    "name": "2gb 7 day sme",
+    "duration": "7 days",
+    "priceUser": 750.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "2.5 gb 1 day gifting",
+    "duration": "1 day",
+    "priceUser": 760.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +YouTube 1.1GB",
+    "name": "1.0GB (Gifting +YouTube 1.1GB) (7 days)",
+    "duration": "7 days",
+    "priceUser": 810.0
+  },
+  {
+    "network": "MTN",
+    "category": "SME",
+    "name": "2GB (SME) (30 days)",
+    "duration": "30 days",
+    "priceUser": 820.0
+  },
+  {
+    "network": "MTN",
+    "category": "AWOOF",
+    "name": "2.5GB (AWOOF) (1 days)",
+    "duration": "1 days",
+    "priceUser": 889.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "2.5GBB (Gifting) (2 days)",
+    "duration": "2 days",
+    "priceUser": 892.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "3.2GB (Gifting) (2 days)",
+    "duration": "2 days",
+    "priceUser": 981.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +YouTube 1.1GB",
+    "name": "1.5GBB (Gifting +YouTube 1.1GB) (7 days)",
+    "duration": "7 days",
+    "priceUser": 983.0
+  },
+  {
+    "network": "MTN",
+    "category": "SME2",
+    "name": "2GB (SME2) (30 days)",
+    "duration": "30 days",
+    "priceUser": 1099.0
+  },
+  {
+    "network": "MTN",
+    "category": "AWOOF GIFTING",
+    "name": "5GB SPECIAL 30 DAYS (DONT BUY IF IN DEPT)",
+    "duration": "30 days",
+    "priceUser": 1160.0
+  },
+  {
+    "network": "MTN",
+    "category": "SME",
+    "name": "3GB (SME) (30 days)",
+    "duration": "30 days",
+    "priceUser": 1200.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +2mins free call+YouTube 2.2GB",
+    "name": "2.0GB (Gifting +2mins free call+YouTube 2.2GB) (30 days)",
+    "duration": "30 days",
+    "priceUser": 1470.0
+  },
+  {
+    "network": "MTN",
+    "category": "AWOOF",
+    "name": "3.5GB (AWOOF) (7 days)",
+    "duration": "7 days",
+    "priceUser": 1509.0
+  },
+  {
+    "network": "MTN",
+    "category": "SME2",
+    "name": "3GB (SME2) (30 days)",
+    "duration": "30 days",
+    "priceUser": 1598.0
+  },
+  {
+    "network": "MTN",
+    "category": "SME",
+    "name": "5GB (SME) (30 days)",
+    "duration": "30 days",
+    "priceUser": 1600.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +2mins free call+YouTube 2.2GB",
+    "name": "2.7GB (Gifting +2mins free call+YouTube 2.2GB) (30 days)",
+    "duration": "30 days",
+    "priceUser": 1970.0
+  },
+  {
+    "network": "MTN",
+    "category": "SME2",
+    "name": "5GB (SME2) (30 days)",
+    "duration": "30 days",
+    "priceUser": 2050.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +2mins free call+YouTube 2.2GB",
+    "name": "3.5GB (Gifting +2mins free call+YouTube 2.2GB) (30 days)",
+    "duration": "30 days",
+    "priceUser": 2450.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "6GB (Gifting) (7 days)",
+    "duration": "7 days",
+    "priceUser": 2498.0
+  },
+  {
+    "network": "MTN",
+    "category": "SME",
+    "name": "10GB (SME) (30 days)",
+    "duration": "30 days",
+    "priceUser": 3150.0
+  },
+  {
+    "network": "MTN",
+    "category": "Special offer",
+    "name": "6.75GB (Special offer) (30 days)",
+    "duration": "30 days",
+    "priceUser": 3250.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "11GB (Gifting) (7 days)",
+    "duration": "7 days",
+    "priceUser": 3420.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +YouTube 2.2GB",
+    "name": "7.0GB (Gifting +YouTube 2.2GB) (30 days)",
+    "duration": "30 days",
+    "priceUser": 3450.0
+  },
+  {
+    "network": "MTN",
+    "category": "AWOOF",
+    "name": "11GB (AWOOF) (7 days)",
+    "duration": "7 days",
+    "priceUser": 3490.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +10mins free call+YouTube 2.3GB",
+    "name": "10GB (Gifting +10mins free call+YouTube 2.3GB) (30 days)",
+    "duration": "30 days",
+    "priceUser": 4400.0
+  },
+  {
+    "network": "MTN",
+    "category": "Special offer",
+    "name": "14.5GB (Special offer) (30 days)",
+    "duration": "30 days",
+    "priceUser": 4994.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +YouTube 2.3GB",
+    "name": "12.5GB (Gifting +YouTube 2.3GB) (30 days)",
+    "duration": "30 days",
+    "priceUser": 5400.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +10mins free call+YouTube 2.3GB",
+    "name": "16.5GB (Gifting +10mins free call+YouTube 2.3GB) (30 days)",
+    "duration": "30 days",
+    "priceUser": 6400.0
+  },
+  {
+    "network": "MTN",
+    "category": "SME2",
+    "name": "10GB (SME2) (30 days)",
+    "duration": "30 days",
+    "priceUser": 7150.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +YouTube 4GB",
+    "name": "20.0GB (Gifting +YouTube 4GB) (30 days)",
+    "duration": "30 days",
+    "priceUser": 7399.0
+  },
+  {
+    "network": "MTN",
+    "category": "AWOOF",
+    "name": "20GB (AWOOF) (30 days)",
+    "duration": "30 days",
+    "priceUser": 7499.99
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting broadband (WiFi SIM only)",
+    "name": "30GB (Gifting broadband (WiFi SIM only)) (30 days)",
+    "duration": "30 days",
+    "priceUser": 8990.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting +YouTube 4GB",
+    "name": "25GB (Gifting +YouTube 4GB) (30 days)",
+    "duration": "30 days",
+    "priceUser": 8995.09
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "36GB (Gifting) (30 days)",
+    "duration": "30 days",
+    "priceUser": 10700.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting broadband (WiFi SIM only)",
+    "name": "45GB (Gifting broadband (WiFi SIM only)) (30 days)",
+    "duration": "30 days",
+    "priceUser": 14500.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "65GB (Gifting) (30 days)",
+    "duration": "30 days",
+    "priceUser": 15980.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "75GB (Gifting) (30 days)",
+    "duration": "30 days",
+    "priceUser": 17700.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting broadband (WiFi SIM only)",
+    "name": "120GB (Gifting broadband (WiFi SIM only)) (30 days)",
+    "duration": "30 days",
+    "priceUser": 24000.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "90GB (Gifting) (60 days)",
+    "duration": "60 days",
+    "priceUser": 24995.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "165GB (Gifting) (30 days)",
+    "duration": "30 days",
+    "priceUser": 34200.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting broadband (WiFi SIM only)",
+    "name": "200.0GB (Gifting broadband (WiFi SIM only)) (60 days)",
+    "duration": "60 days",
+    "priceUser": 38100.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "150GB (Gifting) (60 days)",
+    "duration": "60 days",
+    "priceUser": 40200.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "250GB (Gifting) (30 days)",
+    "duration": "30 days",
+    "priceUser": 54999.73
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting broadband (WiFi SIM only)",
+    "name": "450GB (Gifting broadband (WiFi SIM only)) (90 days)",
+    "duration": "90 days",
+    "priceUser": 76699.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "480GB (Gifting) (90 days)",
+    "duration": "90 days",
+    "priceUser": 89970.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting",
+    "name": "800GB (Gifting) (365 days)",
+    "duration": "365 days",
+    "priceUser": 126321.0
+  },
+  {
+    "network": "MTN",
+    "category": "Gifting broadband (WiFi SIM only)",
+    "name": "1.5TB (Gifting broadband (WiFi SIM only)) (365 days)",
+    "duration": "365 days",
+    "priceUser": 225000.0
+  }
+]

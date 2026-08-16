@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "migrate": "node scripts/runMigration.js"
+    "migrate": "node scripts/runMigration.js",
+    "seed:mtn": "node scripts/seedMtnCatalogue.js"
   },
   "keywords": [],
   "author": "",
