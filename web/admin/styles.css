@@ -78,3 +78,6 @@ body{min-width:0}
   .viewport{padding-inline:20px}
   .table-wrap table{min-width:760px}
 }
+
+.manual-accounts-editor{margin:18px 0;padding:16px;border:1px solid #e5edf0;border-radius:12px;background:#f8fbfc}.manual-accounts-editor>header{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px}.manual-accounts-editor>header b,.manual-accounts-editor>header span{display:block}.manual-accounts-editor>header span{margin-top:4px;color:#71808b;font-size:11px}.manual-account-row{padding:14px 0;border-top:1px solid #e5edf0}.manual-account-row:first-child{border-top:0}.manual-account-row .checkbox{align-self:end;margin-bottom:9px}.manual-account-row .text-action{margin-top:4px;color:#a9473d}
+@media(max-width:560px){.manual-accounts-editor>header{align-items:stretch;flex-direction:column}.manual-accounts-editor>header .button{width:100%}}

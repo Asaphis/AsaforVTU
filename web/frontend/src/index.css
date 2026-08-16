@@ -100,3 +100,6 @@ body{background:#FFF7F4;color:#162337}.app-shell{background:#F8FBFC}.app-content
 .manual-copy-button:disabled{display:none}
 .manual-funding-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
 @media (max-width:640px){.manual-funding-actions{display:grid}.manual-funding-actions .asf-btn{width:100%}}
+
+.manual-account-select{display:block;margin:14px 0;font-size:11px;font-weight:700;color:var(--ink)}
+.manual-account-select select{display:block;width:100%;margin-top:7px;padding:11px 12px;border:1px solid var(--line);border-radius:10px 3px 10px 3px;background:var(--card);color:var(--ink)}

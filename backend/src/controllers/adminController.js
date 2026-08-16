@@ -180,7 +180,7 @@ const updateSettings = async (req, res) => {
     const body = { ...incoming };
     if (incoming.airtimeNetworks !== undefined) body.airtime_networks = incoming.airtimeNetworks;
     if (incoming.cashbackEnabled !== undefined) body.cashback_settings = { enabled: Boolean(incoming.cashbackEnabled) };
-    if (incoming.automatedFundingEnabled !== undefined || incoming.manualBankName !== undefined || incoming.manualAccountName !== undefined || incoming.manualAccountNumber !== undefined || incoming.manualWhatsappNumber !== undefined || incoming.manualFundingInstructions !== undefined) {
+    if (incoming.automatedFundingEnabled !== undefined || incoming.manualBankName !== undefined || incoming.manualAccountName !== undefined || incoming.manualAccountNumber !== undefined || incoming.manualWhatsappNumber !== undefined || incoming.manualAccounts !== undefined || incoming.manualFundingInstructions !== undefined) {
       const existingFunding = await pool.query("SELECT value FROM settings WHERE key = 'wallet_funding_settings'");
       const currentFunding = existingFunding.rows[0]?.value || {};
       const mergedFunding = {
@@ -189,11 +189,13 @@ const updateSettings = async (req, res) => {
         ...(incoming.manualBankName !== undefined ? { manual_bank_name: String(incoming.manualBankName).trim() } : {}),
         ...(incoming.manualAccountName !== undefined ? { manual_account_name: String(incoming.manualAccountName).trim() } : {}),
         ...(incoming.manualAccountNumber !== undefined ? { manual_account_number: String(incoming.manualAccountNumber).trim() } : {}),
+        ...(incoming.manualAccounts !== undefined ? { manual_accounts: Array.isArray(incoming.manualAccounts) ? incoming.manualAccounts.map((account, index) => ({ id: String(account.id || `manual-${index + 1}`).slice(0, 80), bank_name: String(account.bank_name || '').trim(), account_name: String(account.account_name || '').trim(), account_number: String(account.account_number || '').trim(), enabled: account.enabled !== false })) .filter(account => account.bank_name && account.account_name && account.account_number) : [] } : {}),
         ...(incoming.manualWhatsappNumber !== undefined ? { manual_whatsapp_number: String(incoming.manualWhatsappNumber).trim() } : {}),
         ...(incoming.manualFundingInstructions !== undefined ? { manual_instructions: String(incoming.manualFundingInstructions).trim() } : {})
       };
-      if (mergedFunding.automated_enabled === false && (!mergedFunding.manual_bank_name || !mergedFunding.manual_account_name || !mergedFunding.manual_account_number)) {
-        return res.status(400).json({ error: 'Configure the manual bank name, account name, and account number before disabling automated funding.' });
+      const hasManualAccount = (Array.isArray(mergedFunding.manual_accounts) && mergedFunding.manual_accounts.some(account => account.enabled !== false && account.bank_name && account.account_name && account.account_number)) || Boolean(mergedFunding.manual_bank_name && mergedFunding.manual_account_name && mergedFunding.manual_account_number);
+      if (mergedFunding.automated_enabled === false && !hasManualAccount) {
+        return res.status(400).json({ error: 'Configure at least one complete manual bank account before disabling automated funding.' });
       }
       body.wallet_funding_settings = mergedFunding;
     }
@@ -216,6 +218,7 @@ const updateSettings = async (req, res) => {
     delete body.manualBankName;
     delete body.manualAccountName;
     delete body.manualAccountNumber;
+    delete body.manualAccounts;
     delete body.manualWhatsappNumber;
     delete body.manualFundingInstructions;
 
