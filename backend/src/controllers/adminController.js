@@ -896,7 +896,7 @@ const generateVerificationLink = async (req, res) => {
     const result = await resendVerificationEmail(targetEmail);
     res.json({ ...result, redirectUrl });
   } catch (error) {
-    console.error('[Admin Controller] Send verification OTP error:', error);
+    console.error('[Admin Controller] Generate verification link error:', error);
     res.status(500).json({ error: error.message });
   }
 };

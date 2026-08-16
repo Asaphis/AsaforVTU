@@ -58,7 +58,7 @@ export const parse = async <T>(response: Response | Promise<Response>): Promise<
 };
 
 export const register = async (data: { full_name: string; username: string; phone: string; email: string; password: string; pin: string; referral_code?: string }) =>
-  parse<{ user: LiveUser; verification_sent: boolean; verification_required: boolean }>(await fetch(`${API_BASE}/api/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }));
+  parse<{ user: LiveUser; verification_sent: boolean }>(await fetch(`${API_BASE}/api/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }));
 
 export const login = async (email: string, password: string) => {
   const payload = await parse<{ user: LiveUser; tokens?: { access_token: string; refresh_token: string } }>(await fetch(`${API_BASE}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }));
@@ -70,7 +70,6 @@ export const login = async (email: string, password: string) => {
 export const logout = async () => { const refresh = refreshToken(); clearSession(); if (!refresh) return; try { await fetch(`${API_BASE}/api/auth/logout`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refresh_token: refresh }), signal: AbortSignal.timeout(4000) }); } catch {} };
 export const currentUser = async (): Promise<LiveUser | null> => { if (!accessToken()) return null; try { const payload = await parse<any>(await apiRequest("/api/auth/me")); const user = payload?.user || payload; if (!user?.id || !user?.email) throw new LiveApiError("The session response is invalid", "INVALID_SESSION_RESPONSE", payload); persistUser(user); return user as LiveUser; } catch { return null; } };
 export const resendVerification = async (email: string) => parse(await fetch(`${API_BASE}/api/auth/resend-verification`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }));
-export const verifyEmailOtp = async (email: string, code: string) => parse<{ success: boolean; message: string }>(await fetch(`${API_BASE}/api/auth/verify-email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, code }) }));
 export const requestReset = async (email: string) => parse(await fetch(`${API_BASE}/api/auth/forgot-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }));
 export const resetPassword = async (token: string, password: string) => parse(await fetch(`${API_BASE}/api/auth/reset-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, new_password: password }) }));
 

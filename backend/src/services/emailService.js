@@ -40,12 +40,13 @@ async function sendEmail({ to, subject, html, text }) {
   return { delivered: false, development: true };
 }
 
-async function sendVerificationOtpEmail({ email, name, code }) {
+async function sendVerificationEmail({ email, token }) {
+  const link = `${frontendUrl()}/verify-email?token=${encodeURIComponent(token)}`;
   return sendEmail({
     to: email,
-    subject: `${code} is your Asafor VTU verification code`,
-    text: `Hello ${name || 'there'}, your Asafor VTU verification code is ${code}. It expires in 5 minutes. Do not share this code with anyone.`,
-    html: `<p>Hello ${escapeHtml(name || 'there')},</p><p>Use this verification code to activate your Asafor VTU account:</p><p style="font-size:32px;font-weight:700;letter-spacing:8px">${escapeHtml(code)}</p><p>This code expires in <strong>5 minutes</strong> and can be used once. Do not share it with anyone.</p>`
+    subject: 'Verify your Asafor VTU account',
+    text: `Verify your account by opening: ${link}`,
+    html: `<p>Verify your Asafor VTU account:</p><p><a href="${link}">Verify email address</a></p><p>This link expires in 24 hours.</p>`
   });
 }
 
@@ -115,4 +116,4 @@ async function sendSupportStatusEmail({ email, name, subject, ticketId, status }
   });
 }
 
-module.exports = { sendEmail, sendVerificationOtpEmail, sendPasswordResetEmail, sendReferralSignupEmail, sendAccountSecurityEmail, sendSupportTicketCreatedEmail, sendSupportTeamTicketEmail, sendSupportFirstReplyEmail, sendSupportStatusEmail };
+module.exports = { sendEmail, sendVerificationEmail, sendPasswordResetEmail, sendReferralSignupEmail, sendAccountSecurityEmail, sendSupportTicketCreatedEmail, sendSupportTeamTicketEmail, sendSupportFirstReplyEmail, sendSupportStatusEmail };
