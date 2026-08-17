@@ -36,7 +36,7 @@ router.post('/devices', async (req, res) => {
     }
     const database = require('../config/database');
     const account = await database.query(
-      `SELECT email, full_name
+      `SELECT email, full_name, last_login_at
        FROM users
        WHERE id = $1
        LIMIT 1`,
@@ -69,7 +69,25 @@ router.post('/devices', async (req, res) => {
        RETURNING id, platform, is_active, last_seen_at`,
       [req.user.id, token, platform]
     );
-    return res.status(201).json({ device: result.rows[0] });
+    const loginAt = new Date(account.rows[0]?.last_login_at || 0).getTime();
+    const loginWasRecent = Number.isFinite(loginAt) && Date.now() - loginAt >= 0 && Date.now() - loginAt < 2 * 60 * 1000;
+    let loginPush = null;
+    if (loginWasRecent) {
+      try {
+        const { deliverPushNotification } = require('../services/pushNotificationService');
+        loginPush = await deliverPushNotification({
+          userId: req.user.id,
+          notificationId: '',
+          title: 'Welcome back',
+          message: 'You signed in successfully. Review your wallet, activity, and support updates.',
+          type: 'account',
+          metadata: { event: 'login', login_at: new Date(loginAt).toISOString() },
+        });
+      } catch (pushError) {
+        loginPush = { delivered: false, reason: pushError.message || 'login_push_retry_failed' };
+      }
+    }
+    return res.status(201).json({ device: result.rows[0], loginPush });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
