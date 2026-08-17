@@ -17,7 +17,7 @@ const notificationUploadDirectory = path.resolve(process.env.NOTIFICATION_UPLOAD
 fs.mkdirSync(notificationUploadDirectory, { recursive: true });
 const notificationUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: Number(process.env.MAX_NOTIFICATION_IMAGE_MB || 5) * 1024 * 1024, files: 1 },
+  limits: { fileSize: Number(process.env.MAX_NOTIFICATION_IMAGE_MB || 10) * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, callback) => callback(null, new Set(['image/jpeg', 'image/png', 'image/webp']).has(file.mimetype)),
 });
 

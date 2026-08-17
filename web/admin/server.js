@@ -55,7 +55,8 @@ function readBody(req, limit = 1024 * 1024) {
 
 async function proxyApi(req, res) {
   const original = new URL(req.url || '/', 'http://localhost');
-  const body = ['GET', 'HEAD'].includes(req.method || '') ? undefined : await readBody(req);
+  const isNotificationUpload = req.method === 'POST' && (original.pathname.endsWith('/communications/upload') || original.pathname.endsWith('/notifications/upload-banner'));
+  const body = ['GET', 'HEAD'].includes(req.method || '') ? undefined : await readBody(req, isNotificationUpload ? 12 * 1024 * 1024 : 1024 * 1024);
   const headers = { Accept: 'application/json' };
   const authorization = req.headers.authorization;
   const adminEmail = req.headers['x-admin-email'];
