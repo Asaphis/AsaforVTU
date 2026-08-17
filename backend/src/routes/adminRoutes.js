@@ -171,8 +171,6 @@ router.put('/plans/:id', adminController.updatePlan);
 router.delete('/plans/:id', adminController.deletePlan);
 
 const legacyUploadRouter = express.Router();
-legacyUploadRouter.use(authenticate);
-legacyUploadRouter.use(requireAdmin);
-legacyUploadRouter.post('/upload-banner', notificationUpload.fields([{ name: 'image', maxCount: 1 }, { name: 'banner', maxCount: 1 }]), handleNotificationBannerUpload);
+legacyUploadRouter.post('/upload-banner', authenticate, requireAdmin, notificationUpload.fields([{ name: 'image', maxCount: 1 }, { name: 'banner', maxCount: 1 }]), handleNotificationBannerUpload);
 router.legacyUploadRouter = legacyUploadRouter;
 module.exports = router;
