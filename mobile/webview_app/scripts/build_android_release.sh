@@ -32,15 +32,17 @@ EOF
 fi
 
 "$FLUTTER_BIN" pub get
-"$FLUTTER_BIN" build apk --release --split-per-abi --tree-shake-icons
+"$FLUTTER_BIN" build apk --release --tree-shake-icons
 
 OUTPUT_DIR="$APP_DIR/build/app/outputs/flutter-apk"
-ARM64_APK="$OUTPUT_DIR/app-arm64-v8a-release.apk"
-if [[ ! -s "$ARM64_APK" ]]; then
-  echo "arm64 APK was not produced at $ARM64_APK" >&2
+SRC_APK="$OUTPUT_DIR/app-release.apk"
+if [[ ! -s "$SRC_APK" ]]; then
+  echo "Universal APK was not produced at $SRC_APK" >&2
   exit 1
 fi
 
-for apk in "$OUTPUT_DIR"/app-*-release.apk; do
-  [[ -s "$apk" ]] && echo "Built: $apk"
-done
+DEST_DIR="$APP_DIR/../../artifacts"
+mkdir -p "$DEST_DIR"
+cp -f "$SRC_APK" "$DEST_DIR/AsaforVTU.apk"
+
+echo "Built and copied: $DEST_DIR/AsaforVTU.apk"

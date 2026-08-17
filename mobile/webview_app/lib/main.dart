@@ -618,7 +618,21 @@ class _WebViewAppState extends State<WebViewApp> {
         body: SafeArea(
           child: Stack(
             children: [
-              WebViewWidget(controller: _controller),
+              RefreshIndicator(
+                onRefresh: () async {
+                  await _controller.reload();
+                },
+                color: const Color(0xFF0A1F44),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height - 100,
+                      child: WebViewWidget(controller: _controller),
+                    ),
+                  ],
+                ),
+              ),
               if (_isLoading && !_isOffline)
                 Positioned(
                   left: 0,
@@ -633,6 +647,71 @@ class _WebViewAppState extends State<WebViewApp> {
                     backgroundColor: const Color(0xFFE8EEF6),
                   ),
                 ),
+              // Smooth navigation loading overlay for dashboard/page transitions
+              IgnorePointer(
+                ignoring: !(_isLoading && _loadingProgress < 85),
+                child: AnimatedOpacity(
+                  opacity: (_isLoading && _loadingProgress < 85) ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 350),
+                  child: Container(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(
+                                  width: 36,
+                                  height: 36,
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFF0A1F44),
+                                    ),
+                                    strokeWidth: 3,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Loading AsaforVTU...',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0A1F44),
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Preparing your secure workspace',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               if (_webViewError != null && !_isOffline)
                 _ErrorOverlay(
                   message: _webViewError!,
