@@ -1,4 +1,8 @@
 const express = require('express');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+const { randomUUID } = require('crypto');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const adminController = require('../controllers/adminController');
 const pool = require('../config/database');
@@ -9,7 +13,16 @@ const providerService = require('../services/providerService');
 const communicationController = require('../controllers/communicationController');
 
 const router = express.Router();
-
+const notificationUploadDirectory = path.resolve(process.env.NOTIFICATION_UPLOAD_DIR || path.join(process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'), 'notifications'));
+fs.mkdirSync(notificationUploadDirectory, { recursive: true });
+const notificationUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, callback) => callback(null, notificationUploadDirectory),
+    filename: (_req, file, callback) => callback(null, `${randomUUID()}${path.extname(file.originalname).toLowerCase()}`),
+  }),
+  limits: { fileSize: Number(process.env.MAX_NOTIFICATION_IMAGE_MB || 5) * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, callback) => callback(null, new Set(['image/jpeg', 'image/png', 'image/webp']).has(file.mimetype)),
+});
 router.use(authenticate);
 router.use(requireAdmin);
 
@@ -70,6 +83,13 @@ router.post('/profile/password', adminController.changeAdminPassword);
 
 // Support & Announcements
 router.get('/communications/status', communicationController.getStatus);
+router.get('/communications/recipients', communicationController.listRecipients);
+router.post('/communications/upload', notificationUpload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'A JPG, PNG, or WebP banner image is required.' });
+  const protocol = req.get('x-forwarded-proto') || req.protocol;
+  const baseUrl = process.env.PUBLIC_API_URL || process.env.API_URL || `${protocol}://${req.get('host')}`;
+  res.status(201).json({ url: `${baseUrl.replace(/\/$/, '')}/uploads/notifications/${req.file.filename}` });
+});
 router.get('/communications/deliveries', communicationController.listDeliveries);
 router.post('/communications/send', communicationController.sendCampaign);
 router.get('/support/tickets', adminController.getTickets);

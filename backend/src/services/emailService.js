@@ -2,12 +2,19 @@ const frontendUrl = () => (
   process.env.FRONTEND_URL ||
   process.env.NEXT_PUBLIC_APP_URL ||
   process.env.APP_URL ||
-  'http://localhost:3000'
+  'https://vtu.ferixas.com'
 ).replace(/\/$/, '');
 
-const emailFrom = () => process.env.EMAIL_FROM || process.env.RESEND_FROM || 'no-reply@asaforvtu.com';
-const supportInbox = () => process.env.SUPPORT_EMAIL || process.env.SUPPORT_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || '';
+const emailFrom = () => process.env.EMAIL_FROM || process.env.RESEND_FROM || 'AsaforVTU <notifications@asaforvtu.com>';
+const supportInbox = () => process.env.SUPPORT_EMAIL || process.env.SUPPORT_NOTIFICATION_EMAIL || process.env.REPLY_TO_EMAIL || process.env.ADMIN_EMAIL || '';
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+const companyName = () => process.env.COMPANY_NAME || 'AsaforVTU';
+const contactEmail = () => supportInbox() || process.env.CONTACT_EMAIL || 'support@asaforvtu.com';
+const renderBrandedEmail = content => {
+  const base = frontendUrl();
+  return `<!doctype html><html><body style="margin:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#152238"><div style="max-width:640px;margin:0 auto;padding:28px 16px"><div style="background:#082b5f;border-radius:18px 18px 0 0;padding:24px 28px;color:#fff"><div style="font-size:20px;font-weight:700;letter-spacing:.4px">${escapeHtml(companyName())}</div><div style="font-size:12px;opacity:.82;margin-top:5px">Secure digital services for everyday transactions</div></div><main style="background:#fff;padding:30px 28px;border:1px solid #e2e8f0;border-top:0">${content}</main><footer style="padding:22px 10px;text-align:center;color:#64748b;font-size:12px;line-height:1.6"><p style="margin:0 0 8px"><a href="${escapeHtml(base)}" style="color:#087f9e;text-decoration:none">Open AsaforVTU</a> · <a href="${escapeHtml(base)}/support" style="color:#087f9e;text-decoration:none">Contact support</a> · <a href="${escapeHtml(base)}/about" style="color:#087f9e;text-decoration:none">About us</a></p><p style="margin:0">${escapeHtml(companyName())} · ${escapeHtml(contactEmail())}</p><p style="margin:8px 0 0">This is a service message related to your account. Please do not reply if you did not request it.</p></footer></div></body></html>`;
+};
+const renderBrandedText = text => `${text || ''}\n\n${companyName()}\nOpen AsaforVTU: ${frontendUrl()}\nSupport: ${contactEmail()}`;
 
 async function sendEmail({ to, subject, html, text }) {
   if (!to) throw new Error('Recipient email is required');
@@ -21,7 +28,15 @@ async function sendEmail({ to, subject, html, text }) {
         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ from: emailFrom(), to: [to], subject, html, text })
+      body: JSON.stringify({
+        from: emailFrom(),
+        to: [to],
+        subject,
+        html: renderBrandedEmail(html),
+        text: renderBrandedText(text),
+        ...(supportInbox() ? { reply_to: supportInbox() } : {}),
+        tags: [{ name: 'category', value: 'asaforvtu-transactional' }]
+      })
     });
     if (!response.ok) {
       const body = await response.text();
@@ -36,7 +51,7 @@ async function sendEmail({ to, subject, html, text }) {
 
   // Development fallback: preserve the link in logs for local testing, never
   // return it from the public API response.
-  console.info(`[Email:development] ${to} :: ${subject}\n${text || html}`);
+    console.info(`[Email:development] ${to} :: ${subject}\n${renderBrandedText(text || html)}`);
   return { delivered: false, development: true };
 }
 

@@ -389,6 +389,18 @@ export const api = {
   async createAnnouncement(input) { return request('/api/admin/announcements', { method: 'POST', body: { title: input.title, content: input.content, priority: input.type === 'warning' ? 'warning' : 'info' } }); },
   async deleteAnnouncement(id) { return request(`/api/admin/announcements/${encodeURIComponent(id)}`, { method: 'DELETE' }); },
   async getCommunicationStatus() { return request('/api/admin/communications/status'); },
+  async listCommunicationRecipients() { return request('/api/admin/communications/recipients'); },
+  async uploadCommunicationImage(file) {
+    const form = new FormData();
+    form.append('image', file);
+    const headers = { Accept: 'application/json' };
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch('/api/admin/communications/upload', { method: 'POST', headers, body: form, credentials: 'same-origin' });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || 'Banner upload failed.');
+    return payload;
+  },
   async listCommunicationDeliveries() { return request('/api/admin/communications/deliveries?limit=50'); },
   async sendCommunication(input) {
     return request('/api/admin/communications/send', {
@@ -399,6 +411,7 @@ export const api = {
         channels: input.channels,
         audience: input.audience,
         userIds: input.userIds || [],
+        deviceIds: input.deviceIds || [],
         destination: input.destination || '/dashboard/notifications',
         imageUrl: input.imageUrl || '',
       }

@@ -91,6 +91,30 @@ const listDeliveries = async (req, res) => {
   }
 };
 
+const listRecipients = async (_req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT u.id AS user_id, u.full_name, u.email,
+              d.id AS device_id, d.platform, d.last_seen_at
+       FROM users u
+       LEFT JOIN notification_devices d
+         ON d.user_id = u.id AND d.is_active = TRUE
+       WHERE ${eligibleCustomer}
+       ORDER BY LOWER(COALESCE(u.full_name, u.email)), d.last_seen_at DESC NULLS LAST`
+    );
+    const grouped = new Map();
+    for (const row of result.rows) {
+      if (!grouped.has(row.user_id)) {
+        grouped.set(row.user_id, { id: row.user_id, name: row.full_name || 'Customer', email: row.email || '', devices: [] });
+      }
+      if (row.device_id) grouped.get(row.user_id).devices.push({ id: row.device_id, platform: row.platform, lastSeenAt: row.last_seen_at });
+    }
+    res.json({ recipients: [...grouped.values()], deviceCount: [...grouped.values()].reduce((count, user) => count + user.devices.length, 0) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const sendCampaign = async (req, res) => {
   try {
     const title = String(req.body?.title || '').trim();
@@ -99,20 +123,30 @@ const sendCampaign = async (req, res) => {
       .map((channel) => String(channel).toLowerCase()).filter((channel) => ['push', 'email'].includes(channel)))];
     const audience = String(req.body?.audience || 'all').toLowerCase();
     const selectedUserIds = Array.isArray(req.body?.userIds) ? req.body.userIds.map(String).slice(0, 500) : [];
+    const selectedDeviceIds = Array.isArray(req.body?.deviceIds) ? req.body.deviceIds.map(String).slice(0, 500) : [];
     if (!title || title.length > 255 || !message || message.length > 5000) {
       return res.status(400).json({ error: 'A title up to 255 characters and a message up to 5,000 characters are required.' });
     }
     if (!channels.length) return res.status(400).json({ error: 'Choose at least one delivery channel.' });
     if (!['all', 'selected'].includes(audience)) return res.status(400).json({ error: 'Audience must be all or selected.' });
-    if (audience === 'selected' && !selectedUserIds.length) return res.status(400).json({ error: 'Select at least one customer.' });
+    if (audience === 'selected' && !selectedUserIds.length && !selectedDeviceIds.length) return res.status(400).json({ error: 'Select at least one customer or device.' });
     const destination = allowedDestination(req.body?.destination);
     const imageUrl = allowedImageUrl(req.body?.imageUrl);
+    let deviceOwners = [];
+    if (selectedDeviceIds.length) {
+      const deviceResult = await pool.query(
+        `SELECT DISTINCT d.id, d.user_id FROM notification_devices d INNER JOIN users u ON u.id = d.user_id WHERE d.id = ANY($1::uuid[]) AND d.is_active = TRUE AND ${eligibleCustomer}`,
+        [selectedDeviceIds]
+      );
+      deviceOwners = deviceResult.rows;
+    }
+    const effectiveUserIds = [...new Set([...selectedUserIds, ...deviceOwners.map(row => String(row.user_id))])];
 
     const recipients = await pool.query(
       audience === 'all'
         ? `SELECT u.id, u.full_name, u.email FROM users u WHERE ${eligibleCustomer}`
         : `SELECT u.id, u.full_name, u.email FROM users u WHERE ${eligibleCustomer} AND u.id = ANY($1::uuid[])`,
-      audience === 'all' ? [] : [selectedUserIds]
+      audience === 'all' ? [] : [effectiveUserIds]
     );
     const campaign = await pool.query(
       `INSERT INTO notification_campaigns (admin_id, title, message, channels, audience, destination, image_url, metadata)
@@ -125,10 +159,11 @@ const sendCampaign = async (req, res) => {
     for (const user of recipients.rows) {
       if (channels.includes('push')) {
         try {
-          const notification = await notificationService.sendNotification(user.id, title, message, 'announcement', {
+            const notification = await notificationService.sendNotification(user.id, title, message, 'announcement', {
             campaignId: campaign.rows[0].id,
             deep_link: destination,
             image_url: imageUrl || undefined,
+            device_ids: selectedDeviceIds.length ? selectedDeviceIds : undefined,
           });
           const delivery = notification.push || { delivered: false, reason: 'unknown' };
           const status = delivery.delivered ? 'sent' : delivery.reason === 'no_registered_devices' ? 'skipped' : 'failed';
@@ -170,4 +205,4 @@ const sendCampaign = async (req, res) => {
   }
 };
 
-module.exports = { getStatus, listDeliveries, sendCampaign };
+module.exports = { getStatus, listDeliveries, listRecipients, sendCampaign };

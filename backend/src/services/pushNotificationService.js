@@ -85,11 +85,16 @@ const deliverPushNotification = async ({ userId, notificationId, title, message,
   const client = messaging();
   if (!client) return { delivered: false, reason: 'firebase_not_configured' };
 
+  const requestedDeviceIds = Array.isArray(metadata.device_ids) ? metadata.device_ids.map(String).filter(Boolean) : [];
   const devices = await pool.query(
-    `SELECT id, token FROM notification_devices
-     WHERE user_id = $1 AND is_active = TRUE
-     ORDER BY last_seen_at DESC`,
-    [userId]
+    requestedDeviceIds.length
+      ? `SELECT id, token FROM notification_devices
+         WHERE user_id = $1 AND id = ANY($2::uuid[]) AND is_active = TRUE
+         ORDER BY last_seen_at DESC`
+      : `SELECT id, token FROM notification_devices
+         WHERE user_id = $1 AND is_active = TRUE
+         ORDER BY last_seen_at DESC`,
+    requestedDeviceIds.length ? [userId, requestedDeviceIds] : [userId]
   );
   if (!devices.rows.length) return { delivered: false, reason: 'no_registered_devices' };
 

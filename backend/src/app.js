@@ -10,6 +10,7 @@ const app = express();
 // API clients expect JSON bodies on every successful request; avoid conditional 304 responses for authenticated data.
 app.disable('etag');
 const pool = require('./config/database');
+const path = require('path');
 
 // Middleware
 app.use(helmet());
@@ -69,6 +70,8 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(morgan('dev'));
+const notificationUploadDirectory = path.resolve(process.env.NOTIFICATION_UPLOAD_DIR || path.join(process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'), 'notifications'));
+app.use('/uploads/notifications', express.static(notificationUploadDirectory, { fallthrough: false, maxAge: '1h' }));
 
 // Routes
 app.get('/', (req, res) => {
