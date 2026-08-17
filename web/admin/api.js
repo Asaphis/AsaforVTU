@@ -420,9 +420,22 @@ export const api = {
         deviceIds: input.deviceIds || [],
         destination: input.destination || '/dashboard/notifications',
         imageUrl: input.imageUrl || '',
+        scheduleMode: input.scheduleMode || 'immediate',
+        scheduledFor: input.scheduledFor || '',
+        recurrence: input.recurrence || 'none',
       }
     });
   },
+  async updateCommunicationCampaign(id, input) {
+    return request(`/api/admin/communications/campaigns/${encodeURIComponent(id)}`, { method: 'PUT', body: {
+      title: input.title, message: input.message, channels: input.channels, audience: input.audience,
+      userIds: input.userIds || [], deviceIds: input.deviceIds || [], destination: input.destination || '/dashboard/notifications', imageUrl: input.imageUrl || '',
+      scheduleMode: input.scheduleMode || 'immediate', scheduledFor: input.scheduledFor || '', recurrence: input.recurrence || 'none'
+    } });
+  },
+  async pauseCommunicationCampaign(id, paused) { return request(`/api/admin/communications/campaigns/${encodeURIComponent(id)}/pause`, { method: 'POST', body: { paused } }); },
+  async resendCommunicationCampaign(id) { return request(`/api/admin/communications/campaigns/${encodeURIComponent(id)}/resend`, { method: 'POST' }); },
+  async deleteCommunicationCampaign(id) { return request(`/api/admin/communications/campaigns/${encodeURIComponent(id)}`, { method: 'DELETE' }); },
 
   async reconcile(reference, force = false) {
     const result = await request('/api/admin/payments/reconcile', { method: 'POST', body: { tx_ref: reference, force: Boolean(force) } });

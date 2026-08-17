@@ -133,6 +133,10 @@ router.post('/communications/upload', notificationUpload.single('image'), handle
 router.post('/upload-banner', notificationUpload.fields([{ name: 'image', maxCount: 1 }, { name: 'banner', maxCount: 1 }]), handleNotificationBannerUpload);
 router.get('/communications/deliveries', communicationController.listDeliveries);
 router.post('/communications/send', communicationController.sendCampaign);
+router.put('/communications/campaigns/:id', communicationController.updateCampaign);
+router.post('/communications/campaigns/:id/pause', communicationController.setCampaignPause);
+router.post('/communications/campaigns/:id/resend', communicationController.resendCampaign);
+router.delete('/communications/campaigns/:id', communicationController.deleteCampaign);
 router.get('/support/tickets', adminController.getTickets);
 router.get('/support/tickets/:id/messages', adminController.getTicketMessages);
 router.post('/support/tickets/create', adminController.createTicket);

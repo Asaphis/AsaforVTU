@@ -1,0 +1,121 @@
+.picker-sheet > section {
+  max-height: 84dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.picker-search {
+  width: 100%;
+  margin: 13px 0 8px;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px 3px 10px 3px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.picker-options {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 3px;
+}
+
+.picker-options > button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  padding: 17px 3px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--ink);
+}
+
+.picker-options > button span b,
+.picker-options > button span small {
+  display: block;
+}
+
+.picker-options > button span b {
+  font-family: Sora, sans-serif;
+  font-size: 16px;
+  letter-spacing: -0.05em;
+}
+
+.picker-options > button span small,
+.picker-sheet header small,
+.picker-empty {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.picker-options > button span small,
+.picker-sheet header small {
+  margin-top: 4px;
+}
+
+.picker-options > button i {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-style: normal;
+  color: var(--ink2);
+}
+
+.picker-options > button.selected {
+  padding-right: 12px;
+  padding-left: 12px;
+  background: #ecf7df;
+}
+
+.picker-options > button.selected i {
+  border-color: var(--ink);
+  background: var(--lime);
+}
+
+.picker-empty {
+  padding: 28px 4px;
+  text-align: center;
+}
+
+.dashboard-refreshing {
+  position: fixed;
+  right: 18px;
+  bottom: 83px;
+  z-index: 45;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid #cfe0e4;
+  border-radius: 10px 3px 10px 3px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 22px rgba(1, 32, 68, 0.12);
+  color: #41626f;
+  font-size: 10px;
+}
+
+.dashboard-refreshing i {
+  width: 9px;
+  height: 9px;
+  border: 2px solid #b7d9df;
+  border-top-color: #036a97;
+  border-radius: 50%;
+  animation: dashboard-spin 0.7s linear infinite;
+}
+
+@keyframes dashboard-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 700px) {
+  .picker-sheet > section { max-height: 88dvh; }
+  .picker-options > button { padding: 15px 3px; }
+  .picker-options > button span b { font-size: 14px; }
+  .dashboard-refreshing { right: 14px; bottom: 78px; }
+}
