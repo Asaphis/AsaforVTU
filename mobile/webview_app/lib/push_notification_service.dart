@@ -123,46 +123,71 @@ class PushNotificationService {
   }
 
   Future<void> _showForegroundNotification(RemoteMessage message) async {
-    final notification = message.notification;
-    final destination = _destinationFor(message);
-    final imageUrl = _imageUrlFor(message);
-    final imagePath =
-        imageUrl == null ? null : await _downloadNotificationImage(imageUrl);
-    final style = imagePath == null
-        ? null
-        : BigPictureStyleInformation(
-            FilePathAndroidBitmap(imagePath),
-            largeIcon: const DrawableResourceAndroidBitmap('launcher_icon'),
-            contentTitle: notification?.title ?? 'AsaforVTU',
-            summaryText: notification?.body ?? 'You have a new account update.',
-            hideExpandedLargeIcon: true,
-            showBigPictureWhenCollapsed: false,
-          );
+    try {
+      final notification = message.notification;
+      final destination = _destinationFor(message);
+      final imageUrl = _imageUrlFor(message);
+      final imagePath =
+          imageUrl == null ? null : await _downloadNotificationImage(imageUrl);
+      final style = imagePath == null
+          ? null
+          : BigPictureStyleInformation(
+              FilePathAndroidBitmap(imagePath),
+              largeIcon: const DrawableResourceAndroidBitmap('launcher_icon'),
+              contentTitle: notification?.title ?? 'AsaforVTU',
+              summaryText:
+                  notification?.body ?? 'You have a new account update.',
+              hideExpandedLargeIcon: true,
+              showBigPictureWhenCollapsed: false,
+            );
 
-    await _localNotifications.show(
-      id: message.hashCode,
-      title: notification?.title ?? 'AsaforVTU',
-      body: notification?.body ?? 'You have a new account update.',
-      notificationDetails: NotificationDetails(
-        android: AndroidNotificationDetails(
-          _notificationChannelId,
-          'Account alerts',
-          channelDescription:
-              'Important AsaforVTU account and transaction notifications.',
-          importance: Importance.high,
-          priority: Priority.high,
-          icon: 'ic_stat_asaforvtu',
-          largeIcon: const DrawableResourceAndroidBitmap('launcher_icon'),
-          styleInformation: style,
+      await _localNotifications.show(
+        id: message.hashCode,
+        title: notification?.title ?? 'AsaforVTU',
+        body: notification?.body ?? 'You have a new account update.',
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            _notificationChannelId,
+            'Account alerts',
+            channelDescription:
+                'Important AsaforVTU account and transaction notifications.',
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: 'ic_stat_asaforvtu',
+            largeIcon: const DrawableResourceAndroidBitmap('launcher_icon'),
+            styleInformation: style,
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
         ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
-      payload: destination,
-    );
+        payload: destination,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Error showing foreground notification: $error\n$stackTrace');
+      try {
+        final notification = message.notification;
+        await _localNotifications.show(
+          id: message.hashCode,
+          title: notification?.title ?? 'AsaforVTU',
+          body: notification?.body ?? 'You have a new account update.',
+          notificationDetails: const NotificationDetails(
+            android: AndroidNotificationDetails(
+              _notificationChannelId,
+              'Account alerts',
+              importance: Importance.high,
+              priority: Priority.high,
+              icon: 'ic_stat_asaforvtu',
+            ),
+          ),
+          payload: _destinationFor(message),
+        );
+      } catch (fallbackError) {
+        debugPrint('Fallback notification failed: $fallbackError');
+      }
+    }
   }
 
   String? _imageUrlFor(RemoteMessage message) {

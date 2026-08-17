@@ -628,6 +628,16 @@ class _WebViewAppState extends State<WebViewApp> {
           window.__asaforSwipeRefreshInstalled = true;
           let startY = null;
 
+          const indicator = document.createElement('div');
+          indicator.id = '__asaforRefreshIndicator';
+          indicator.style.cssText = 'position:fixed;top:-50px;left:0;right:0;height:48px;background:#0A1F44;color:#fff;display:flex;align-items:center;justify-content:center;font-family:sans-serif;font-size:14px;font-weight:600;z-index:999999;transition:top 0.25s ease;box-shadow:0 3px 12px rgba(0,0,0,0.25);';
+          indicator.innerHTML = '<div style="width:20px;height:20px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:__asaforSpin 0.8s linear infinite;margin-right:10px;"></div><span>Refreshing AsaforVTU...</span>';
+
+          const style = document.createElement('style');
+          style.innerHTML = '@keyframes __asaforSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+          document.head.appendChild(style);
+          document.body.appendChild(indicator);
+
           document.addEventListener('touchstart', (event) => {
             if (event.touches.length === 1) {
               startY = event.touches[0].clientY;
@@ -642,8 +652,11 @@ class _WebViewAppState extends State<WebViewApp> {
             const scrollTop = document.scrollingElement
                 ? document.scrollingElement.scrollTop
                 : window.scrollY;
-            if (endY - startY > 100 && scrollTop <= 2) {
-              window.location.reload();
+            if (endY - startY > 90 && scrollTop <= 2) {
+              indicator.style.top = '0px';
+              setTimeout(() => {
+                window.location.reload();
+              }, 450);
             }
             startY = null;
           }, { passive: true });
