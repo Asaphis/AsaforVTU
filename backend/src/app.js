@@ -229,6 +229,8 @@ app.use('/api/webhooks', webhookRoutes);
 // Backward-compat alias (some dashboards use singular)
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/support', supportRoutes);
+// Legacy admin upload compatibility: older admin bundles post banners to /api/notifications/upload-banner.
+app.use('/api/notifications', adminRoutes.legacyUploadRouter);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/vtu', vtuRoutes);

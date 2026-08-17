@@ -113,7 +113,8 @@ router.post('/profile/password', adminController.changeAdminPassword);
 // Support & Announcements
 router.get('/communications/status', communicationController.getStatus);
 router.get('/communications/recipients', communicationController.listRecipients);
-router.post('/communications/upload', notificationUpload.single('image'), async (req, res) => {
+const handleNotificationBannerUpload = async (req, res) => {
+  req.file = req.file || req.files?.image?.[0] || req.files?.banner?.[0];
   if (!req.file) return res.status(400).json({ error: 'A JPG, PNG, or WebP banner image is required.' });
   try {
     const cloudUrl = await uploadNotificationBanner(req.file);
@@ -127,7 +128,9 @@ router.post('/communications/upload', notificationUpload.single('image'), async 
     console.error('[Notifications] Banner upload failed:', error.message);
     res.status(502).json({ error: error.message || 'Banner upload failed.' });
   }
-});
+};
+router.post('/communications/upload', notificationUpload.single('image'), handleNotificationBannerUpload);
+router.post('/upload-banner', notificationUpload.fields([{ name: 'image', maxCount: 1 }, { name: 'banner', maxCount: 1 }]), handleNotificationBannerUpload);
 router.get('/communications/deliveries', communicationController.listDeliveries);
 router.post('/communications/send', communicationController.sendCampaign);
 router.get('/support/tickets', adminController.getTickets);
@@ -167,4 +170,9 @@ router.post('/plans', adminController.createPlan);
 router.put('/plans/:id', adminController.updatePlan);
 router.delete('/plans/:id', adminController.deletePlan);
 
+const legacyUploadRouter = express.Router();
+legacyUploadRouter.use(authenticate);
+legacyUploadRouter.use(requireAdmin);
+legacyUploadRouter.post('/upload-banner', notificationUpload.fields([{ name: 'image', maxCount: 1 }, { name: 'banner', maxCount: 1 }]), handleNotificationBannerUpload);
+router.legacyUploadRouter = legacyUploadRouter;
 module.exports = router;

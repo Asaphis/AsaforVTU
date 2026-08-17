@@ -391,15 +391,21 @@ export const api = {
   async getCommunicationStatus() { return request('/api/admin/communications/status'); },
   async listCommunicationRecipients() { return request('/api/admin/communications/recipients'); },
   async uploadCommunicationImage(file) {
-    const form = new FormData();
-    form.append('image', file);
     const headers = { Accept: 'application/json' };
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
-    const response = await fetch('/api/admin/communications/upload', { method: 'POST', headers, body: form, credentials: 'same-origin' });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || 'Banner upload failed.');
-    return payload;
+    const paths = ['/api/admin/communications/upload', '/api/notifications/upload-banner'];
+    let lastError = null;
+    for (const path of paths) {
+      const form = new FormData();
+      form.append('image', file);
+      const response = await fetch(path, { method: 'POST', headers, body: form, credentials: 'same-origin' });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok) return payload;
+      lastError = new Error(payload.error || `Banner upload failed (${response.status}).`);
+      if (response.status !== 404) break;
+    }
+    throw lastError || new Error('Banner upload failed.');
   },
   async listCommunicationDeliveries() { return request('/api/admin/communications/deliveries?limit=50'); },
   async sendCommunication(input) {
