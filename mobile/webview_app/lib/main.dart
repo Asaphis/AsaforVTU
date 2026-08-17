@@ -61,6 +61,7 @@ class _SplashScreenState extends State<SplashScreen>
   late final Animation<double> _fade;
   late final Animation<double> _glow;
   late final Animation<double> _ring;
+  Timer? _navigationTimer;
 
   @override
   void initState() {
@@ -86,17 +87,17 @@ class _SplashScreenState extends State<SplashScreen>
       end: 1.15,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
-    Future.delayed(const Duration(milliseconds: 2200), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const WebViewApp()),
-        );
-      }
+    _navigationTimer = Timer(const Duration(milliseconds: 2200), () {
+      if (!mounted) return;
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const WebViewApp()));
     });
   }
 
   @override
   void dispose() {
+    _navigationTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -239,6 +240,64 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
+class _ErrorOverlay extends StatelessWidget {
+  const _ErrorOverlay({
+    required this.message,
+    required this.onRetry,
+    required this.isChecking,
+    this.icon = Icons.cloud_off,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+  final bool isChecking;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: ColoredBox(
+        color: Colors.white,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 64, color: const Color(0xFF6B7C93)),
+                const SizedBox(height: 16),
+                const Text(
+                  'AsaforVTU is temporarily unavailable',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0A1F44),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(message, textAlign: TextAlign.center),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: isChecking ? null : onRetry,
+                  icon: isChecking
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                  label: Text(isChecking ? 'Checking…' : 'Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Dot extends StatelessWidget {
   final double opacity;
   const _Dot({required this.opacity});
@@ -271,6 +330,10 @@ class _WebViewAppState extends State<WebViewApp> {
   StreamSubscription<Uri>? _linkSubscription;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   bool _isOffline = false;
+  bool _isCheckingConnection = false;
+  bool _isLoading = true;
+  int _loadingProgress = 0;
+  String? _webViewError;
   bool _pushRegistrationScheduled = false;
   Future<bool> _hasRealConnection() async {
     try {
@@ -290,8 +353,8 @@ class _WebViewAppState extends State<WebViewApp> {
     super.initState();
     _initWebView();
     unawaited(_initPushNotifications());
-    _initAppLinks();
-    _initConnectivity();
+    unawaited(_initAppLinks());
+    unawaited(_initConnectivity());
   }
 
   void _initWebView() {
@@ -313,24 +376,43 @@ class _WebViewAppState extends State<WebViewApp> {
       ..setBackgroundColor(Colors.white)
       ..setNavigationDelegate(
         NavigationDelegate(
+          onPageStarted: (String url) {
+            if (!mounted) return;
+            setState(() {
+              _isLoading = true;
+              _loadingProgress = 0;
+              _webViewError = null;
+            });
+          },
+          onProgress: (int progress) {
+            if (!mounted) return;
+            setState(() {
+              _loadingProgress = progress.clamp(0, 100);
+            });
+          },
           onPageFinished: (String url) {
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+                _loadingProgress = 100;
+                _webViewError = null;
+              });
+            }
             _schedulePushRegistration(url);
           },
           onWebResourceError: (WebResourceError error) {
+            if (error.isForMainFrame == false) return;
             debugPrint('Web resource error: ${error.description}');
-            if (error.errorType == WebResourceErrorType.connect ||
-                error.errorType == WebResourceErrorType.hostLookup ||
-                error.errorType == WebResourceErrorType.timeout) {
-              _hasRealConnection().then((ok) {
-                if (!ok) {
-                  if (mounted) {
-                    setState(() {
-                      _isOffline = true;
-                    });
-                  }
-                }
+            _hasRealConnection().then((ok) {
+              if (!mounted) return;
+              setState(() {
+                _isLoading = false;
+                _isOffline = !ok;
+                _webViewError = ok
+                    ? 'The service could not be loaded. Please try again.'
+                    : null;
               });
-            }
+            });
           },
           onNavigationRequest: (NavigationRequest request) async {
             final Uri uri = Uri.parse(request.url);
@@ -431,61 +513,84 @@ class _WebViewAppState extends State<WebViewApp> {
   }
 
   Future<void> _initAppLinks() async {
-    _appLinks = AppLinks();
-    final initialUri = await _appLinks.getInitialLink();
-    if (initialUri != null &&
-        initialUri.host == productionCustomerHost &&
-        initialUri.scheme == 'https') {
-      await _controller.loadRequest(initialUri);
-    }
-    _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
-      debugPrint('Received deep link: $uri');
-      if (uri.host == productionCustomerHost && uri.scheme == 'https') {
-        _controller.loadRequest(uri);
+    try {
+      _appLinks = AppLinks();
+      final initialUri = await _appLinks.getInitialLink();
+      if (initialUri != null &&
+          initialUri.host == productionCustomerHost &&
+          initialUri.scheme == 'https') {
+        await _controller.loadRequest(initialUri);
       }
-    });
+      _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
+        debugPrint('Received deep link: $uri');
+        if (uri.host == productionCustomerHost && uri.scheme == 'https') {
+          unawaited(_controller.loadRequest(uri));
+        }
+      });
+    } catch (error) {
+      debugPrint('Deep-link initialization deferred: $error');
+    }
   }
 
   Future<void> _initConnectivity() async {
-    final initial = await Connectivity().checkConnectivity();
-    final initialHas = !initial.contains(ConnectivityResult.none);
-    if (!initialHas) {
-      final ok = await _hasRealConnection();
-      if (mounted) {
-        setState(() {
-          _isOffline = !ok;
-        });
-      }
-    } else {
-      if (mounted) {
+    try {
+      final initial = await Connectivity().checkConnectivity();
+      final initialHas = !initial.contains(ConnectivityResult.none);
+      if (!initialHas) {
+        final ok = await _hasRealConnection();
+        if (mounted) {
+          setState(() {
+            _isOffline = !ok;
+          });
+        }
+      } else if (mounted) {
         setState(() {
           _isOffline = false;
         });
       }
-    }
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
-      results,
-    ) {
-      bool hasConnection = results.any(
-        (result) => result != ConnectivityResult.none,
-      );
-      if (hasConnection) {
-        if (_isOffline) {
-          setState(() {
-            _isOffline = false;
-          });
-          _controller.reload();
-        }
-      } else {
-        _hasRealConnection().then((ok) {
-          if (mounted) {
+      _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+        results,
+      ) {
+        final hasConnection = results.any(
+          (result) => result != ConnectivityResult.none,
+        );
+        if (hasConnection) {
+          if (_isOffline) {
             setState(() {
-              _isOffline = !ok;
+              _isOffline = false;
             });
+            unawaited(_controller.reload());
           }
-        });
-      }
+        } else {
+          _hasRealConnection().then((ok) {
+            if (mounted) {
+              setState(() {
+                _isOffline = !ok;
+              });
+            }
+          });
+        }
+      });
+    } catch (error) {
+      debugPrint('Connectivity monitoring unavailable: $error');
+    }
+  }
+
+  Future<void> _retryConnection() async {
+    if (_isCheckingConnection) return;
+    setState(() {
+      _isCheckingConnection = true;
     });
+    final connected = await _hasRealConnection();
+    if (!mounted) return;
+    setState(() {
+      _isCheckingConnection = false;
+      _isOffline = !connected;
+      _webViewError = connected ? null : _webViewError;
+    });
+    if (connected) {
+      unawaited(_controller.reload());
+    }
   }
 
   @override
@@ -513,35 +618,34 @@ class _WebViewAppState extends State<WebViewApp> {
         body: SafeArea(
           child: Stack(
             children: [
-              if (!_isOffline) WebViewWidget(controller: _controller),
-              if (_isOffline)
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'No Internet Connection',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text('Please check your network settings.'),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _isOffline = false;
-                          });
-                          _controller.reload();
-                        },
-                        child: const Text('Retry'),
-                      ),
-                    ],
+              WebViewWidget(controller: _controller),
+              if (_isLoading && !_isOffline)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  child: LinearProgressIndicator(
+                    value: _loadingProgress == 0
+                        ? null
+                        : _loadingProgress / 100,
+                    minHeight: 3,
+                    color: const Color(0xFF0A1F44),
+                    backgroundColor: const Color(0xFFE8EEF6),
                   ),
+                ),
+              if (_webViewError != null && !_isOffline)
+                _ErrorOverlay(
+                  message: _webViewError!,
+                  onRetry: _retryConnection,
+                  isChecking: _isCheckingConnection,
+                ),
+              if (_isOffline)
+                _ErrorOverlay(
+                  message:
+                      'No internet connection. Check your network settings and try again.',
+                  onRetry: _retryConnection,
+                  isChecking: _isCheckingConnection,
+                  icon: Icons.wifi_off,
                 ),
             ],
           ),

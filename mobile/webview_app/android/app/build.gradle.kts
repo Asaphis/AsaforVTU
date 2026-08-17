@@ -7,8 +7,17 @@ if (releasePropertiesFile.exists()) {
     releaseProperties.load(FileInputStream(releasePropertiesFile))
 }
 
-check(releasePropertiesFile.exists()) {
-    "A production AsaforVTU build requires android/key.properties and the Ferixas release keystore."
+val releaseSigningKeys = listOf(
+    "keyAlias",
+    "keyPassword",
+    "storeFile",
+    "storePassword",
+)
+val hasReleaseSigning = releasePropertiesFile.exists() &&
+    releaseSigningKeys.all(releaseProperties::containsKey)
+
+if (!hasReleaseSigning) {
+    println("WARNING: android/key.properties is not configured; release builds will use the local debug signing key for installation testing. Configure a private release keystore before publishing.")
 }
 
 plugins {
@@ -46,7 +55,7 @@ android {
 
     signingConfigs {
         create("release") {
-            if (releasePropertiesFile.exists()) {
+            if (hasReleaseSigning) {
                 keyAlias = releaseProperties["keyAlias"] as String
                 keyPassword = releaseProperties["keyPassword"] as String
                 storeFile = rootProject.file(releaseProperties["storeFile"] as String)
@@ -61,7 +70,11 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isDebuggable = false
             isJniDebuggable = false
             isMinifyEnabled = false

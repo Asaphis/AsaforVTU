@@ -9,10 +9,10 @@ This is a Flutter project that opens the live [AsaforVTU customer platform](http
 - **Features:**
   - Full-screen WebView integration
   - Native Splash Screen
-  - Offline/No-Internet handling
-- Deep Linking (Open `https://vtu.ferixas.com` links directly in the app)
+  - Offline/No-Internet handling with a verified retry action
+  - Deep Linking (Open `https://vtu.ferixas.com` links directly in the app)
   - Native Navigation (Back button handling)
-  - Loading Indicators
+  - Loading progress and main-frame error feedback
   - Brand Theme Integration
 
 ## Prerequisites
@@ -78,6 +78,12 @@ flutter build apk --release
 ```
 Output: `build/app/outputs/flutter-apk/app-release.apk`
 
+For a clean checkout, the repository also includes a reproducible build helper:
+```bash
+./scripts/build_android_release.sh
+```
+The helper creates an ignored local keystore when `android/key.properties` is absent, which is suitable for installation testing and direct sideloading. Before publishing to Google Play or delivering updates to an existing production installation, configure a private, durable release keystore in `android/key.properties`; replacing the signing key prevents Android from accepting future updates over an existing install.
+
 To build the App Bundle (.aab) for Google Play Store:
 ```bash
 flutter build appbundle --release
@@ -109,4 +115,4 @@ Output: `build/app/outputs/bundle/release/app-release.aab`
 ## Troubleshooting
 
 - **White Screen on Load:** Ensure the device has internet access. The app attempts to reload if connection fails.
-- **Build Errors:** Run `flutter clean` and `flutter pub get` to reset the project cache.
+- **Build Errors:** Run `flutter clean` and `flutter pub get` to reset the project cache. If building from a clean checkout, use `./scripts/build_android_release.sh` so the local installation signing configuration is created automatically.
