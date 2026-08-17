@@ -33,9 +33,23 @@ const recordDelivery = (campaignId, userId, channel, status, destination, provid
   [campaignId, userId, channel, status, destination, providerResponse]
 );
 
+// Audit fixtures use the reserved example.invalid domain. They must never be
+// exposed in a production audience selector or receive customer campaigns.
+const eligibleCustomer = `
+  u.is_active = TRUE
+  AND COALESCE(u.role, 'user') <> 'admin'
+  AND LOWER(COALESCE(u.email, '')) NOT LIKE '%@example.invalid'
+  AND LOWER(TRIM(COALESCE(u.full_name, ''))) <> 'auth audit test'
+`;
+
 const getStatus = async (_req, res) => {
   try {
-    const devices = await pool.query('SELECT COUNT(*)::int AS count FROM notification_devices WHERE is_active = TRUE');
+    const devices = await pool.query(
+      `SELECT COUNT(*)::int AS count
+       FROM notification_devices d
+       INNER JOIN users u ON u.id = d.user_id
+       WHERE d.is_active = TRUE AND ${eligibleCustomer}`
+    );
     res.json({
       push: {
         enabled: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.FIREBASE_SERVICE_ACCOUNT || process.env.GOOGLE_APPLICATION_CREDENTIALS),
@@ -96,8 +110,8 @@ const sendCampaign = async (req, res) => {
 
     const recipients = await pool.query(
       audience === 'all'
-        ? 'SELECT id, full_name, email FROM users WHERE is_active = TRUE AND COALESCE(role, \'user\') <> \'admin\''
-        : 'SELECT id, full_name, email FROM users WHERE is_active = TRUE AND id = ANY($1::uuid[])',
+        ? `SELECT u.id, u.full_name, u.email FROM users u WHERE ${eligibleCustomer}`
+        : `SELECT u.id, u.full_name, u.email FROM users u WHERE ${eligibleCustomer} AND u.id = ANY($1::uuid[])`,
       audience === 'all' ? [] : [selectedUserIds]
     );
     const campaign = await pool.query(
