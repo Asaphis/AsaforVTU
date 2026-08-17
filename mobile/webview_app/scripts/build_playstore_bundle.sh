@@ -43,6 +43,6 @@ fi
 
 DEST_DIR="$APP_DIR/../../artifacts"
 mkdir -p "$DEST_DIR"
-cp -f "$SRC_AAB" "$DEST_DIR/Asafor VTU.aab"
+cp -f "$SRC_AAB" "$DEST_DIR/AsaforVTU.aab"
 
-echo "Built and copied: $DEST_DIR/Asafor VTU.aab"
+echo "Built and copied: $DEST_DIR/AsaforVTU.aab"
