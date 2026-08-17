@@ -398,6 +398,7 @@ class _WebViewAppState extends State<WebViewApp> {
                 _webViewError = null;
               });
             }
+            _installSwipeToRefresh();
             _schedulePushRegistration(url);
           },
           onWebResourceError: (WebResourceError error) {
@@ -576,6 +577,42 @@ class _WebViewAppState extends State<WebViewApp> {
     }
   }
 
+  void _installSwipeToRefresh() {
+    unawaited(
+      _controller
+          .runJavaScript('''
+        (() => {
+          if (window.__asaforSwipeRefreshInstalled) return;
+          window.__asaforSwipeRefreshInstalled = true;
+          let startY = null;
+
+          document.addEventListener('touchstart', (event) => {
+            if (event.touches.length === 1) {
+              startY = event.touches[0].clientY;
+            }
+          }, { passive: true });
+
+          document.addEventListener('touchend', (event) => {
+            if (startY === null) return;
+            const endY = event.changedTouches.length > 0
+                ? event.changedTouches[0].clientY
+                : startY;
+            const scrollTop = document.scrollingElement
+                ? document.scrollingElement.scrollTop
+                : window.scrollY;
+            if (endY - startY > 100 && scrollTop <= 2) {
+              window.location.reload();
+            }
+            startY = null;
+          }, { passive: true });
+        })();
+      ''')
+          .catchError((Object error) {
+            debugPrint('Swipe refresh setup unavailable: $error');
+          }),
+    );
+  }
+
   Future<void> _retryConnection() async {
     if (_isCheckingConnection) return;
     setState(() {
@@ -618,23 +655,7 @@ class _WebViewAppState extends State<WebViewApp> {
         body: SafeArea(
           child: Stack(
             children: [
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  return RefreshIndicator(
-                    onRefresh: () async {
-                      await _controller.reload();
-                    },
-                    color: const Color(0xFF0A1F44),
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: SizedBox(
-                        height: constraints.maxHeight,
-                        child: WebViewWidget(controller: _controller),
-                      ),
-                    ),
-                  );
-                },
-              ),
+              Positioned.fill(child: WebViewWidget(controller: _controller)),
               if (_isLoading && !_isOffline)
                 Positioned(
                   left: 0,
