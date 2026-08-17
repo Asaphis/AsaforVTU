@@ -164,10 +164,10 @@ class _SplashScreenState extends State<SplashScreen>
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stack) =>
                                   const Icon(
-                                    Icons.public,
-                                    color: Color(0xFF0A1F44),
-                                    size: 88,
-                                  ),
+                                Icons.public,
+                                color: Color(0xFF0A1F44),
+                                size: 88,
+                              ),
                             ),
                           ],
                         ),
@@ -501,9 +501,8 @@ class _WebViewAppState extends State<WebViewApp> {
   }
 
   void _openNotificationDestination(String destination) {
-    final relative = destination.startsWith('/')
-        ? destination
-        : '/$destination';
+    final relative =
+        destination.startsWith('/') ? destination : '/$destination';
     final candidate = Uri.tryParse(destination);
     final target = candidate != null && candidate.hasScheme
         ? candidate
@@ -579,8 +578,7 @@ class _WebViewAppState extends State<WebViewApp> {
 
   void _installSwipeToRefresh() {
     unawaited(
-      _controller
-          .runJavaScript('''
+      _controller.runJavaScript('''
         (() => {
           if (window.__asaforSwipeRefreshInstalled) return;
           window.__asaforSwipeRefreshInstalled = true;
@@ -606,10 +604,9 @@ class _WebViewAppState extends State<WebViewApp> {
             startY = null;
           }, { passive: true });
         })();
-      ''')
-          .catchError((Object error) {
-            debugPrint('Swipe refresh setup unavailable: $error');
-          }),
+      ''').catchError((Object error) {
+        debugPrint('Swipe refresh setup unavailable: $error');
+      }),
     );
   }
 
@@ -662,9 +659,8 @@ class _WebViewAppState extends State<WebViewApp> {
                   right: 0,
                   top: 0,
                   child: LinearProgressIndicator(
-                    value: _loadingProgress == 0
-                        ? null
-                        : _loadingProgress / 100,
+                    value:
+                        _loadingProgress == 0 ? null : _loadingProgress / 100,
                     minHeight: 3,
                     color: const Color(0xFF0A1F44),
                     backgroundColor: const Color(0xFFE8EEF6),

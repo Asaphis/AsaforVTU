@@ -64,8 +64,7 @@ class PushNotificationService {
     );
     await _localNotifications
         .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(androidChannel);
 
     await _messaging.requestPermission(alert: true, badge: true, sound: true);
