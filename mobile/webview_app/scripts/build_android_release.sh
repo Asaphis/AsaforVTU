@@ -43,6 +43,6 @@ fi
 
 DEST_DIR="$APP_DIR/../../artifacts"
 mkdir -p "$DEST_DIR"
-cp -f "$SRC_APK" "$DEST_DIR/AsaforVTU.apk"
+cp -f "$SRC_APK" "$DEST_DIR/Asafor VTU.apk"
 
-echo "Built and copied: $DEST_DIR/AsaforVTU.apk"
+echo "Built and copied: $DEST_DIR/Asafor VTU.apk"

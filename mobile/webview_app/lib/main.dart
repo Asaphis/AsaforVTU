@@ -618,20 +618,22 @@ class _WebViewAppState extends State<WebViewApp> {
         body: SafeArea(
           child: Stack(
             children: [
-              RefreshIndicator(
-                onRefresh: () async {
-                  await _controller.reload();
-                },
-                color: const Color(0xFF0A1F44),
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height - 100,
-                      child: WebViewWidget(controller: _controller),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      await _controller.reload();
+                    },
+                    color: const Color(0xFF0A1F44),
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: SizedBox(
+                        height: constraints.maxHeight,
+                        child: WebViewWidget(controller: _controller),
+                      ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
               if (_isLoading && !_isOffline)
                 Positioned(
