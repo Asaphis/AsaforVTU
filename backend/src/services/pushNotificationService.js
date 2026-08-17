@@ -7,23 +7,34 @@ const invalidTokenCodes = new Set([
   'messaging/registration-token-not-registered',
 ]);
 
+const parseCredentialFile = (filePath, sourceName) => {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (error) {
+    console.error(`[Push] ${sourceName} could not be read:`, error.message);
+    return null;
+  }
+};
+
 const firebaseCredential = () => {
   const raw = String(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.FIREBASE_SERVICE_ACCOUNT || '').trim();
-  if (!raw && process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+  if (raw) {
+    // Accept legacy deployments that put the service-account file path in a
+    // variable whose name suggests inline JSON. Never log the path contents.
+    const filePath = raw.startsWith('file:') ? raw.slice(5) : raw;
+    if (fs.existsSync(filePath)) return parseCredentialFile(filePath, 'Firebase service-account file');
     try {
-      return JSON.parse(fs.readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, 'utf8'));
+      return JSON.parse(raw);
     } catch (error) {
-      console.error('[Push] GOOGLE_APPLICATION_CREDENTIALS could not be read:', error.message);
+      console.error('[Push] Firebase service-account configuration is neither valid JSON nor an existing file path.');
       return null;
     }
   }
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch (error) {
-    console.error('[Push] FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON:', error.message);
-    return null;
+  const applicationCredentials = String(process.env.GOOGLE_APPLICATION_CREDENTIALS || '').trim();
+  if (applicationCredentials && fs.existsSync(applicationCredentials)) {
+    return parseCredentialFile(applicationCredentials, 'GOOGLE_APPLICATION_CREDENTIALS');
   }
+  return null;
 };
 
 const messaging = () => {
