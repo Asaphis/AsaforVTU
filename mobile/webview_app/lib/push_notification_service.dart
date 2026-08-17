@@ -125,11 +125,25 @@ class PushNotificationService {
   Future<void> _showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
     final destination = _destinationFor(message);
+    final imageUrl = _imageUrlFor(message);
+    final imagePath =
+        imageUrl == null ? null : await _downloadNotificationImage(imageUrl);
+    final style = imagePath == null
+        ? null
+        : BigPictureStyleInformation(
+            FilePathAndroidBitmap(imagePath),
+            largeIcon: const DrawableResourceAndroidBitmap('launcher_icon'),
+            contentTitle: notification?.title ?? 'AsaforVTU',
+            summaryText: notification?.body ?? 'You have a new account update.',
+            hideExpandedLargeIcon: true,
+            showBigPictureWhenCollapsed: false,
+          );
+
     await _localNotifications.show(
       id: message.hashCode,
       title: notification?.title ?? 'AsaforVTU',
       body: notification?.body ?? 'You have a new account update.',
-      notificationDetails: const NotificationDetails(
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           _notificationChannelId,
           'Account alerts',
@@ -137,9 +151,11 @@ class PushNotificationService {
               'Important AsaforVTU account and transaction notifications.',
           importance: Importance.high,
           priority: Priority.high,
-          icon: '@drawable/ic_stat_asaforvtu',
+          icon: 'ic_stat_asaforvtu',
+          largeIcon: const DrawableResourceAndroidBitmap('launcher_icon'),
+          styleInformation: style,
         ),
-        iOS: DarwinNotificationDetails(
+        iOS: const DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
@@ -147,6 +163,57 @@ class PushNotificationService {
       ),
       payload: destination,
     );
+  }
+
+  String? _imageUrlFor(RemoteMessage message) {
+    final data = message.data;
+    final candidates = <String?>[
+      data['image_url']?.toString(),
+      data['imageUrl']?.toString(),
+      message.notification?.android?.imageUrl,
+      message.notification?.apple?.imageUrl,
+    ];
+    for (final candidate in candidates) {
+      final uri = candidate == null ? null : Uri.tryParse(candidate);
+      if (uri != null && uri.scheme == 'https' && uri.host.isNotEmpty) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  Future<String?> _downloadNotificationImage(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300 ||
+          response.bodyBytes.isEmpty) {
+        return null;
+      }
+      final extension = _imageExtension(response.headers['content-type']);
+      final file = File(
+        '${Directory.systemTemp.path}/asaforvtu-notification-${url.hashCode}.$extension',
+      );
+      await file.writeAsBytes(response.bodyBytes, flush: true);
+      return file.path;
+    } catch (error) {
+      debugPrint('Notification image download skipped: $error');
+      return null;
+    }
+  }
+
+  String _imageExtension(String? contentType) {
+    switch (contentType?.split(';').first.trim().toLowerCase()) {
+      case 'image/png':
+        return 'png';
+      case 'image/webp':
+        return 'webp';
+      case 'image/gif':
+        return 'gif';
+      default:
+        return 'jpg';
+    }
   }
 
   void _handleOpenedMessage(RemoteMessage message) {

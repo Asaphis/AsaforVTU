@@ -12,6 +12,7 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:file_picker/file_picker.dart';
 import 'push_notification_service.dart';
 
 const productionCustomerUrl = 'https://vtu.ferixas.com';
@@ -437,11 +438,54 @@ class _WebViewAppState extends State<WebViewApp> {
 
     if (controller.platform is AndroidWebViewController) {
       if (!kReleaseMode) AndroidWebViewController.enableDebugging(true);
-      (controller.platform as AndroidWebViewController)
-          .setMediaPlaybackRequiresUserGesture(false);
+      final androidController = controller.platform as AndroidWebViewController;
+      unawaited(androidController.setMediaPlaybackRequiresUserGesture(false));
+      unawaited(androidController.setOnShowFileSelector(_onShowFileSelector));
     }
 
     _controller = controller;
+  }
+
+  Future<List<String>> _onShowFileSelector(
+    FileSelectorParams params,
+  ) async {
+    final accepts = params.acceptTypes
+        .map((type) => type.trim().toLowerCase())
+        .where((type) => type.isNotEmpty && type != '*/*')
+        .toSet();
+    final imageOnly = accepts.isNotEmpty &&
+        accepts.every(
+          (type) => type == 'image/*' || type.startsWith('image/'),
+        );
+    final extensions = <String>{};
+    for (final type in accepts) {
+      final slash = type.indexOf('/');
+      if (slash > 0 && slash < type.length - 1 && !type.endsWith('/*')) {
+        extensions.add(type.substring(slash + 1));
+      }
+    }
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: params.mode == FileSelectorMode.openMultiple,
+        type: extensions.isNotEmpty
+            ? FileType.custom
+            : imageOnly
+                ? FileType.image
+                : FileType.any,
+        allowedExtensions: extensions.isEmpty ? null : extensions.toList(),
+        withData: false,
+      );
+      return result?.files
+              .map((file) => file.path)
+              .whereType<String>()
+              .map((path) => Uri.file(path).toString())
+              .toList(growable: false) ??
+          const <String>[];
+    } catch (error) {
+      debugPrint('File upload picker failed: $error');
+      return const <String>[];
+    }
   }
 
   Future<void> _initPushNotifications() async {
