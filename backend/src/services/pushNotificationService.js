@@ -120,9 +120,14 @@ const deliverPushNotification = async ({ userId, notificationId, title, message,
   });
 
   const invalidIds = [];
+  const failureCodes = [];
   response.responses.forEach((result, index) => {
-    if (!result.success && invalidTokenCodes.has(result.error?.code)) {
-      invalidIds.push(devices.rows[index].id);
+    if (!result.success) {
+      const code = String(result.error?.code || 'unknown_firebase_error');
+      failureCodes.push(code);
+      if (invalidTokenCodes.has(code)) {
+        invalidIds.push(devices.rows[index].id);
+      }
     }
   });
   if (invalidIds.length) {
@@ -132,10 +137,15 @@ const deliverPushNotification = async ({ userId, notificationId, title, message,
     );
   }
 
+  const uniqueFailureCodes = [...new Set(failureCodes)];
+  if (uniqueFailureCodes.length) {
+    console.error('[Push] Firebase delivery failed:', uniqueFailureCodes.join(', '));
+  }
   return {
     delivered: response.successCount > 0,
     successCount: response.successCount,
     failureCount: response.failureCount,
+    failureCodes: uniqueFailureCodes,
   };
 };
 
