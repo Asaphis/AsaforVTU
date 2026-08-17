@@ -72,17 +72,17 @@ The app uses `flutter_launcher_icons` (not currently installed but recommended f
 ## Building for Release
 
 ### Android (APK & App Bundle)
-To build the APK for direct installation:
+For the smallest direct-install APK, build split-per-ABI release packages:
 ```bash
-flutter build apk --release
+flutter build apk --release --split-per-abi --tree-shake-icons
 ```
-Output: `build/app/outputs/flutter-apk/app-release.apk`
+This produces separate packages under `build/app/outputs/flutter-apk/`: `app-arm64-v8a-release.apk` for most modern Android phones, `app-armeabi-v7a-release.apk` for older 32-bit ARM phones, and `app-x86_64-release.apk` mainly for Android emulators. Do not install all three on one phone; choose the package matching the device CPU architecture.
 
-For a clean checkout, the repository also includes a reproducible build helper:
+For a clean checkout, the repository also includes a reproducible optimized build helper:
 ```bash
 ./scripts/build_android_release.sh
 ```
-The helper creates an ignored local keystore when `android/key.properties` is absent, which is suitable for installation testing and direct sideloading. Before publishing to Google Play or delivering updates to an existing production installation, configure a private, durable release keystore in `android/key.properties`; replacing the signing key prevents Android from accepting future updates over an existing install.
+The helper enables R8 code shrinking, resource shrinking, icon tree-shaking, and split-per-ABI output. It creates an ignored local keystore when `android/key.properties` is absent, which is suitable for installation testing and direct sideloading. Before publishing to Google Play or delivering updates to an existing production installation, configure a private, durable release keystore in `android/key.properties`; replacing the signing key prevents Android from accepting future updates over an existing install.
 
 To build the App Bundle (.aab) for Google Play Store:
 ```bash

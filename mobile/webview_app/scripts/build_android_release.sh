@@ -32,12 +32,15 @@ EOF
 fi
 
 "$FLUTTER_BIN" pub get
-"$FLUTTER_BIN" build apk --release --tree-shake-icons
+"$FLUTTER_BIN" build apk --release --split-per-abi --tree-shake-icons
 
-APK_PATH="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"
-if [[ ! -s "$APK_PATH" ]]; then
-  echo "APK was not produced at $APK_PATH" >&2
+OUTPUT_DIR="$APP_DIR/build/app/outputs/flutter-apk"
+ARM64_APK="$OUTPUT_DIR/app-arm64-v8a-release.apk"
+if [[ ! -s "$ARM64_APK" ]]; then
+  echo "arm64 APK was not produced at $ARM64_APK" >&2
   exit 1
 fi
 
-echo "Built: $APK_PATH"
+for apk in "$OUTPUT_DIR"/app-*-release.apk; do
+  [[ -s "$apk" ]] && echo "Built: $apk"
+done
