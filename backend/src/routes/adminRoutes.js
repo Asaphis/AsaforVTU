@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const { randomUUID } = require('crypto');
+const { randomUUID, createHash } = require('crypto');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const adminController = require('../controllers/adminController');
 const pool = require('../config/database');
@@ -16,13 +16,42 @@ const router = express.Router();
 const notificationUploadDirectory = path.resolve(process.env.NOTIFICATION_UPLOAD_DIR || path.join(process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'), 'notifications'));
 fs.mkdirSync(notificationUploadDirectory, { recursive: true });
 const notificationUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, callback) => callback(null, notificationUploadDirectory),
-    filename: (_req, file, callback) => callback(null, `${randomUUID()}${path.extname(file.originalname).toLowerCase()}`),
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: Number(process.env.MAX_NOTIFICATION_IMAGE_MB || 5) * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, callback) => callback(null, new Set(['image/jpeg', 'image/png', 'image/webp']).has(file.mimetype)),
 });
+
+function cloudinaryConfig() {
+  const configuredUrl = process.env.CLOUDINARY_URL;
+  if (configuredUrl) {
+    try {
+      const parsed = new URL(configuredUrl);
+      if (parsed.protocol === 'cloudinary:') return { cloudName: parsed.hostname, apiKey: decodeURIComponent(parsed.username), apiSecret: decodeURIComponent(parsed.password) };
+    } catch (_error) { /* Fall through to explicit variables and return unavailable. */ }
+  }
+  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+    return { cloudName: process.env.CLOUDINARY_CLOUD_NAME, apiKey: process.env.CLOUDINARY_API_KEY, apiSecret: process.env.CLOUDINARY_API_SECRET };
+  }
+  return null;
+}
+
+async function uploadNotificationBanner(file) {
+  const config = cloudinaryConfig();
+  if (!config) return null;
+  const timestamp = Math.floor(Date.now() / 1000);
+  const folder = process.env.CLOUDINARY_NOTIFICATION_FOLDER || 'asaforvtu/notifications';
+  const signature = createHash('sha1').update(`folder=${folder}&timestamp=${timestamp}${config.apiSecret}`).digest('hex');
+  const form = new FormData();
+  form.append('file', new Blob([file.buffer], { type: file.mimetype }), file.originalname);
+  form.append('api_key', config.apiKey);
+  form.append('timestamp', String(timestamp));
+  form.append('folder', folder);
+  form.append('signature', signature);
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/image/upload`, { method: 'POST', body: form });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.secure_url) throw new Error(payload.error?.message || 'Cloudinary rejected the banner upload.');
+  return payload.secure_url;
+}
 router.use(authenticate);
 router.use(requireAdmin);
 
@@ -84,11 +113,20 @@ router.post('/profile/password', adminController.changeAdminPassword);
 // Support & Announcements
 router.get('/communications/status', communicationController.getStatus);
 router.get('/communications/recipients', communicationController.listRecipients);
-router.post('/communications/upload', notificationUpload.single('image'), (req, res) => {
+router.post('/communications/upload', notificationUpload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'A JPG, PNG, or WebP banner image is required.' });
-  const protocol = req.get('x-forwarded-proto') || req.protocol;
-  const baseUrl = process.env.PUBLIC_API_URL || process.env.API_URL || `${protocol}://${req.get('host')}`;
-  res.status(201).json({ url: `${baseUrl.replace(/\/$/, '')}/uploads/notifications/${req.file.filename}` });
+  try {
+    const cloudUrl = await uploadNotificationBanner(req.file);
+    if (cloudUrl) return res.status(201).json({ url: cloudUrl, storage: 'cloudinary' });
+    const filename = `${randomUUID()}${path.extname(req.file.originalname).toLowerCase()}`;
+    fs.writeFileSync(path.join(notificationUploadDirectory, filename), req.file.buffer);
+    const protocol = req.get('x-forwarded-proto') || req.protocol;
+    const baseUrl = process.env.PUBLIC_API_URL || process.env.API_URL || `${protocol}://${req.get('host')}`;
+    res.status(201).json({ url: `${baseUrl.replace(/\/$/, '')}/uploads/notifications/${filename}`, storage: 'local-fallback' });
+  } catch (error) {
+    console.error('[Notifications] Banner upload failed:', error.message);
+    res.status(502).json({ error: error.message || 'Banner upload failed.' });
+  }
 });
 router.get('/communications/deliveries', communicationController.listDeliveries);
 router.post('/communications/send', communicationController.sendCampaign);
