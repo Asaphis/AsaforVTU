@@ -4,6 +4,24 @@
   flex-direction: column;
 }
 
+.auth-shell {
+  min-height: 100vh;
+}
+
+.auth-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 24px clamp(20px, 4vw, 48px) 0;
+}
+
+.auth-top__brand {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
 .picker-search {
   width: 100%;
   margin: 13px 0 8px;
@@ -114,6 +132,7 @@
 @keyframes dashboard-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 700px) {
+  .auth-top { padding: 18px 24px 0; }
   .picker-sheet > section { max-height: 88dvh; }
   .picker-options > button { padding: 15px 3px; }
   .picker-options > button span b { font-size: 14px; }
