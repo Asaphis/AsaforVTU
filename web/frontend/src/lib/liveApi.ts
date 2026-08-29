@@ -1,5 +1,7 @@
 // Production customer API contract: preserves the existing Ferixas backend endpoints and token-refresh behavior.
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_VTU_BACKEND_URL || "https://vtuapi.ferixas.com").replace(/\/$/, "");
+const ACCESS_TOKEN_REFRESH_BUFFER_MS = 10 * 1000;
+const ACCESS_TOKEN_MIN_RETRY_WINDOW_MS = 2 * 1000;
 
 export type LiveUser = {
   id: string; email: string; full_name: string; username: string; phone?: string; role?: string;
@@ -18,25 +20,136 @@ export class LiveApiError extends Error {
 }
 
 const inBrowser = () => typeof window !== "undefined";
+const hasStorage = () => inBrowser() && typeof localStorage !== "undefined";
 const accessToken = () => inBrowser() ? localStorage.getItem("access_token") : null;
 const refreshToken = () => inBrowser() ? localStorage.getItem("refresh_token") : null;
 const persistTokens = (access: string, refresh: string) => { if (inBrowser()) { localStorage.setItem("access_token", access); localStorage.setItem("refresh_token", refresh); } };
-export const clearSession = () => { if (inBrowser()) { localStorage.removeItem("access_token"); localStorage.removeItem("refresh_token"); localStorage.removeItem("user"); } };
+let refreshInFlight: Promise<boolean> | null = null;
+let refreshTimer: ReturnType<typeof window.setTimeout> | null = null;
+let autoRefreshBound = false;
+
+const clearRefreshTimer = () => {
+  if (refreshTimer && inBrowser()) {
+    window.clearTimeout(refreshTimer);
+  }
+  refreshTimer = null;
+};
+
+export const clearSession = () => {
+  if (inBrowser()) {
+    clearRefreshTimer();
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("asaforvtu-auth");
+  }
+};
 const persistUser = (user: LiveUser) => { if (inBrowser()) localStorage.setItem("user", JSON.stringify(user)); };
 
+const decodeJwtPayload = (token: string | null) => {
+  if (!token || !inBrowser()) return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    return JSON.parse(window.atob(padded)) as { exp?: number };
+  } catch {
+    return null;
+  }
+};
+
+const getTokenExpiryMs = (token: string | null) => {
+  const payload = decodeJwtPayload(token);
+  return payload?.exp ? payload.exp * 1000 : null;
+};
+
+const hasUsableAccessToken = (bufferMs = ACCESS_TOKEN_REFRESH_BUFFER_MS) => {
+  const expiry = getTokenExpiryMs(accessToken());
+  return Boolean(expiry && expiry - Date.now() > bufferMs);
+};
+
+const scheduleSessionRefresh = () => {
+  if (!inBrowser()) return;
+  clearRefreshTimer();
+
+  const expiry = getTokenExpiryMs(accessToken());
+  if (!expiry || !refreshToken()) return;
+
+  const delay = Math.max(expiry - Date.now() - ACCESS_TOKEN_REFRESH_BUFFER_MS, ACCESS_TOKEN_MIN_RETRY_WINDOW_MS);
+  refreshTimer = window.setTimeout(() => {
+    void ensureSession(true).then((ready) => {
+      if (!ready) clearSession();
+    });
+  }, delay);
+};
+
 const refreshAccessToken = async () => {
+  if (refreshInFlight) return refreshInFlight;
   const refresh = refreshToken();
   if (!refresh) return false;
-  try {
-    const response = await fetch(`${API_BASE}/api/auth/refresh`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refresh_token: refresh }), signal: AbortSignal.timeout(7000) });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || !payload.access_token) return false;
-    localStorage.setItem("access_token", payload.access_token);
+
+  refreshInFlight = (async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/refresh`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refresh_token: refresh }), signal: AbortSignal.timeout(7000) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.access_token) return false;
+      localStorage.setItem("access_token", payload.access_token);
+      scheduleSessionRefresh();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+};
+
+export const ensureSession = async (forceRefresh = false) => {
+  if (!hasStorage()) return false;
+  if (!forceRefresh && hasUsableAccessToken()) {
+    scheduleSessionRefresh();
     return true;
-  } catch { return false; }
+  }
+  if (!refreshToken()) {
+    return hasUsableAccessToken(0);
+  }
+  const refreshed = await refreshAccessToken();
+  if (refreshed) {
+    scheduleSessionRefresh();
+    return true;
+  }
+  return false;
+};
+
+export const startSessionAutoRefresh = () => {
+  if (!inBrowser() || autoRefreshBound) {
+    if (inBrowser()) scheduleSessionRefresh();
+    return;
+  }
+
+  const resume = () => { void ensureSession(); };
+  window.addEventListener("focus", resume);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") resume();
+  });
+  window.addEventListener("online", resume);
+  autoRefreshBound = true;
+  scheduleSessionRefresh();
+};
+
+export const initializeAuthSession = async () => {
+  const ready = await ensureSession();
+  if (ready) startSessionAutoRefresh();
+  return ready;
 };
 
 export const apiRequest = async (path: string, init: RequestInit = {}, retry = true): Promise<Response> => {
+  if (!path.endsWith("/refresh")) {
+    await ensureSession();
+  }
   const form = typeof FormData !== "undefined" && init.body instanceof FormData;
   const headers: Record<string, string> = form ? {} : { "Content-Type": "application/json" };
   Object.entries(init.headers || {}).forEach(([key, value]) => { headers[key] = String(value); });
@@ -64,11 +177,11 @@ export const login = async (email: string, password: string) => {
   const payload = await parse<{ user: LiveUser; tokens?: { access_token: string; refresh_token: string } }>(await fetch(`${API_BASE}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }));
   if (!payload.user.email_verified) throw new LiveApiError("Please verify your email before signing in", "EMAIL_NOT_VERIFIED", payload as unknown as Record<string, unknown>);
   if (!payload.tokens?.access_token || !payload.tokens.refresh_token) throw new LiveApiError("The login response did not include a session", "INVALID_LOGIN_RESPONSE");
-  persistTokens(payload.tokens.access_token, payload.tokens.refresh_token); persistUser(payload.user); return payload.user;
+  persistTokens(payload.tokens.access_token, payload.tokens.refresh_token); persistUser(payload.user); startSessionAutoRefresh(); return payload.user;
 };
 
 export const logout = async () => { const refresh = refreshToken(); clearSession(); if (!refresh) return; try { await fetch(`${API_BASE}/api/auth/logout`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refresh_token: refresh }), signal: AbortSignal.timeout(4000) }); } catch {} };
-export const currentUser = async (): Promise<LiveUser | null> => { if (!accessToken()) return null; try { const payload = await parse<any>(await apiRequest("/api/auth/me")); const user = payload?.user || payload; if (!user?.id || !user?.email) throw new LiveApiError("The session response is invalid", "INVALID_SESSION_RESPONSE", payload); persistUser(user); return user as LiveUser; } catch { return null; } };
+export const currentUser = async (): Promise<LiveUser | null> => { if (!(await ensureSession())) return null; try { const payload = await parse<any>(await apiRequest("/api/auth/me")); const user = payload?.user || payload; if (!user?.id || !user?.email) throw new LiveApiError("The session response is invalid", "INVALID_SESSION_RESPONSE", payload); persistUser(user); return user as LiveUser; } catch { return null; } };
 export const verifyEmail = async (token: string) => parse<{ success: boolean; message: string }>(await fetch(`${API_BASE}/api/auth/verify-email?token=${encodeURIComponent(token)}`, { cache: "no-store" }));
 export const resendVerification = async (email: string) => parse(await fetch(`${API_BASE}/api/auth/resend-verification`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }));
 export const requestReset = async (email: string) => parse(await fetch(`${API_BASE}/api/auth/forgot-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }));

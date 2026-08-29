@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const pool = require('../config/database');
-const { generateToken, generateRefreshToken } = require('../middleware/auth');
+const { generateToken, generateRefreshToken, verifyToken } = require('../middleware/auth');
 const { sendVerificationEmail, sendPasswordResetEmail, sendReferralSignupEmail, sendAccountSecurityEmail } = require('./emailService');
 
 const SALT_ROUNDS = 10;
@@ -315,6 +315,11 @@ const refreshAccessToken = async (refreshToken) => {
   const client = await pool.connect();
   
   try {
+    const decoded = verifyToken(refreshToken);
+    if (!decoded || decoded.type !== 'refresh' || !decoded.userId) {
+      throw new Error('Invalid or expired refresh token');
+    }
+
     // Check if refresh token exists and is valid
     const tokenResult = await client.query(
       `SELECT rt.*, u.id, u.email, u.role, u.is_active
@@ -329,6 +334,9 @@ const refreshAccessToken = async (refreshToken) => {
     }
 
     const tokenData = tokenResult.rows[0];
+    if (String(tokenData.user_id || tokenData.id) !== String(decoded.userId)) {
+      throw new Error('Invalid refresh token');
+    }
 
     if (!tokenData.is_active) {
       throw new Error('User account is deactivated');

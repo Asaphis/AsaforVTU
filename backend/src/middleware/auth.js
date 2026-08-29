@@ -2,8 +2,29 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
-const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '30d';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1m';
+const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+
+const parseDurationToMs = (value, fallbackMs) => {
+  const raw = String(value || '').trim();
+  if (!raw) return fallbackMs;
+  const match = raw.match(/^(\d+)\s*(ms|s|m|h|d)?$/i);
+  if (!match) return fallbackMs;
+
+  const amount = Number(match[1]);
+  const unit = String(match[2] || 'ms').toLowerCase();
+  const multiplier = {
+    ms: 1,
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000
+  }[unit];
+
+  return Number.isFinite(amount) && multiplier ? amount * multiplier : fallbackMs;
+};
+
+const REFRESH_TOKEN_TTL_MS = parseDurationToMs(REFRESH_TOKEN_EXPIRES_IN, 7 * 24 * 60 * 60 * 1000);
 
 const generateToken = (userId, email, role = 'user') => jwt.sign(
   { userId, email, role },
@@ -13,7 +34,7 @@ const generateToken = (userId, email, role = 'user') => jwt.sign(
 
 const generateRefreshToken = async (userId) => {
   const token = jwt.sign({ userId, type: 'refresh' }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
   await pool.query(
     'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
     [userId, token, expiresAt]
