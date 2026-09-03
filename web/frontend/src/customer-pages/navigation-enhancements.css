@@ -138,3 +138,119 @@
   .picker-options > button span b { font-size: 14px; }
   .dashboard-refreshing { right: 14px; bottom: 78px; }
 }
+
+.gift-cards-section {
+  margin: 24px 0;
+}
+
+.gift-cards-section header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.gift-cards-section header .eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+}
+
+.gift-cards-section header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin: 4px 0 0;
+}
+
+.gift-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.gift-card-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+  text-align: left;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.gift-card-card:hover {
+  border-color: var(--lime);
+  background: #f8fdf4;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.gift-card-icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #f0f7ff;
+  color: #036a97;
+  flex-shrink: 0;
+}
+
+.gift-card-card--buy .gift-card-icon {
+  background: #ecf7df;
+  color: #2d6a4f;
+}
+
+.gift-card-card--sell .gift-card-icon {
+  background: #fff4e6;
+  color: #d97706;
+}
+
+.gift-card-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+
+.gift-card-card p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 6px;
+  line-height: 1.4;
+}
+
+.gift-card-card small {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--lime);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.gift-card-card--sell small {
+  color: #d97706;
+}
+
+@media (max-width: 700px) {
+  .gift-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .gift-card-card {
+    padding: 16px;
+  }
+  
+  .gift-card-icon {
+    width: 48px;
+    height: 48px;
+  }
+}
