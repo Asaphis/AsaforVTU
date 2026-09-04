@@ -1,9 +1,11 @@
 // Gift Cards Component - Buy and Sell flows with mock data
 import { useState, useEffect } from "react";
-import { Gift, CreditCard, ChevronRight, ChevronDown, X, CheckCircle2 } from "lucide-react";
+import { Gift, CreditCard, ChevronRight, ChevronDown, X, CheckCircle2, Copy, Download, Printer, Share2 } from "lucide-react";
 import { mockGiftCardsApi } from "../lib/mockGiftCardsApi";
 
 const money = (value: number) => `₦${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const formatDate = (isoString: string) => new Date(isoString).toLocaleString('en-NG');
 
 // Inline components (not exported from CustomerApp)
 function Button({ children, onClick, type = "button", variant = "primary", disabled = false }: { children: any; onClick?: () => void; type?: "button" | "submit"; variant?: "primary" | "line" | "text" | "danger"; disabled?: boolean }) {
@@ -249,7 +251,7 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
                 </button>
               ))}
             </section>
-            <Field label="Custom amount (USD)">
+            <Field label="Custom amount">
               <input 
                 type="number" 
                 value={customAmount} 
@@ -259,7 +261,7 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
             </Field>
           </>
         ) : (
-          <Field label="Card value (USD)">
+          <Field label="Card value">
             <input 
               type="number" 
               value={customAmount} 
@@ -280,29 +282,28 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
     const type = cardTypes.find(t => t.id === selectedType);
     const amount = customAmount || selectedDenomination;
     const total = rateInfo ? (action === "buy" ? Number(amount) * rateInfo.rate + rateInfo.fee : Number(amount) * rateInfo.rate - rateInfo.fee) : 0;
+    const balanceBefore = wallet[walletType as keyof typeof wallet] || 0;
+    const balanceAfter = action === "buy" ? balanceBefore - total : balanceBefore + total;
 
     return (
       <div className="page">
         <button className="back-link" onClick={() => setStep(4)}>← Back</button>
         <div className="page-heading">
           <span className="eyebrow">GIFT CARDS / {action.toUpperCase()}</span>
-          <h2>Review</h2>
+          <h2>Review transaction</h2>
           <p>Review your {action} details before confirming.</p>
         </div>
         <section className="receipt">
           <header><Tag>{action === "buy" ? "Purchase" : "Sale"}</Tag></header>
-          <div className="receipt-total"><span>Total amount</span><b>{money(total)}</b><p className={action === "buy" ? "debit" : "credit"}>{action === "buy" ? "Wallet to be debited" : "Wallet to be credited"}</p></div>
+          <div className="receipt-total">
+            <span>Total amount</span>
+            <b>{money(total)}</b>
+            <p className={action === "buy" ? "debit" : "credit"}>{action === "buy" ? "Wallet will be debited" : "Wallet will be credited"}</p>
+          </div>
           <dl>
-            {[
-              ["Gift card brand", brand?.name],
-              ["Country", country?.name],
-              ["Card type", type?.name],
-              ["Card value", amount],
-              rateInfo && ["Exchange rate", `${rateInfo.rate} NGN/USD`],
-              rateInfo && ["Transaction fee", money(rateInfo.fee)],
-            ].filter(([,value]) => Boolean(value)).map(([key,value])=><div key={String(key)}><dt>{key}</dt><dd>{value}</dd></div>)}
+            {[["Gift card brand", brand?.name], ["Country", country?.name], ["Card type", type?.name], ["Amount", `${country?.currency}${amount}`], ["Exchange rate", rateInfo ? `${rateInfo.rate} NGN/${country?.currency}` : ""], ["Transaction fee", rateInfo ? money(rateInfo.fee) : ""], ["Wallet type", walletType === "main" ? "Main balance" : walletType === "cashback" ? "Cashback balance" : "Referral balance"], ["Balance before", money(balanceBefore)], ["Balance after", money(balanceAfter)], ["Action", action === "buy" ? "Buy" : "Sell"]].filter(([,value])=>Boolean(value)).map(([key,value])=><div key={String(key)}><dt>{key}</dt><dd>{value}</dd></div>)}
           </dl>
-          <footer><Button variant="line" onClick={()=>setStep(4)}>Cancel</Button><Button onClick={()=>setStep(6)}>Confirm</Button></footer>
+          <footer><Button variant="line" onClick={()=>setStep(4)}>Edit</Button><Button onClick={()=>setStep(6)}>Confirm transaction</Button></footer>
         </section>
       </div>
     );
@@ -376,13 +377,15 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
             setBusy(true);
             setError("");
             try {
+              const balanceBefore = wallet[walletType as keyof typeof wallet] || 0;
               const result = action === "buy"
                 ? await mockGiftCardsApi.purchaseGiftCard({
                     brandId: selectedBrand,
                     countryCode: selectedCountry,
                     typeId: selectedType,
                     denominationValue: Number(customAmount || selectedDenomination),
-                    walletType: walletType as "main" | "cashback"
+                    walletType: walletType as "main" | "cashback",
+                    balanceBefore,
                   })
                 : await mockGiftCardsApi.sellGiftCard({
                     brandId: selectedBrand,
@@ -393,7 +396,8 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
                     cardPin: type?.requiresPin ? cardPin : undefined,
                     frontImage: type?.requiresImages ? (frontImage || undefined) : undefined,
                     backImage: type?.requiresImages ? (backImage || undefined) : undefined,
-                    receiptImage: type?.requiresReceipt ? (receiptImage || undefined) : undefined
+                    receiptImage: type?.requiresReceipt ? (receiptImage || undefined) : undefined,
+                    balanceBefore,
                   });
               setTransaction(result);
               setSuccessMessage(action === "buy" ? "Gift card purchased successfully!" : "Gift card submitted for verification.");
@@ -414,39 +418,54 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
 
   // Step 8: Success
   if (step === 7) {
+    const brand = brands.find(b => b.id === selectedBrand);
+    const country = countries.find(c => c.code === selectedCountry);
+    const type = cardTypes.find(t => t.id === selectedType);
+    const amount = customAmount || selectedDenomination;
+
+    const downloadReceipt = () => {
+      const blob = new Blob([`ASAFORVTU RECEIPT\nReference: ${transaction?.reference}\nService: Gift Card ${action === "buy" ? "Purchase" : "Sale"}\nAmount: ${money(transaction?.amount || 0)}\nStatus: ${transaction?.status}`], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `AsaforVTU-${transaction?.reference}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setSuccessMessage("Receipt download started");
+    };
+
+    const shareReceipt = async () => {
+      const text = `AsaforVTU receipt ${transaction?.reference} · Gift Card ${action === "buy" ? "Purchase" : "Sale"} · ${money(transaction?.amount || 0)}`;
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: "AsaforVTU receipt", text });
+        } else {
+          await navigator.clipboard.writeText(text);
+          setSuccessMessage("Receipt details copied");
+        }
+      } catch {
+        setSuccessMessage("Receipt sharing cancelled");
+      }
+    };
+
     return (
       <div className="page">
-        <div className="page-heading">
-          <span className="eyebrow">GIFT CARDS / {action.toUpperCase()}</span>
-          <h2>{action === "buy" ? "Purchase Complete" : "Submission Complete"}</h2>
-        </div>
-        <section className="payment-state">
-          <span className="state-icon"><CheckCircle2 /></span>
-          <Tag kind="ok">Success</Tag>
-          <h1>{action === "buy" ? "Gift card purchased successfully!" : "Gift card submitted for verification."}</h1>
-          
-          {action === "buy" && transaction?.giftCardCode && (
-            <div className="receipt-total">
-              <span>Gift card code</span>
-              <b>{transaction.giftCardCode}</b>
-            </div>
-          )}
-          
-          {action === "sell" && (
-            <div className="receipt-total">
-              <span>Estimated payout</span>
-              <b>{money(transaction?.totalNGN || 0)}</b>
-            </div>
-          )}
-          
-          <div>
-            <Button variant="line" onClick={() => { reset(); setAction(null); }}>Done</Button>
-            {action === "buy" && transaction?.giftCardCode && (
-              <Button onClick={() => {
-                navigator.clipboard.writeText(transaction.giftCardCode);
-              }}>Copy Code</Button>
-            )}
+        <button className="back-link" onClick={() => { reset(); setAction(null); }}>← Back to Gift Cards</button>
+        <section className="receipt">
+          <header><Tag kind="ok">{transaction?.status || "Success"}</Tag></header>
+          <div className="receipt-total">
+            <span>Total amount</span>
+            <b>{money(transaction?.amount || 0)}</b>
+            <p className={action === "buy" ? "debit" : "credit"}>{action === "buy" ? "Wallet debited" : "Wallet credited"}</p>
           </div>
+          <dl>
+            {[["Transaction date", transaction?.createdAt ? formatDate(transaction.createdAt) : ""], ["Service type", `Gift Card ${action === "buy" ? "Purchase" : "Sale"}`], ["Provider", brand?.name], ["Reference", transaction?.reference], ["Description", `${brand?.name} ${type?.name} ${country?.currency}${amount}`], ["Balance before", money(transaction?.balanceBefore || 0)], ["Balance after", money(transaction?.balanceAfter || 0)], action === "buy" && transaction?.giftCardCode ? ["Gift card code", transaction.giftCardCode] : null, action === "sell" ? ["Verification status", transaction?.status || "Pending"] : null, action === "sell" ? ["Estimated payout", money(transaction?.totalNGN || 0)] : null].filter((item): item is [string, string] => item !== null && Boolean(item[1])).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
+          </dl>
+          <footer>
+            <Button variant="line" onClick={downloadReceipt}>Download <Download size={16}/></Button>
+            <Button variant="line" onClick={() => window.print()}>Print <Printer size={16}/></Button>
+            <Button onClick={shareReceipt}>Share <Share2 size={15}/></Button>
+          </footer>
         </section>
       </div>
     );

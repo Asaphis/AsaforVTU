@@ -68,8 +68,10 @@ export const mockGiftCardsApi = {
   async purchaseGiftCard(data: any) {
     await this.delay(1500);
     const giftCardCode = this.generateGiftCardCode();
+    const totalNGN = data.denominationValue * 750 + 500;
     return {
       id: `TXN-${Date.now()}`,
+      reference: `REF-${Date.now()}`,
       giftCardCode,
       brandId: data.brandId,
       countryCode: data.countryCode,
@@ -78,6 +80,9 @@ export const mockGiftCardsApi = {
       walletType: data.walletType,
       status: "success",
       createdAt: new Date().toISOString(),
+      balanceBefore: data.balanceBefore || 0,
+      balanceAfter: (data.balanceBefore || 0) - totalNGN,
+      amount: totalNGN,
     };
   },
 
@@ -87,6 +92,7 @@ export const mockGiftCardsApi = {
     const totalNGN = data.cardValue * rate - 500;
     return {
       id: `TXN-${Date.now()}`,
+      reference: `REF-${Date.now()}`,
       brandId: data.brandId,
       countryCode: data.countryCode,
       typeId: data.typeId,
@@ -95,6 +101,9 @@ export const mockGiftCardsApi = {
       status: "pending",
       totalNGN,
       createdAt: new Date().toISOString(),
+      balanceBefore: data.balanceBefore || 0,
+      balanceAfter: (data.balanceBefore || 0) + totalNGN,
+      amount: totalNGN,
     };
   },
 
