@@ -249,7 +249,7 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
                 </button>
               ))}
             </section>
-            <Field label="Custom amount">
+            <Field label="Custom amount (USD)">
               <input 
                 type="number" 
                 value={customAmount} 
@@ -259,7 +259,7 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
             </Field>
           </>
         ) : (
-          <Field label="Card value">
+          <Field label="Card value (USD)">
             <input 
               type="number" 
               value={customAmount} 
@@ -279,6 +279,7 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
     const country = countries.find(c => c.code === selectedCountry);
     const type = cardTypes.find(t => t.id === selectedType);
     const amount = customAmount || selectedDenomination;
+    const total = rateInfo ? (action === "buy" ? Number(amount) * rateInfo.rate + rateInfo.fee : Number(amount) * rateInfo.rate - rateInfo.fee) : 0;
 
     return (
       <div className="page">
@@ -288,20 +289,21 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
           <h2>Review</h2>
           <p>Review your {action} details before confirming.</p>
         </div>
-        <section className="form-section">
-          <div><b>Brand:</b><span>{brand?.name}</span></div>
-          <div><b>Country:</b><span>{country?.name}</span></div>
-          <div><b>Type:</b><span>{type?.name}</span></div>
-          <div><b>Amount:</b><span>{amount}</span></div>
-          {rateInfo && (
-            <>
-              <div><b>Rate:</b><span>{action === "buy" ? rateInfo.rate : rateInfo.rate} NGN/USD</span></div>
-              <div><b>Fee:</b><span>{money(rateInfo.fee)}</span></div>
-              <div><b>Total:</b><span>{money(action === "buy" ? Number(amount) * rateInfo.rate + rateInfo.fee : Number(amount) * rateInfo.rate - rateInfo.fee)}</span></div>
-            </>
-          )}
+        <section className="receipt">
+          <header><Tag>{action === "buy" ? "Purchase" : "Sale"}</Tag></header>
+          <div className="receipt-total"><span>Total amount</span><b>{money(total)}</b><p className={action === "buy" ? "debit" : "credit"}>{action === "buy" ? "Wallet to be debited" : "Wallet to be credited"}</p></div>
+          <dl>
+            {[
+              ["Gift card brand", brand?.name],
+              ["Country", country?.name],
+              ["Card type", type?.name],
+              ["Card value", amount],
+              rateInfo && ["Exchange rate", `${rateInfo.rate} NGN/USD`],
+              rateInfo && ["Transaction fee", money(rateInfo.fee)],
+            ].filter(([,value]) => Boolean(value)).map(([key,value])=><div key={String(key)}><dt>{key}</dt><dd>{value}</dd></div>)}
+          </dl>
+          <footer><Button variant="line" onClick={()=>setStep(4)}>Cancel</Button><Button onClick={()=>setStep(6)}>Confirm</Button></footer>
         </section>
-        <Button onClick={() => setStep(6)}>Confirm</Button>
       </div>
     );
   }
@@ -418,33 +420,34 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
           <span className="eyebrow">GIFT CARDS / {action.toUpperCase()}</span>
           <h2>{action === "buy" ? "Purchase Complete" : "Submission Complete"}</h2>
         </div>
-        <section className="form-section">
+        <section className="payment-state">
           <span className="state-icon"><CheckCircle2 /></span>
           <Tag kind="ok">Success</Tag>
-          <p>{successMessage}</p>
+          <h1>{action === "buy" ? "Gift card purchased successfully!" : "Gift card submitted for verification."}</h1>
           
           {action === "buy" && transaction?.giftCardCode && (
-            <Field label="Gift card code">
-              <input readOnly value={transaction.giftCardCode} />
-              <Button 
-                onClick={() => {
-                  navigator.clipboard.writeText(transaction.giftCardCode);
-                  setSuccessMessage("Code copied to clipboard!");
-                }}
-              >
-                Copy Code
-              </Button>
-            </Field>
+            <div className="receipt-total">
+              <span>Gift card code</span>
+              <b>{transaction.giftCardCode}</b>
+            </div>
           )}
           
           {action === "sell" && (
-            <>
-              <p>Verification status: {transaction?.status || "Pending"}</p>
-              <p>Estimated payout: {money(transaction?.totalNGN || 0)}</p>
-            </>
+            <div className="receipt-total">
+              <span>Estimated payout</span>
+              <b>{money(transaction?.totalNGN || 0)}</b>
+            </div>
           )}
+          
+          <div>
+            <Button variant="line" onClick={() => { reset(); setAction(null); }}>Done</Button>
+            {action === "buy" && transaction?.giftCardCode && (
+              <Button onClick={() => {
+                navigator.clipboard.writeText(transaction.giftCardCode);
+              }}>Copy Code</Button>
+            )}
+          </div>
         </section>
-        <Button onClick={() => { reset(); setAction(null); }}>Done</Button>
       </div>
     );
   }
