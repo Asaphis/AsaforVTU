@@ -5,6 +5,8 @@ import { useLocation } from "wouter";
 import { Bell, CheckCircle2, ChevronDown, ChevronRight, Copy, CreditCard, Download, Eye, EyeOff, FileText, Gift, GraduationCap, Home, KeyRound, LifeBuoy, Lock, LogOut, Mail, MapPin, Menu, MessageCircle, MonitorPlay, Paperclip, Pencil, Phone, Plus, Printer, ReceiptText, Send, Settings, Share2, ShieldCheck, Smartphone, Tv, Upload, User, WalletCards, Wifi, X, Zap } from "lucide-react";
 import { toast } from "sonner";
 import * as api from "../lib/liveApi";
+import { mockGiftCardsApi } from "../lib/mockGiftCardsApi";
+import { GiftCards } from "./GiftCardsComponent";
 import "./navigation-enhancements.css";
 
 const LOGO = "/brand/ferixas-globe.png";
