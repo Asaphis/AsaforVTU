@@ -2,23 +2,23 @@
 export const mockGiftCardsApi = {
   // Mock data
   brands: [
-    { id: "amazon", name: "Amazon", logo: "📦", active: true, popular: true },
-    { id: "apple", name: "Apple iTunes", logo: "🍎", active: true, popular: true },
-    { id: "google", name: "Google Play", logo: "▶️", active: true, popular: true },
-    { id: "netflix", name: "Netflix", logo: "🎬", active: true, popular: true },
-    { id: "steam", name: "Steam", logo: "🎮", active: true, popular: false },
-    { id: "spotify", name: "Spotify", logo: "🎵", active: true, popular: false },
-    { id: "xbox", name: "Xbox", logo: "🎯", active: true, popular: false },
-    { id: "playstation", name: "PlayStation", logo: "🎮", active: true, popular: false },
+    { id: "amazon", name: "Amazon", logo: "Amazon", active: true, popular: true },
+    { id: "apple", name: "Apple iTunes", logo: "Apple", active: true, popular: true },
+    { id: "google", name: "Google Play", logo: "Google", active: true, popular: true },
+    { id: "netflix", name: "Netflix", logo: "Netflix", active: true, popular: true },
+    { id: "steam", name: "Steam", logo: "Steam", active: true, popular: false },
+    { id: "spotify", name: "Spotify", logo: "Spotify", active: true, popular: false },
+    { id: "xbox", name: "Xbox", logo: "Xbox", active: true, popular: false },
+    { id: "playstation", name: "PlayStation", logo: "PlayStation", active: true, popular: false },
   ],
 
   countries: [
-    { code: "US", name: "United States", flag: "🇺🇸", currency: "USD" },
-    { code: "UK", name: "United Kingdom", flag: "🇬🇧", currency: "GBP" },
-    { code: "CA", name: "Canada", flag: "🇨🇦", currency: "CAD" },
-    { code: "AU", name: "Australia", flag: "🇦🇺", currency: "AUD" },
-    { code: "DE", name: "Germany", flag: "🇩🇪", currency: "EUR" },
-    { code: "NG", name: "Nigeria", flag: "🇳🇬", currency: "NGN" },
+    { code: "US", name: "United States", flag: "US", currency: "USD" },
+    { code: "UK", name: "United Kingdom", flag: "UK", currency: "GBP" },
+    { code: "CA", name: "Canada", flag: "CA", currency: "CAD" },
+    { code: "AU", name: "Australia", flag: "AU", currency: "AUD" },
+    { code: "DE", name: "Germany", flag: "DE", currency: "EUR" },
+    { code: "NG", name: "Nigeria", flag: "NG", currency: "NGN" },
   ],
 
   cardTypes: [

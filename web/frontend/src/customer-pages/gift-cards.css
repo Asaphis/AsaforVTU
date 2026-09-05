@@ -1,0 +1,181 @@
+/* Gift Cards Component Styles */
+
+/* Review Section */
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.review-grid dt {
+  color: #718096;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.review-grid dd {
+  color: #162337;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.review-grid .highlight {
+  color: #036A97;
+  font-size: 16px;
+}
+
+.form-section h3 {
+  font-family: Sora;
+  font-size: 16px;
+  font-weight: 600;
+  color: #162337;
+  margin: 24px 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E8EDF2;
+}
+
+.form-section.notice {
+  background: #FFF7F4;
+  border: 1px solid #FED7AA;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 24px 0;
+}
+
+.form-section.notice p {
+  color: #718096;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 8px 0 0 0;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* Receipt Sections */
+.receipt-section {
+  margin: 24px 0;
+  padding: 16px 0;
+  border-top: 1px solid #E8EDF2;
+}
+
+.receipt-section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.receipt-section h4 {
+  font-family: Sora;
+  font-size: 14px;
+  font-weight: 600;
+  color: #162337;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.receipt-section dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px 24px;
+}
+
+.receipt-section dt {
+  color: #718096;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.receipt-section dd {
+  color: #162337;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Status Timeline */
+.status-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #F8FAFC;
+  border-radius: 8px;
+  border: 1px solid #E8EDF2;
+}
+
+.timeline-item.completed {
+  background: #ECF7DF;
+  border-color: #D4E8BC;
+}
+
+.timeline-item.pending {
+  background: #F8FAFC;
+  border-color: #E8EDF2;
+}
+
+.timeline-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.timeline-item.completed .timeline-icon {
+  color: #4D7D1B;
+}
+
+.timeline-pending {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #CBD5E0;
+  border-radius: 50%;
+  background: #F8FAFC;
+}
+
+.timeline-status {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #162337;
+}
+
+.timeline-item.completed .timeline-status {
+  color: #4D7D1B;
+}
+
+.timeline-time {
+  font-size: 11px;
+  color: #718096;
+  font-family: "IBM Plex Mono";
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .review-grid,
+  .receipt-section dl {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .form-actions button {
+    width: 100%;
+  }
+}

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Gift, CreditCard, ChevronRight, ChevronDown, X, CheckCircle2, Copy, Download, Printer, Share2 } from "lucide-react";
 import { mockGiftCardsApi } from "../lib/mockGiftCardsApi";
+import "../customer-pages/gift-cards.css";
 
 const money = (value: number) => `₦${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -534,7 +535,7 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
               <div className="status-timeline">
                 {transaction?.statusHistory?.map((item: any, index: number) => (
                   <div key={index} className={`timeline-item ${item.completed ? "completed" : "pending"}`}>
-                    <span className="timeline-icon">{item.completed ? "✓" : "○"}</span>
+                    <span className="timeline-icon">{item.completed ? <CheckCircle2 size={16} /> : <div className="timeline-pending" />}</span>
                     <span className="timeline-status">{item.status}</span>
                     <span className="timeline-time">{item.timestamp ? formatDate(item.timestamp) : ""}</span>
                   </div>
@@ -590,7 +591,7 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
             <div className="status-timeline">
               {transaction?.statusHistory?.map((item: any, index: number) => (
                 <div key={index} className={`timeline-item ${item.completed ? "completed" : "pending"}`}>
-                  <span className="timeline-icon">{item.completed ? "✓" : "○"}</span>
+                  <span className="timeline-icon">{item.completed ? <CheckCircle2 size={16} /> : <div className="timeline-pending" />}</span>
                   <span className="timeline-status">{item.status}</span>
                   <span className="timeline-time">{item.timestamp ? formatDate(item.timestamp) : ""}</span>
                 </div>
