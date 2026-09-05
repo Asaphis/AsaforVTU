@@ -299,41 +299,77 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
         
         <section className="form-section">
           <h3>Card Details</h3>
-          <dl className="review-grid">
-            <div><dt>Gift card brand</dt><dd>{brand?.name}</dd></div>
-            <div><dt>Country/region</dt><dd>{country?.name}</dd></div>
-            <div><dt>Card type</dt><dd>{type?.name}</dd></div>
-            <div><dt>Card {action === "buy" ? "denomination" : "value"}</dt><dd>{country?.currency}{amount}</dd></div>
-          </dl>
+          <div className="form-row">
+            <Field label="Gift card brand">
+              <input type="text" readOnly value={brand?.name || ""} />
+            </Field>
+            <Field label="Country/region">
+              <input type="text" readOnly value={country?.name || ""} />
+            </Field>
+          </div>
+          <div className="form-row">
+            <Field label="Card type">
+              <input type="text" readOnly value={type?.name || ""} />
+            </Field>
+            <Field label={`Card ${action === "buy" ? "denomination" : "value"}`}>
+              <input type="text" readOnly value={`${country?.currency}${amount}`} />
+            </Field>
+          </div>
         </section>
 
         <section className="form-section">
           <h3>{action === "buy" ? "Pricing" : "Rate & Payout"}</h3>
-          <dl className="review-grid">
-            <div><dt>{action === "buy" ? "Gift card value" : "Card value"}</dt><dd>{country?.currency}{amount}</dd></div>
-            <div><dt>Current {action === "buy" ? "exchange rate" : "sell rate"}</dt><dd>{rateInfo?.rate} NGN/{country?.currency}</dd></div>
-            <div><dt>{action === "buy" ? "Gift card amount in ₦" : "Gross card value"}</dt><dd>{money(Number(amount) * (rateInfo?.rate || 0))}</dd></div>
-            <div><dt>Transaction fee</dt><dd>{money(rateInfo?.fee || 0)}</dd></div>
-            <div><dt>{action === "buy" ? "Total to pay" : "Expected amount to receive"}</dt><dd className="highlight">{money(total)}</dd></div>
-          </dl>
+          <div className="form-row">
+            <Field label={action === "buy" ? "Gift card value" : "Card value"}>
+              <input type="text" readOnly value={`${country?.currency}${amount}`} />
+            </Field>
+            <Field label={`Current ${action === "buy" ? "exchange rate" : "sell rate"}`}>
+              <input type="text" readOnly value={`${rateInfo?.rate} NGN/${country?.currency}`} />
+            </Field>
+          </div>
+          <div className="form-row">
+            <Field label={action === "buy" ? "Gift card amount in ₦" : "Gross card value"}>
+              <input type="text" readOnly value={money(Number(amount) * (rateInfo?.rate || 0))} />
+            </Field>
+            <Field label="Transaction fee">
+              <input type="text" readOnly value={money(rateInfo?.fee || 0)} />
+            </Field>
+          </div>
+          <Field label={action === "buy" ? "Total to pay" : "Expected amount to receive"}>
+            <input type="text" readOnly value={money(total)} className="highlight" />
+          </Field>
         </section>
 
         <section className="form-section">
           <h3>Wallet</h3>
-          <dl className="review-grid">
-            <div><dt>Payment source</dt><dd>FERIXAS Wallet</dd></div>
-            <div><dt>Wallet type</dt><dd>{walletType === "main" ? "Main balance" : walletType === "cashback" ? "Cashback balance" : "Referral balance"}</dd></div>
-            <div><dt>Available balance</dt><dd>{money(balanceBefore)}</dd></div>
-            <div><dt>Balance after {action === "buy" ? "payment" : "payout"}</dt><dd className={action === "buy" ? "debit" : "credit"}>{money(balanceAfter)}</dd></div>
-          </dl>
+          <div className="form-row">
+            <Field label="Payment source">
+              <input type="text" readOnly value="FERIXAS Wallet" />
+            </Field>
+            <Field label="Wallet type">
+              <input type="text" readOnly value={walletType === "main" ? "Main balance" : walletType === "cashback" ? "Cashback balance" : "Referral balance"} />
+            </Field>
+          </div>
+          <div className="form-row">
+            <Field label="Available balance">
+              <input type="text" readOnly value={money(balanceBefore)} />
+            </Field>
+            <Field label={`Balance after ${action === "buy" ? "payment" : "payout"}`}>
+              <input type="text" readOnly value={money(balanceAfter)} className={action === "buy" ? "debit" : "credit"} />
+            </Field>
+          </div>
         </section>
 
         <section className="form-section">
           <h3>Rate information</h3>
-          <dl className="review-grid">
-            <div><dt>Rate used</dt><dd>{rateInfo?.rate} NGN/{country?.currency}</dd></div>
-            <div><dt>Rate updated</dt><dd>{rateTimeText}</dd></div>
-          </dl>
+          <div className="form-row">
+            <Field label="Rate used">
+              <input type="text" readOnly value={`${rateInfo?.rate} NGN/${country?.currency}`} />
+            </Field>
+            <Field label="Rate updated">
+              <input type="text" readOnly value={rateTimeText} />
+            </Field>
+          </div>
         </section>
 
         <section className="form-section notice">

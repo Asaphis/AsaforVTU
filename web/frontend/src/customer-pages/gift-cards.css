@@ -1,29 +1,24 @@
 /* Gift Cards Component Styles */
 
-/* Review Section */
-.review-grid {
+/* Form Row Layout */
+.form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
-  margin: 16px 0;
+  margin-bottom: 16px;
 }
 
-.review-grid dt {
-  color: #718096;
-  font-size: 12px;
-  font-weight: 500;
-  margin-bottom: 4px;
+.form-row:last-child {
+  margin-bottom: 0;
 }
 
-.review-grid dd {
-  color: #162337;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.review-grid .highlight {
-  color: #036A97;
-  font-size: 16px;
+/* Form Section */
+.form-section {
+  margin: 24px 0;
+  padding: 20px;
+  background: #F8FAFC;
+  border-radius: 8px;
+  border: 1px solid #E8EDF2;
 }
 
 .form-section h3 {
@@ -31,9 +26,9 @@
   font-size: 16px;
   font-weight: 600;
   color: #162337;
-  margin: 24px 0 12px 0;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #E8EDF2;
+  margin: 0 0 16px 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #E8EDF2;
 }
 
 .form-section.notice {
@@ -49,6 +44,29 @@
   font-size: 13px;
   line-height: 1.6;
   margin: 8px 0 0 0;
+}
+
+/* Form Field Styling */
+.form-field input[readonly] {
+  background: #E8EDF2;
+  cursor: default;
+}
+
+.form-field input.highlight {
+  background: #ECF7DF;
+  border-color: #D4E8BC;
+  color: #4D7D1B;
+  font-weight: 600;
+}
+
+.form-field input.debit {
+  color: #DC2626;
+  font-weight: 600;
+}
+
+.form-field input.credit {
+  color: #16A34A;
+  font-weight: 600;
 }
 
 .form-actions {
@@ -166,7 +184,7 @@
 
 /* Responsive */
 @media (max-width: 600px) {
-  .review-grid,
+  .form-row,
   .receipt-section dl {
     grid-template-columns: 1fr;
   }
