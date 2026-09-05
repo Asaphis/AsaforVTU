@@ -62,6 +62,8 @@ export const mockGiftCardsApi = {
     return {
       rate: baseRate,
       fee: 500,
+      rateTimestamp: new Date().toISOString(),
+      rateValidFor: 900, // 15 minutes in seconds
     };
   },
 
@@ -69,9 +71,12 @@ export const mockGiftCardsApi = {
     await this.delay(1500);
     const giftCardCode = this.generateGiftCardCode();
     const totalNGN = data.denominationValue * 750 + 500;
+    const gcTransactionId = this.generateGiftCardTransactionId("buy");
+    const statusHistory = this.generateStatusHistory("buy");
     return {
       id: `TXN-${Date.now()}`,
       reference: `REF-${Date.now()}`,
+      gcTransactionId,
       giftCardCode,
       brandId: data.brandId,
       countryCode: data.countryCode,
@@ -83,6 +88,11 @@ export const mockGiftCardsApi = {
       balanceBefore: data.balanceBefore || 0,
       balanceAfter: (data.balanceBefore || 0) - totalNGN,
       amount: totalNGN,
+      rate: 750,
+      fee: 500,
+      statusHistory,
+      deliveryStatus: "Delivered",
+      redemptionInstructions: "Use your gift card code at the brand's official website or app to redeem.",
     };
   },
 
@@ -90,9 +100,12 @@ export const mockGiftCardsApi = {
     await this.delay(2000);
     const rate = 700;
     const totalNGN = data.cardValue * rate - 500;
+    const gcTransactionId = this.generateGiftCardTransactionId("sell");
+    const statusHistory = this.generateStatusHistory("sell");
     return {
       id: `TXN-${Date.now()}`,
       reference: `REF-${Date.now()}`,
+      gcTransactionId,
       brandId: data.brandId,
       countryCode: data.countryCode,
       typeId: data.typeId,
@@ -104,6 +117,12 @@ export const mockGiftCardsApi = {
       balanceBefore: data.balanceBefore || 0,
       balanceAfter: (data.balanceBefore || 0) + totalNGN,
       amount: totalNGN,
+      rate: 700,
+      fee: 500,
+      statusHistory,
+      verificationStatus: "Pending",
+      verificationSubmittedDate: new Date().toISOString(),
+      estimatedPayout: totalNGN,
     };
   },
 
@@ -130,5 +149,36 @@ export const mockGiftCardsApi = {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return code;
+  },
+
+  generateGiftCardTransactionId(action: "buy" | "sell") {
+    const date = new Date();
+    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let random = "";
+    for (let i = 0; i < 5; i++) {
+      random += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `GC-${action.toUpperCase()}-${dateStr}-${random}`;
+  },
+
+  generateStatusHistory(action: "buy" | "sell") {
+    const now = new Date().toISOString();
+    if (action === "buy") {
+      return [
+        { status: "Order Created", timestamp: now, completed: true },
+        { status: "Payment Confirmed", timestamp: now, completed: true },
+        { status: "Gift Card Requested", timestamp: now, completed: true },
+        { status: "Gift Card Delivered", timestamp: now, completed: true },
+        { status: "Completed", timestamp: now, completed: true },
+      ];
+    } else {
+      return [
+        { status: "Order Created", timestamp: now, completed: true },
+        { status: "Payment Confirmed", timestamp: now, completed: true },
+        { status: "Provider Request", timestamp: now, completed: true },
+        { status: "Verification Pending", timestamp: now, completed: false },
+      ];
+    }
   },
 };

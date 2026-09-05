@@ -284,27 +284,66 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
     const total = rateInfo ? (action === "buy" ? Number(amount) * rateInfo.rate + rateInfo.fee : Number(amount) * rateInfo.rate - rateInfo.fee) : 0;
     const balanceBefore = wallet[walletType as keyof typeof wallet] || 0;
     const balanceAfter = action === "buy" ? balanceBefore - total : balanceBefore + total;
+    const rateAge = rateInfo?.rateTimestamp ? Math.floor((Date.now() - new Date(rateInfo.rateTimestamp).getTime()) / 1000 / 60) : 0;
+    const rateTimeText = rateAge === 0 ? "just now" : rateAge === 1 ? "1 min ago" : `${rateAge} mins ago`;
 
     return (
       <div className="page">
         <button className="back-link" onClick={() => setStep(4)}>← Back</button>
         <div className="page-heading">
           <span className="eyebrow">GIFT CARDS / {action.toUpperCase()}</span>
-          <h2>Review transaction</h2>
+          <h2>{action === "buy" ? "Gift Card Purchase" : "Gift Card Sale"}</h2>
           <p>Review your {action} details before confirming.</p>
         </div>
-        <section className="receipt">
-          <header><Tag>{action === "buy" ? "Purchase" : "Sale"}</Tag></header>
-          <div className="receipt-total">
-            <span>Total amount</span>
-            <b>{money(total)}</b>
-            <p className={action === "buy" ? "debit" : "credit"}>{action === "buy" ? "Wallet will be debited" : "Wallet will be credited"}</p>
-          </div>
-          <dl>
-            {[["Gift card brand", brand?.name], ["Country", country?.name], ["Card type", type?.name], ["Amount", `${country?.currency}${amount}`], ["Exchange rate", rateInfo ? `${rateInfo.rate} NGN/${country?.currency}` : ""], ["Transaction fee", rateInfo ? money(rateInfo.fee) : ""], ["Wallet type", walletType === "main" ? "Main balance" : walletType === "cashback" ? "Cashback balance" : "Referral balance"], ["Balance before", money(balanceBefore)], ["Balance after", money(balanceAfter)], ["Action", action === "buy" ? "Buy" : "Sell"]].filter(([,value])=>Boolean(value)).map(([key,value])=><div key={String(key)}><dt>{key}</dt><dd>{value}</dd></div>)}
+        
+        <section className="form-section">
+          <h3>Card Details</h3>
+          <dl className="review-grid">
+            <div><dt>Gift card brand</dt><dd>{brand?.name}</dd></div>
+            <div><dt>Country/region</dt><dd>{country?.name}</dd></div>
+            <div><dt>Card type</dt><dd>{type?.name}</dd></div>
+            <div><dt>Card {action === "buy" ? "denomination" : "value"}</dt><dd>{country?.currency}{amount}</dd></div>
           </dl>
-          <footer><Button variant="line" onClick={()=>setStep(4)}>Edit</Button><Button onClick={()=>setStep(6)}>Confirm transaction</Button></footer>
         </section>
+
+        <section className="form-section">
+          <h3>{action === "buy" ? "Pricing" : "Rate & Payout"}</h3>
+          <dl className="review-grid">
+            <div><dt>{action === "buy" ? "Gift card value" : "Card value"}</dt><dd>{country?.currency}{amount}</dd></div>
+            <div><dt>Current {action === "buy" ? "exchange rate" : "sell rate"}</dt><dd>{rateInfo?.rate} NGN/{country?.currency}</dd></div>
+            <div><dt>{action === "buy" ? "Gift card amount in ₦" : "Gross card value"}</dt><dd>{money(Number(amount) * (rateInfo?.rate || 0))}</dd></div>
+            <div><dt>Transaction fee</dt><dd>{money(rateInfo?.fee || 0)}</dd></div>
+            <div><dt>{action === "buy" ? "Total to pay" : "Expected amount to receive"}</dt><dd className="highlight">{money(total)}</dd></div>
+          </dl>
+        </section>
+
+        <section className="form-section">
+          <h3>Wallet</h3>
+          <dl className="review-grid">
+            <div><dt>Payment source</dt><dd>FERIXAS Wallet</dd></div>
+            <div><dt>Wallet type</dt><dd>{walletType === "main" ? "Main balance" : walletType === "cashback" ? "Cashback balance" : "Referral balance"}</dd></div>
+            <div><dt>Available balance</dt><dd>{money(balanceBefore)}</dd></div>
+            <div><dt>Balance after {action === "buy" ? "payment" : "payout"}</dt><dd className={action === "buy" ? "debit" : "credit"}>{money(balanceAfter)}</dd></div>
+          </dl>
+        </section>
+
+        <section className="form-section">
+          <h3>Rate information</h3>
+          <dl className="review-grid">
+            <div><dt>Rate used</dt><dd>{rateInfo?.rate} NGN/{country?.currency}</dd></div>
+            <div><dt>Rate updated</dt><dd>{rateTimeText}</dd></div>
+          </dl>
+        </section>
+
+        <section className="form-section notice">
+          <Tag kind="warning">Rate confirmation</Tag>
+          <p>The exchange rate and final amount shown above are locked for this transaction. If the rate changes before confirmation, the amount will be recalculated.</p>
+        </section>
+
+        <div className="form-actions">
+          <Button variant="line" onClick={() => setStep(4)}>Edit</Button>
+          <Button onClick={() => setStep(6)}>Confirm transaction</Button>
+        </div>
       </div>
     );
   }
@@ -424,7 +463,7 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
     const amount = customAmount || selectedDenomination;
 
     const downloadReceipt = () => {
-      const blob = new Blob([`ASAFORVTU RECEIPT\nReference: ${transaction?.reference}\nService: Gift Card ${action === "buy" ? "Purchase" : "Sale"}\nAmount: ${money(transaction?.amount || 0)}\nStatus: ${transaction?.status}`], { type: "text/plain" });
+      const blob = new Blob([`ASAFORVTU RECEIPT\nReference: ${transaction?.reference}\nGift Card Transaction ID: ${transaction?.gcTransactionId}\nService: Gift Card ${action === "buy" ? "Purchase" : "Sale"}\nAmount: ${money(transaction?.amount || 0)}\nStatus: ${transaction?.status}`], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -448,19 +487,117 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
       }
     };
 
+    if (action === "buy") {
+      return (
+        <div className="page">
+          <button className="back-link" onClick={() => { reset(); setAction(null); }}>← Back to Gift Cards</button>
+          <section className="receipt">
+            <header><Tag kind="ok">{transaction?.status || "Success"}</Tag></header>
+            <div className="receipt-total">
+              <span>Total amount</span>
+              <b>{money(transaction?.amount || 0)}</b>
+              <p className="debit">Wallet debited</p>
+            </div>
+            
+            <section className="receipt-section">
+              <h4>Transaction Information</h4>
+              <dl>
+                {[["Transaction date & time", transaction?.createdAt ? formatDate(transaction.createdAt) : ""], ["Transaction type", "Gift Card Purchase"], ["Status", transaction?.status || "Success"], ["Reference", transaction?.reference], ["Gift Card Transaction ID", transaction?.gcTransactionId], ["Provider", brand?.name], ["Gift card brand", brand?.name], ["Country/region", country?.name], ["Card type", type?.name]].filter(([,value])=>Boolean(value)).map(([key,value])=><div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
+              </dl>
+            </section>
+
+            <section className="receipt-section">
+              <h4>Payment Information</h4>
+              <dl>
+                {[["Gift card value", `${country?.currency}${amount}`], ["Exchange rate", `${transaction?.rate} NGN/${country?.currency}`], ["Transaction fee", money(transaction?.fee || 0)], ["Total paid", money(transaction?.amount || 0)], ["Wallet used", walletType === "main" ? "Main balance" : walletType === "cashback" ? "Cashback balance" : "Referral balance"], ["Balance before", money(transaction?.balanceBefore || 0)], ["Balance after", money(transaction?.balanceAfter || 0)]].filter(([,value])=>Boolean(value)).map(([key,value])=><div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
+              </dl>
+            </section>
+
+            <section className="receipt-section">
+              <h4>Gift Card Delivery</h4>
+              <dl>
+                {transaction?.giftCardCode && [["Gift card code", transaction.giftCardCode]].map(([key,value]) => (<div key={key}><dt>{key}</dt><dd>{value}</dd></div>))}
+                {transaction?.redemptionInstructions && [["Redemption instructions", transaction.redemptionInstructions]].map(([key,value]) => (<div key={key}><dt>{key}</dt><dd>{value}</dd></div>))}
+                {[["Delivery status", transaction?.deliveryStatus || "Delivered"]].map(([key,value]) => (<div key={key}><dt>{key}</dt><dd>{value}</dd></div>))}
+              </dl>
+              {transaction?.giftCardCode && (
+                <div className="form-actions">
+                  <Button variant="line" onClick={() => { navigator.clipboard.writeText(transaction.giftCardCode); setSuccessMessage("Code copied to clipboard!"); }}>
+                    Copy code <Copy size={16}/>
+                  </Button>
+                </div>
+              )}
+            </section>
+
+            <section className="receipt-section">
+              <h4>Status Timeline</h4>
+              <div className="status-timeline">
+                {transaction?.statusHistory?.map((item: any, index: number) => (
+                  <div key={index} className={`timeline-item ${item.completed ? "completed" : "pending"}`}>
+                    <span className="timeline-icon">{item.completed ? "✓" : "○"}</span>
+                    <span className="timeline-status">{item.status}</span>
+                    <span className="timeline-time">{item.timestamp ? formatDate(item.timestamp) : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <footer>
+              <Button variant="line" onClick={downloadReceipt}>Download <Download size={16}/></Button>
+              <Button variant="line" onClick={() => window.print()}>Print <Printer size={16}/></Button>
+              <Button onClick={shareReceipt}>Share <Share2 size={15}/></Button>
+            </footer>
+          </section>
+        </div>
+      );
+    }
+
+    // Sell receipt
     return (
       <div className="page">
         <button className="back-link" onClick={() => { reset(); setAction(null); }}>← Back to Gift Cards</button>
         <section className="receipt">
-          <header><Tag kind="ok">{transaction?.status || "Success"}</Tag></header>
+          <header><Tag kind={transaction?.status === "success" ? "ok" : "warning"}>{transaction?.status || "Pending"}</Tag></header>
           <div className="receipt-total">
-            <span>Total amount</span>
-            <b>{money(transaction?.amount || 0)}</b>
-            <p className={action === "buy" ? "debit" : "credit"}>{action === "buy" ? "Wallet debited" : "Wallet credited"}</p>
+            <span>Estimated payout</span>
+            <b>{money(transaction?.estimatedPayout || 0)}</b>
+            <p className="credit">Wallet will be credited after verification</p>
           </div>
-          <dl>
-            {[["Transaction date", transaction?.createdAt ? formatDate(transaction.createdAt) : ""], ["Service type", `Gift Card ${action === "buy" ? "Purchase" : "Sale"}`], ["Provider", brand?.name], ["Reference", transaction?.reference], ["Description", `${brand?.name} ${type?.name} ${country?.currency}${amount}`], ["Balance before", money(transaction?.balanceBefore || 0)], ["Balance after", money(transaction?.balanceAfter || 0)], action === "buy" && transaction?.giftCardCode ? ["Gift card code", transaction.giftCardCode] : null, action === "sell" ? ["Verification status", transaction?.status || "Pending"] : null, action === "sell" ? ["Estimated payout", money(transaction?.totalNGN || 0)] : null].filter((item): item is [string, string] => item !== null && Boolean(item[1])).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
-          </dl>
+          
+          <section className="receipt-section">
+            <h4>Transaction</h4>
+            <dl>
+              {[["Date & time", transaction?.createdAt ? formatDate(transaction.createdAt) : ""], ["Transaction type", "Gift Card Sale"], ["Reference", transaction?.reference], ["Gift Card Transaction ID", transaction?.gcTransactionId], ["Brand", brand?.name], ["Country", country?.name], ["Card type", type?.name], ["Card value", `${country?.currency}${amount}`]].filter(([,value])=>Boolean(value)).map(([key,value])=><div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
+            </dl>
+          </section>
+
+          <section className="receipt-section">
+            <h4>Verification</h4>
+            <dl>
+              {[["Verification status", transaction?.verificationStatus || "Pending"], ["Submitted date", transaction?.verificationSubmittedDate ? formatDate(transaction.verificationSubmittedDate) : ""], ["Verification completed date", transaction?.verificationCompletedDate ? formatDate(transaction.verificationCompletedDate) : "Pending"], ["Verification result", transaction?.verificationResult || "Pending"]].filter(([,value])=>Boolean(value)).map(([key,value])=><div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
+            </dl>
+          </section>
+
+          <section className="receipt-section">
+            <h4>Settlement</h4>
+            <dl>
+              {[["Applied rate", `${transaction?.rate} NGN/${country?.currency}`], ["Gross card value", money(Number(amount) * (transaction?.rate || 0))], ["Fee", money(transaction?.fee || 0)], ["Final payout", money(transaction?.estimatedPayout || 0)], ["Wallet balance before", money(transaction?.balanceBefore || 0)], ["Wallet balance after", money(transaction?.balanceAfter || 0)]].filter(([,value])=>Boolean(value)).map(([key,value])=><div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
+            </dl>
+          </section>
+
+          <section className="receipt-section">
+            <h4>Status Timeline</h4>
+            <div className="status-timeline">
+              {transaction?.statusHistory?.map((item: any, index: number) => (
+                <div key={index} className={`timeline-item ${item.completed ? "completed" : "pending"}`}>
+                  <span className="timeline-icon">{item.completed ? "✓" : "○"}</span>
+                  <span className="timeline-status">{item.status}</span>
+                  <span className="timeline-time">{item.timestamp ? formatDate(item.timestamp) : ""}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
           <footer>
             <Button variant="line" onClick={downloadReceipt}>Download <Download size={16}/></Button>
             <Button variant="line" onClick={() => window.print()}>Print <Printer size={16}/></Button>
