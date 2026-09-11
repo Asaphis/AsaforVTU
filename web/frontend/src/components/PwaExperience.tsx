@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { currentUser } from "../lib/liveApi";
 
-const INSTALL_SEEN_KEY = "asafor-pwa-install-seen";
-const INSTALL_CONFIRMED_KEY = "asafor-pwa-install-confirmed";
+const INSTALL_CONFIRMED_KEY = "asafor-pwa-install-confirmed-v2";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
+type InstallStatus = "ready" | "installing" | "success" | "instructions";
 
 export function isStandalonePwa() {
   if (typeof window === "undefined" || typeof navigator === "undefined") return false;
@@ -17,8 +17,7 @@ export function isStandalonePwa() {
 }
 
 function hasConfirmedInstall() {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(INSTALL_CONFIRMED_KEY) === "true";
+  return typeof window !== "undefined" && window.localStorage.getItem(INSTALL_CONFIRMED_KEY) === "true";
 }
 
 export function PwaRuntime() {
@@ -45,13 +44,8 @@ export function PwaRuntime() {
   }, [setLocation]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const registerServiceWorker = async () => {
-      if ("serviceWorker" in navigator && window.isSecureContext) {
-        try { await navigator.serviceWorker.register("/sw.js", { scope: "/" }); } catch { /* PWA enhancement only */ }
-      }
-    };
-    void registerServiceWorker();
+    if (typeof window === "undefined" || !("serviceWorker" in navigator) || !window.isSecureContext) return;
+    void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined);
   }, []);
 
   if (launching && standalone) return <PwaSplash />;
@@ -63,6 +57,7 @@ export function PwaInstallPrompt() {
   const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [standalone, setStandalone] = useState(false);
+  const [status, setStatus] = useState<InstallStatus>("ready");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -78,12 +73,11 @@ export function PwaInstallPrompt() {
     const onInstalled = () => {
       window.localStorage.setItem(INSTALL_CONFIRMED_KEY, "true");
       setPromptEvent(null);
-      setVisible(false);
+      setStatus("success");
+      setVisible(true);
     };
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
     window.addEventListener("appinstalled", onInstalled);
-
-    // On browsers that do not expose the native prompt, show helpful install guidance.
     const timer = window.setTimeout(() => setVisible(true), 1400);
     return () => {
       window.clearTimeout(timer);
@@ -94,29 +88,51 @@ export function PwaInstallPrompt() {
 
   if (standalone || location !== "/" || !visible) return null;
 
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const install = async () => {
-    if (promptEvent) {
-      await promptEvent.prompt();
-      const choice = await promptEvent.userChoice;
-      if (choice.outcome === "accepted") {
-        window.localStorage.setItem(INSTALL_CONFIRMED_KEY, "true");
-        setVisible(false);
-      }
-      setPromptEvent(null);
+    if (!promptEvent) {
+      setStatus("instructions");
       return;
     }
-    window.localStorage.setItem(INSTALL_SEEN_KEY, "true");
-    setVisible(false);
+    setStatus("installing");
+    try {
+      await promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
+      setPromptEvent(null);
+      if (choice.outcome === "accepted") {
+        // Keep the message visible until the browser confirms appinstalled.
+        window.setTimeout(() => setStatus((current) => current === "installing" ? "instructions" : current), 10000);
+      } else {
+        setStatus("ready");
+      }
+    } catch {
+      setStatus("instructions");
+    }
   };
 
-  return <aside className="pwa-install-prompt" role="dialog" aria-label="Install Asafor VTU">
+  const close = () => setVisible(false);
+  const title = status === "success" ? "Asafor VTU installed" : status === "installing" ? "Installing Asafor VTU…" : "Install Asafor VTU";
+  const message = status === "success"
+    ? "Installation complete. Open Asafor VTU from your phone to go to Login."
+    : status === "installing"
+      ? "Please complete the installation window. We are waiting for confirmation."
+      : status === "instructions"
+        ? isIos
+          ? "Tap Share, then Add to Home Screen to place Asafor VTU on your phone."
+          : "Open your browser menu, choose Install app or Add to Home screen, then confirm."
+        : "Keep quick access to your account on your phone.";
+
+  return <aside className={`pwa-install-prompt pwa-install-prompt--${status}`} role="dialog" aria-live="polite" aria-label="Install Asafor VTU">
     <div className="pwa-install-mark"><img src="/pwa-icon-192.png" alt="" /></div>
     <div className="pwa-install-copy">
-      <strong>Install Asafor VTU</strong>
-      <span>Keep quick access to your account on your phone.</span>
+      <strong>{title}</strong>
+      <span>{message}</span>
     </div>
-    <button className="pwa-install-action" onClick={() => void install()}>Install</button>
-    <button className="pwa-install-dismiss" onClick={() => setVisible(false)} aria-label="Dismiss install message">×</button>
+    {status === "ready" && <button className="pwa-install-action" onClick={() => void install()}>Install</button>}
+    {status === "installing" && <span className="pwa-install-spinner" aria-label="Installation in progress" />}
+    {status === "instructions" && <button className="pwa-install-action" onClick={close}>Got it</button>}
+    {status === "success" && <button className="pwa-install-action" onClick={close}>Done</button>}
+    {status !== "installing" && <button className="pwa-install-dismiss" onClick={close} aria-label="Dismiss install message">×</button>}
   </aside>;
 }
 
