@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect, useState } from "react";
 import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { PwaInstallPrompt, PwaRuntime } from "./components/PwaExperience";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import LandingPage from "./customer-pages/LandingPage";
 import NotFound from "./customer-pages/NotFound";
@@ -38,5 +39,5 @@ function Router() { return <Switch><Route path="/" component={LandingPage} />{pu
 
 export default function App() {
   useEffect(()=>{startSessionAutoRefresh()},[]);
-  return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster richColors position="top-right" /><Router /></TooltipProvider></ThemeProvider></ErrorBoundary>;
+  return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster richColors position="top-right" /><PwaRuntime /><Router /><PwaInstallPrompt /></TooltipProvider></ThemeProvider></ErrorBoundary>;
 }

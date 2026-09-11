@@ -5,5 +5,6 @@ import "./type-system.css";
 import "./public-reference-overrides.css";
 import "./public-mobile-repair.css";
 import "./logo-transparency.css";
+import "./pwa.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
