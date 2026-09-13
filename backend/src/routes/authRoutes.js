@@ -17,9 +17,14 @@ const {
 } = require('../services/authService');
 const { authenticate } = require('../middleware/auth');
 
-// Register new user
+// Register new user (self-service signup always requires a transaction PIN;
+// admin-created accounts go through /api/admin/users/create instead)
 router.post('/register', async (req, res) => {
   try {
+    const pin = String(req.body?.pin ?? req.body?.transactionPin ?? '').trim();
+    if (!/^\d{4,6}$/.test(pin)) {
+      return res.status(400).json({ error: 'Transaction PIN must contain 4 to 6 digits' });
+    }
     const result = await registerUser(req.body);
     res.status(201).json(result);
   } catch (error) {
