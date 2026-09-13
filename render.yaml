@@ -21,8 +21,6 @@ services:
         value: ""
       - key: VITE_VTU_BACKEND_URL
         value: "https://asaforvtubackend.onrender.com"
-      - key: NEXT_PUBLIC_API_URL
-        value: "https://asaforvtubackend.onrender.com"
   - type: web
     name: Asafor-admin
     env: node

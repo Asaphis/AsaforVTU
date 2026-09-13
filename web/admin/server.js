@@ -5,24 +5,12 @@ const path = require('path');
 const root = __dirname;
 const port = Number(process.env.PORT || 5003);
 const release = process.env.ADMIN_RELEASE || '45c0307-r2';
-// NOTE: this must be the bare backend origin (e.g. https://vtuapi.ferixas.com).
-// Do NOT append /api or /api/v1 here: the admin UI already calls /api/* paths,
-// so a suffixed value would produce /api/v1/api/... upstream and break login.
-function normalizeBackendUrl(raw) {
-  let value = String(raw || '').trim().replace(/\/$/, '');
-  if (!value) return 'https://vtuapi.ferixas.com';
-  const stripped = value.replace(/\/(api\/v1|api|v1)(\/.*)?$/, (m, _p, rest) => rest || '');
-  if (stripped !== value) {
-    console.warn(`[admin] Stripped path suffix from backend URL: ${value} -> ${stripped}`);
-    value = stripped.replace(/\/$/, '');
-  }
-  return value;
-}
-const backendUrl = normalizeBackendUrl(
+const backendUrl = String(
   process.env.VTU_BACKEND_URL ||
   process.env.BACKEND_URL ||
-  process.env.VITE_VTU_BACKEND_URL
-);
+  process.env.VITE_VTU_BACKEND_URL ||
+  'https://vtuapi.ferixas.com'
+).replace(/\/$/, '');
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',

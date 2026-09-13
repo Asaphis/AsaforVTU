@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1m';
 const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
 
 const parseDurationToMs = (value, fallbackMs) => {

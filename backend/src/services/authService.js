@@ -39,10 +39,7 @@ const registerUser = async (userData) => {
   }
   if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error('Enter a valid email address');
   if (password.length < 8) throw new Error('Password must be at least 8 characters');
-  // PIN is required for self-service signup (enforced in authRoutes), but optional
-  // for admin-created accounts so the admin "Create customer / Create admin"
-  // buttons don't fail. Only validate when a PIN was actually supplied.
-  if (pin && !/^\d{4,6}$/.test(pin)) throw new Error('Transaction PIN must contain 4 to 6 digits');
+  if (!/^\d{4,6}$/.test(pin)) throw new Error('Transaction PIN must contain 4 to 6 digits');
 
   const client = await pool.connect();
   

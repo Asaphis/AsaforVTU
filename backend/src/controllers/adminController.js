@@ -498,28 +498,23 @@ const createUser = async (req, res) => {
     }
     
     const { registerUser } = require('../services/authService');
-    const registration = await registerUser({
+    const user = await registerUser({
       email,
       password,
       full_name: normalizedFullName,
       username: username || email.split('@')[0],
       phone: normalizedPhone
-      // No PIN from the admin form: authService leaves pin_hash null;
-      // the customer sets it later via /api/auth/change-pin.
     });
-    const created = registration.user;
     
     // Set admin if requested
     if (is_admin) {
       await pool.query(
         'UPDATE users SET is_admin = true, role = $1 WHERE id = $2',
-        ['admin', created.id]
+        ['admin', user.id]
       );
-      created.is_admin = true;
-      created.role = 'admin';
     }
     
-    res.json({ success: true, user: created });
+    res.json({ success: true, user });
   } catch (error) {
     console.error('[Admin Controller] Create user error:', error);
     res.status(500).json({ error: error.message });

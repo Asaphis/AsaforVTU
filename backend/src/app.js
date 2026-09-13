@@ -55,10 +55,6 @@ const corsOptions = {
         if (host === 'asafor.com' || host.endsWith('.asafor.com')) {
           isAllowed = true;
         }
-        // Allow all Ferixas-hosted frontends (vtuapi, vtuportal, vtu, asaphisapi, asaphisadm, asaphis, etc.)
-        if (host === 'ferixas.com' || host.endsWith('.ferixas.com')) {
-          isAllowed = true;
-        }
       } catch {}
     }
     return isAllowed ? callback(null, true) : callback(new Error('Not allowed by CORS'));
@@ -210,15 +206,6 @@ app.get('/api/announcements', async (_req, res) => {
     console.error('Error fetching public announcements:', e);
     res.json([]);
   }
-});
-
-// Compatibility shim: some deployed clients call /api/v1/* while this
-// backend defines routes at /api/*. Rewrite one leading /v1 so both work.
-app.use((req, _res, next) => {
-  if (req.path === '/api/v1' || req.path.startsWith('/api/v1/')) {
-    req.url = req.url.replace('/api/v1', '/api');
-  }
-  next();
 });
 
 // Import Routes
