@@ -28,6 +28,27 @@ export const metadata: Metadata = {
   },
 };
 
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      name: 'AsaforVTU',
+      url: 'https://asaforvtu.onrender.com',
+      description: 'Nigeria-focused digital services for airtime, data, electricity, cable TV and exam PINs.',
+      inLanguage: 'en-NG',
+    },
+    {
+      '@type': 'Organization',
+      name: 'Ferixas',
+      url: 'https://asaforvtu.onrender.com',
+      brand: { '@type': 'Brand', name: 'AsaforVTU' },
+      areaServed: { '@type': 'Country', name: 'Nigeria' },
+      contactPoint: { '@type': 'ContactPoint', email: 'asaphis.org@gmail.com', telephone: '+2347032420031', contactType: 'customer support' },
+    },
+  ],
+};
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en-NG"><body>{children}<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} /></body></html>;
 }

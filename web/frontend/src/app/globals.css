@@ -34,3 +34,8 @@
   .cookie-consent { right: .75rem; bottom: .75rem; flex-direction: column; align-items: stretch; max-width: calc(100vw - 1.5rem); }
   .cookie-consent__actions { display: grid; grid-template-columns: 1fr 1fr; }
 }
+
+:where(button, a, input, textarea, select):focus-visible {
+  outline: 3px solid #f4c96b;
+  outline-offset: 3px;
+}

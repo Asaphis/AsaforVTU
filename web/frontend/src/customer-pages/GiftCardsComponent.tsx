@@ -105,7 +105,7 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
         <div className="page-heading">
           <span className="eyebrow">GIFT CARDS</span>
           <h2>Choose an action</h2>
-          <p>Buy gift cards with your wallet or sell gift cards for wallet balance.</p>
+          <p>Gift-card buying and selling is not enabled in production yet.</p>
         </div>
         <section className="service-catalogue">
           <button className="service-catalogue-card" onClick={() => setAction("buy")}>
@@ -113,7 +113,7 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
             <div>
               <b>Buy Gift Cards</b>
               <p>Purchase gift cards with your wallet balance</p>
-              <small>Available now</small>
+              <small>Not enabled in production</small>
             </div>
             <ChevronRight />
           </button>
@@ -122,7 +122,7 @@ export function GiftCards({ nav, wallet }: GiftCardsProps) {
             <div>
               <b>Sell Gift Cards</b>
               <p>Exchange gift cards for wallet balance</p>
-              <small>Available now</small>
+              <small>Not enabled in production</small>
             </div>
             <ChevronRight />
           </button>
