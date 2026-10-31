@@ -6,8 +6,18 @@ import '../pwa.css';
 export const viewport = { themeColor: '#071a2b' };
 
 export const metadata: Metadata = {
-  title: 'AsaforVTU | Ferixas',
-  description: 'Interactive AsaforVTU customer experience.',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://asaforvtu.onrender.com'),
+  title: {
+    default: 'AsaforVTU | Airtime, Data, Bills and Exam PINs in Nigeria',
+    template: '%s | AsaforVTU',
+  },
+  description: 'AsaforVTU is a Nigeria-focused digital-services platform operated under the Ferixas brand for airtime, data, electricity, cable TV and exam PIN services.',
+  keywords: ['airtime Nigeria', 'data bundles Nigeria', 'electricity tokens Nigeria', 'cable TV renewal Nigeria', 'exam PINs Nigeria', 'AsaforVTU'],
+  authors: [{ name: 'Husseni Abduljabar Tolani' }],
+  creator: 'Ferixas',
+  publisher: 'Ferixas',
+  alternates: { canonical: '/' },
+  robots: { index: true, follow: true },
   manifest: '/manifest.json',
   icons: {
     icon: [
