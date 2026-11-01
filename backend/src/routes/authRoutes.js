@@ -16,6 +16,7 @@ const {
   changePin
 } = require('../services/authService');
 const { authenticate } = require('../middleware/auth');
+const accountDeletionService = require('../services/accountDeletionService');
 
 // Register new user
 router.post('/register', async (req, res) => {
@@ -150,6 +151,39 @@ router.post('/reset-password', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('[Auth Routes] Reset password error:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Account deletion is delayed so the user can cancel and financial records can
+// be reconciled. Personal data is anonymized only after the scheduled job runs.
+router.post('/account-deletion', authenticate, async (req, res) => {
+  try {
+    const result = await accountDeletionService.requestDeletion(
+      req.user.id,
+      req.body?.current_password,
+      req.body?.confirmation
+    );
+    res.status(result.already_requested ? 200 : 202).json(result);
+  } catch (error) {
+    console.error('[Auth Routes] Account deletion request error:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.get('/account-deletion', authenticate, async (req, res) => {
+  try {
+    res.json(await accountDeletionService.getDeletionStatus(req.user.id));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/account-deletion/cancel', authenticate, async (req, res) => {
+  try {
+    res.json(await accountDeletionService.cancelDeletion(req.user.id, req.body?.current_password));
+  } catch (error) {
+    console.error('[Auth Routes] Account deletion cancellation error:', error);
     res.status(400).json({ error: error.message });
   }
 });

@@ -24,13 +24,11 @@ const defaultOrigins = [
   'https://asaforvtubackend.onrender.com',
   'https://vtu.ferixas.com',
   'https://vtuportal.ferixas.com',
-  'https://vtuapi.ferixas.com',
-  'http://localhost:3000',
-  'http://localhost:5000',
-  'http://localhost:3001',
-  'http://localhost:3002',
-  'http://localhost:5001'
+  'https://vtuapi.ferixas.com'
 ];
+if (process.env.NODE_ENV !== 'production') {
+  defaultOrigins.push('http://localhost:3000', 'http://localhost:5000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:5001');
+}
 
 // Add current replit host dynamically if available
 if (process.env.REPLIT_DEV_DOMAIN) {
@@ -43,8 +41,11 @@ const envOrigins = originsEnv ? originsEnv.split(',').map(s => s.trim()).filter(
 const origins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
 const corsOptions = {
   origin: (origin, callback) => {
-    // In development/replit, allow all origins
-    if (!origin || origin.includes('.replit.app') || origin.includes('.replit.dev') || origin.includes('localhost')) {
+    // Non-browser/server-to-server requests have no Origin header.
+    if (!origin) {
+      return callback(null, true);
+    }
+    if (process.env.NODE_ENV !== 'production' && (origin.includes('.replit.app') || origin.includes('.replit.dev') || origin.includes('localhost'))) {
       return callback(null, true);
     }
     
@@ -68,7 +69,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 // Ensure preflight requests are handled early with the same options
 app.options('*', cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
 app.use(morgan('dev'));
 const notificationUploadDirectory = path.resolve(process.env.NOTIFICATION_UPLOAD_DIR || path.join(process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'), 'notifications'));
 app.use('/uploads/notifications', express.static(notificationUploadDirectory, { fallthrough: false, maxAge: '1h' }));
@@ -92,7 +93,7 @@ app.get('/api/services', async (_req, res) => {
     })));
   } catch (e) {
     console.error('Error fetching services:', e);
-    res.json([]);
+    res.status(503).json({ error: 'Service catalogue is temporarily unavailable' });
   }
 });
 
@@ -143,7 +144,7 @@ app.get('/api/plans', async (req, res) => {
     res.json(transformedPlans);
   } catch (e) {
     console.error('Error fetching plans:', e);
-    res.json([]);
+    res.status(503).json({ error: 'Service plans are temporarily unavailable' });
   }
 });
 
@@ -177,17 +178,7 @@ app.get('/api/settings', async (_req, res) => {
     });
   } catch (e) {
     console.error('Error fetching settings:', e);
-    // Return defaults on error
-    res.json({
-      airtimeNetworks: {
-        MTN: { enabled: true, discount: 0 },
-        Airtel: { enabled: true, discount: 0 },
-        Glo: { enabled: true, discount: 0 },
-        "9mobile": { enabled: true, discount: 0 }
-      },
-      systemStatus: 'online',
-      announcementsEnabled: true
-    });
+    res.status(503).json({ error: 'Platform settings are temporarily unavailable' });
   }
 });
 
@@ -204,7 +195,7 @@ app.get('/api/announcements', async (_req, res) => {
     res.json(result.rows);
   } catch (e) {
     console.error('Error fetching public announcements:', e);
-    res.json([]);
+    res.status(503).json({ error: 'Announcements are temporarily unavailable' });
   }
 });
 
@@ -238,8 +229,7 @@ app.use('/api/vtu', vtuRoutes);
 // Error Handling Middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!', details: err.message });
+  res.status(500).json({ error: 'Something went wrong' });
 });
 
 module.exports = app;
-
