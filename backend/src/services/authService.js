@@ -1,7 +1,8 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
-const { generateToken, generateRefreshToken, verifyToken } = require('../middleware/auth');
+const { generateToken, generateRefreshToken, verifyToken, JWT_SECRET, REFRESH_TOKEN_EXPIRES_IN, REFRESH_TOKEN_TTL_MS } = require('../middleware/auth');
 const { sendVerificationEmail, sendPasswordResetEmail, sendReferralSignupEmail, sendAccountSecurityEmail } = require('./emailService');
 
 const SALT_ROUNDS = 10;
@@ -200,8 +201,6 @@ const registerUser = async (userData) => {
 
 // Login user
 const loginUser = async (email, password) => {
-  console.log('[loginUser] Login attempt for email:', email);
-  
   const client = await pool.connect();
   
   try {
@@ -211,28 +210,19 @@ const loginUser = async (email, password) => {
       [email.toLowerCase()]
     );
 
-    console.log('[loginUser] User found:', userResult.rows.length > 0);
-
     if (userResult.rows.length === 0) {
-      console.log('[loginUser] User not found');
       throw new Error('Invalid credentials');
     }
 
     const user = userResult.rows[0];
-    console.log('[loginUser] User ID:', user.id, 'is_active:', user.is_active, 'is_admin:', user.is_admin);
-    
     // Check if user is active
     if (!user.is_active) {
-      console.log('[loginUser] User account deactivated');
       throw new Error('Account is deactivated');
     }
 
     // Verify password
     const isValidPassword = await comparePassword(password, user.password_hash);
-    console.log('[loginUser] Password valid:', isValidPassword);
-
     if (!isValidPassword) {
-      console.log('[loginUser] Invalid password');
       throw new Error('Invalid credentials');
     }
 
@@ -247,8 +237,6 @@ const loginUser = async (email, password) => {
       'UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1',
       [user.id]
     );
-
-    console.log('[loginUser] Last login updated');
 
     try {
       const notificationService = require('./notificationService');
@@ -267,8 +255,6 @@ const loginUser = async (email, password) => {
     const accessToken = generateToken(user.id, user.email, user.role);
     const refreshToken = await generateRefreshToken(user.id);
     
-    console.log('[loginUser] Tokens generated');
-
     // Get user wallet
     const walletResult = await client.query(
       'SELECT * FROM wallets WHERE user_id = $1',
@@ -287,6 +273,7 @@ const loginUser = async (email, password) => {
         role: user.role,
         is_admin: user.is_admin,
         email_verified: user.email_verified,
+        deletion_requested_at: user.deletion_requested_at,
         referral_code: user.referral_code,
         avatar_url: user.avatar_url,
         pin_set: Boolean(user.pin_hash),
@@ -303,7 +290,6 @@ const loginUser = async (email, password) => {
       }
     };
     
-    console.log('[loginUser] Returning result with user:', result.user.email, 'is_admin:', result.user.is_admin);
     return result;
   } finally {
     client.release();
@@ -315,6 +301,7 @@ const refreshAccessToken = async (refreshToken) => {
   const client = await pool.connect();
   
   try {
+    await client.query('BEGIN');
     const decoded = verifyToken(refreshToken);
     if (!decoded || decoded.type !== 'refresh' || !decoded.userId) {
       throw new Error('Invalid or expired refresh token');
@@ -325,7 +312,8 @@ const refreshAccessToken = async (refreshToken) => {
       `SELECT rt.*, u.id, u.email, u.role, u.is_active
        FROM refresh_tokens rt
        JOIN users u ON rt.user_id = u.id
-       WHERE rt.token = $1 AND rt.revoked_at IS NULL AND rt.expires_at > CURRENT_TIMESTAMP`,
+       WHERE rt.token = $1 AND rt.revoked_at IS NULL AND rt.expires_at > CURRENT_TIMESTAMP
+       FOR UPDATE`,
       [refreshToken]
     );
 
@@ -344,10 +332,22 @@ const refreshAccessToken = async (refreshToken) => {
 
     // Generate new access token
     const accessToken = generateToken(tokenData.id, tokenData.email, tokenData.role);
+    const rotatedRefreshToken = jwt.sign({ userId: tokenData.id, type: 'refresh' }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+    const rotatedExpiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+    await client.query('UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP WHERE token = $1', [refreshToken]);
+    await client.query(
+      'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
+      [tokenData.user_id, rotatedRefreshToken, rotatedExpiresAt]
+    );
+    await client.query('COMMIT');
 
     return {
-      access_token: accessToken
+      access_token: accessToken,
+      refresh_token: rotatedRefreshToken
     };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
   } finally {
     client.release();
   }
@@ -557,8 +557,6 @@ const getUserById = async (userId) => {
 
   const user = result.rows[0];
   
-  console.log('[getUserById] User from DB:', { id: user.id, email: user.email, is_admin: user.is_admin, role: user.role });
-
   // Get user wallet
   const walletResult = await pool.query(
     'SELECT * FROM wallets WHERE user_id = $1',

@@ -3,9 +3,11 @@ const { authenticate } = require('../middleware/auth');
 const paymentService = require('../services/paymentService');
 const flutterwaveService = require('../services/flutterwaveService');
 const pool = require('../config/database');
+const rateLimit = require('../middleware/rateLimit');
 
 const router = express.Router();
 router.use(authenticate);
+const paymentLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 });
 
 const defaultFundingSettings = {
   automated_enabled: true,
@@ -38,7 +40,7 @@ router.get('/funding-options', async (req, res) => {
   }
 });
 
-router.post('/initiate', async (req, res) => {
+router.post('/initiate', paymentLimiter, async (req, res) => {
   try {
     const amount = Number(req.body?.amount);
     if (!Number.isFinite(amount) || amount < 100) return res.status(400).json({ error: 'Invalid amount. Minimum is ₦100.' });
@@ -78,7 +80,7 @@ router.post('/initiate', async (req, res) => {
   }
 });
 
-router.post('/cancel', async (req, res) => {
+router.post('/cancel', paymentLimiter, async (req, res) => {
   try {
     const requestedRef = String(req.body?.tx_ref || '').trim();
     if (!requestedRef) return res.status(400).json({ error: 'tx_ref is required' });
@@ -96,7 +98,7 @@ router.post('/cancel', async (req, res) => {
   }
 });
 
-router.post('/verify', async (req, res) => {
+router.post('/verify', paymentLimiter, async (req, res) => {
   try {
     const requestedRef = String(req.body?.tx_ref || '').trim();
     if (!requestedRef) return res.status(400).json({ error: 'tx_ref is required' });

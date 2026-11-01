@@ -16,10 +16,13 @@ const {
   changePin
 } = require('../services/authService');
 const { authenticate } = require('../middleware/auth');
+const rateLimit = require('../middleware/rateLimit');
 const accountDeletionService = require('../services/accountDeletionService');
+const loginLimiter = rateLimit({ windowMs: 60 * 1000, max: 10 });
+const recoveryLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 8 });
 
 // Register new user
-router.post('/register', async (req, res) => {
+router.post('/register', recoveryLimiter, async (req, res) => {
   try {
     const result = await registerUser(req.body);
     res.status(201).json(result);
@@ -31,7 +34,7 @@ router.post('/register', async (req, res) => {
 });
 
 // Login user
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     
@@ -81,7 +84,7 @@ router.post('/logout', async (req, res) => {
 });
 
 // Resend verification email. The response is intentionally generic.
-router.post('/resend-verification', async (req, res) => {
+router.post('/resend-verification', recoveryLimiter, async (req, res) => {
   try {
     const result = await resendVerificationEmail(req.body?.email);
     res.json(result);
@@ -122,7 +125,7 @@ router.post('/verify-email', async (req, res) => {
 });
 
 // Request password reset
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', recoveryLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     
@@ -139,7 +142,7 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // Reset password
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', recoveryLimiter, async (req, res) => {
   try {
     const { token, new_password } = req.body;
     

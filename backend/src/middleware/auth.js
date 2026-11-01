@@ -54,7 +54,7 @@ const verifyToken = (token) => {
 
 const getAuthenticatedUser = async (userId) => {
   const result = await pool.query(
-    `SELECT id, email, role, is_admin, is_active, email_verified
+    `SELECT id, email, role, is_admin, is_active, email_verified, deletion_requested_at
      FROM users WHERE id = $1`,
     [userId]
   );
@@ -66,7 +66,8 @@ const getAuthenticatedUser = async (userId) => {
     role: user.role,
     is_admin: Boolean(user.is_admin),
     is_active: Boolean(user.is_active),
-    email_verified: Boolean(user.email_verified)
+    email_verified: Boolean(user.email_verified),
+    deletion_requested_at: user.deletion_requested_at
   };
 };
 
@@ -85,6 +86,9 @@ const authenticate = async (req, res, next) => {
     const user = await getAuthenticatedUser(decoded.userId);
     if (!user) return res.status(401).json({ error: 'Unauthorized', message: 'User not found' });
     if (!user.is_active) return res.status(403).json({ error: 'Forbidden', message: 'User account is deactivated' });
+    if (user.deletion_requested_at && !['/account-deletion', '/account-deletion/cancel', '/me', '/logout'].includes(req.path)) {
+      return res.status(423).json({ error: 'Account deletion is pending', message: 'Cancel the account deletion request before using account services.' });
+    }
 
     req.user = user;
     return next();
@@ -96,9 +100,7 @@ const authenticate = async (req, res, next) => {
 
 const authenticateAdmin = async (req, res, next) => {
   return authenticate(req, res, () => {
-    const allowedAdminEmails = (process.env.ADMIN_EMAILS || 'asaphis.org@gmail.com')
-      .split(',').map(email => email.trim().toLowerCase()).filter(Boolean);
-    const isAdmin = req.user.is_admin || req.user.role === 'admin' || allowedAdminEmails.includes(req.user.email.toLowerCase());
+    const isAdmin = req.user.is_admin || req.user.role === 'admin';
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden', message: 'Admin access required' });
     return next();
   });
@@ -129,5 +131,8 @@ module.exports = {
   authenticateAdmin,
   requireAdmin: authenticateAdmin,
   optionalAuth,
-  getAuthenticatedUser
+  getAuthenticatedUser,
+  JWT_SECRET,
+  REFRESH_TOKEN_EXPIRES_IN,
+  REFRESH_TOKEN_TTL_MS
 };

@@ -7,8 +7,10 @@ const walletService = require('../services/walletService');
 const pool = require('../config/database');
 const { getServicePlans, getServiceBySlug } = require('../services/serviceService');
 const { verifyPin } = require('../services/authService');
+const rateLimit = require('../middleware/rateLimit');
 
 const router = express.Router();
+const purchaseLimiter = rateLimit({ windowMs: 60 * 1000, max: 12 });
 const NETWORK_ID_MAP = { mtn: 1, glo: 2, '9mobile': 3, airtel: 4 };
 const slugByType = { airtime: 'airtime', data: 'data', cable: 'cable', electricity: 'electricity', exam: 'exam-pins', 'exam-pins': 'exam-pins' };
 
@@ -52,7 +54,7 @@ router.post('/verify', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-router.post('/purchase', authenticate, async (req, res) => {
+router.post('/purchase', authenticate, purchaseLimiter, async (req, res) => {
   const { type, amount, details = {} } = req.body || {};
   const normalizedType = String(type || '').toLowerCase();
   const requestId = String(details.requestId || '').trim() || `REQ_${req.user.id}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -166,7 +168,7 @@ router.get('/transactions', authenticate, async (req, res) => {
   catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-router.post('/requery', authenticate, async (req, res) => {
+router.post('/requery', authenticate, purchaseLimiter, async (req, res) => {
   try {
     const { requestId } = req.body || {};
     if (!requestId) return res.status(400).json({ success: false, message: 'requestId is required' });

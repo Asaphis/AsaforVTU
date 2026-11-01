@@ -467,8 +467,7 @@ const listUsers = async (req, res) => {
     `;
     const params = [];
     let paramIndex = 1;
-    query += ` WHERE LOWER(COALESCE(u.email, '')) NOT LIKE '%@example.invalid'
-                    AND LOWER(TRIM(COALESCE(u.full_name, ''))) <> 'auth audit test'`;
+    query += ' WHERE TRUE';
     
     if (search) {
       query += ` AND (u.email ILIKE $${paramIndex} OR u.full_name ILIKE $${paramIndex} OR u.username ILIKE $${paramIndex})`;

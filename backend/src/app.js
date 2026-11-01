@@ -226,6 +226,19 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/vtu', vtuRoutes);
 
+// Versioned API aliases. Existing /api clients remain supported while new
+// clients can depend on the explicit /api/v1 contract.
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/wallet', walletRoutes);
+app.use('/api/v1/transactions', transactionRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/v1/webhooks', webhookRoutes);
+app.use('/api/v1/support', supportRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/referrals', referralRoutes);
+app.use('/api/v1/vtu', vtuRoutes);
+
 // Error Handling Middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);

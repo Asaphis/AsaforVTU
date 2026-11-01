@@ -30,6 +30,18 @@ const upload = multer({
 });
 
 const removeUploadedFiles = (files = []) => files.forEach(file => fs.unlink(file.path, () => {}));
+const hasExpectedSignature = async (file) => {
+  const header = await fs.promises.readFile(file.path, { encoding: null });
+  if (file.mimetype === 'image/jpeg') return header.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]));
+  if (file.mimetype === 'image/png') return header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if (file.mimetype === 'image/gif') return header.subarray(0, 4).toString() === 'GIF8';
+  if (file.mimetype === 'image/webp') return header.subarray(0, 4).toString() === 'RIFF' && header.subarray(8, 12).toString() === 'WEBP';
+  if (file.mimetype === 'application/pdf') return header.subarray(0, 5).toString() === '%PDF-';
+  if (file.mimetype === 'video/mp4' || file.mimetype === 'video/quicktime') return header.subarray(4, 8).toString() === 'ftyp';
+  if (file.mimetype === 'video/webm') return header.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
+  if (file.mimetype === 'application/msword' || file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return header.subarray(0, 2).toString() === 'PK';
+  return file.mimetype === 'text/plain';
+};
 const ownedTicket = async (ticketId, userId) => {
   const result = await pool.query('SELECT * FROM support_tickets WHERE id = $1 AND user_id = $2', [ticketId, userId]);
   return result.rows[0] || null;
@@ -38,6 +50,7 @@ const canAccessTicket = (ticket, user) => ticket && (ticket.user_id === user.id 
 const createAttachments = async (client, ticketId, messageId, userId, files = []) => {
   const attachments = [];
   for (const file of files) {
+    if (!(await hasExpectedSignature(file))) throw new Error(`The uploaded file ${file.originalname} failed file validation`);
     const result = await client.query(
       `INSERT INTO support_attachments (ticket_id, message_id, uploaded_by, original_name, storage_name, mime_type, size_bytes)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, original_name, mime_type, size_bytes, created_at`,

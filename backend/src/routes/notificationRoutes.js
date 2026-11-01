@@ -42,16 +42,6 @@ router.post('/devices', async (req, res) => {
        LIMIT 1`,
       [req.user.id]
     );
-    const accountEmail = String(account.rows[0]?.email || '').trim().toLowerCase();
-    const accountName = String(account.rows[0]?.full_name || '').trim().toLowerCase();
-    const isAuditAccount = accountEmail.endsWith('@example.invalid') || accountName === 'auth audit test';
-    if (isAuditAccount) {
-      await database.query(
-        'UPDATE notification_devices SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1',
-        [req.user.id]
-      );
-      return res.status(403).json({ error: 'Test and audit accounts cannot register production notification devices.' });
-    }
     // A reinstall can produce a new FCM token. Keep the newest installation
     // active for this user/platform and retire stale tokens immediately.
     await database.query(

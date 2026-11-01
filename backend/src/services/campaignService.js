@@ -9,8 +9,6 @@ const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character
 const eligibleCustomer = `
   u.is_active = TRUE
   AND COALESCE(u.role, 'user') <> 'admin'
-  AND LOWER(COALESCE(u.email, '')) NOT LIKE '%@example.invalid'
-  AND LOWER(TRIM(COALESCE(u.full_name, ''))) <> 'auth audit test'
 `;
 
 const parseMetadata = (value) => {

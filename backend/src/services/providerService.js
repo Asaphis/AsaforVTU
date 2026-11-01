@@ -3,11 +3,14 @@ const pool = require('../config/database');
 
 class ProviderService {
   constructor() {
-    this.baseUrl = process.env.VTU_PROVIDER_URL || 'https://iacafe.com.ng/devapi/v1';
+    this.baseUrl = process.env.VTU_PROVIDER_URL ? process.env.VTU_PROVIDER_URL.replace(/\/$/, '') : '';
     this.apiKey = process.env.VTU_PROVIDER_API_KEY ? process.env.VTU_PROVIDER_API_KEY.trim() : '';
   }
 
   _getHeaders() {
+    if (!this.baseUrl || !this.apiKey) {
+      throw new Error('VTU provider is not configured');
+    }
     return {
       'Authorization': `Bearer ${this.apiKey}`,
       'Content-Type': 'application/json',
@@ -153,27 +156,6 @@ class ProviderService {
     if (netKey.includes('9mobile') || netKey.includes('etisalat')) return 3;
 
     return netInput; 
-  }
-
-  // Deprecated synchronous helper - kept for reference but should not be used
-  _mapNetworkToServiceId(network) {
-    return this._mapNetworkToId(network);
-  }
-
-  // Deprecated synchronous helper
-  _mapNetworkToId(network) {
-    let netInput = network;
-    if (typeof network === 'object' && network !== null) {
-      netInput = network.value || network.id || network.name || network.label || JSON.stringify(network);
-    }
-    const net = String(netInput).toLowerCase();
-    
-    if (net.includes('mtn') || net === '1' || net === '01') return 1;
-    if (net.includes('glo') || net === '2' || net === '02') return 2;
-    if (net.includes('airtel') || net === '3' || net === '03') return 4;
-    if (net.includes('9mobile') || net.includes('etisalat') || net === '4' || net === '04') return 3;
-    
-    return 1; // Default
   }
 
   /**
@@ -469,4 +451,3 @@ class ProviderService {
 }
 
 module.exports = new ProviderService();
-
