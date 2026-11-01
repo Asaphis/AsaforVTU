@@ -296,6 +296,12 @@ const failTransaction = async (transactionId, reason = null, shouldRefund = fals
       throw new Error('Transaction not found');
     }
 
+    const previousStatus = transaction.status;
+    if (['failed', 'cancelled'].includes(previousStatus)) return transaction;
+    if (['success', 'reversed'].includes(previousStatus)) {
+      throw new Error('A successful transaction cannot be marked as failed');
+    }
+
     // Update transaction status
     await updateTransactionStatus(transactionId, 'failed', null, {
       failure_reason: reason,
@@ -304,7 +310,7 @@ const failTransaction = async (transactionId, reason = null, shouldRefund = fals
 
     // Refund only when the caller explicitly asks this helper to do it. The
     // VTU route debits and refunds through the wallet service separately.
-    if (shouldRefund && transaction.status === 'processing') {
+    if (shouldRefund && previousStatus === 'processing') {
       await walletService.creditWallet(
         transaction.user_id,
         transaction.amount,

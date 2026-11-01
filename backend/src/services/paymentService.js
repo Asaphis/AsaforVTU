@@ -211,62 +211,45 @@ const processSuccessfulPayment = async (paymentId, providerData = {}) => {
 
 // Process failed payment
 const processFailedPayment = async (paymentId, reason = null) => {
-  const client = await pool.connect();
-  
   try {
-    await client.query('BEGIN');
-
-    // Get payment
     const payment = await getPaymentById(paymentId);
     if (!payment) {
       throw new Error('Payment not found');
     }
+    if (['failed', 'cancelled', 'timeout'].includes(payment.status)) return payment;
+    if (payment.status === 'success' || payment.status === 'reversed') {
+      throw new Error('A successful payment cannot be marked as failed');
+    }
 
-    // Update payment status
     const updatedPayment = await updatePaymentStatus(paymentId, 'failed', {
       metadata: { failure_reason: reason }
     });
 
-    // If payment is linked to a transaction, fail it
     if (payment.transaction_id) {
       await transactionService.failTransaction(payment.transaction_id, reason || 'Payment failed');
     }
-
-    await client.query('COMMIT');
-
     return updatedPayment;
   } catch (error) {
-    await client.query('ROLLBACK');
     console.error('[Payment Service] Error processing failed payment:', error);
     throw error;
-  } finally {
-    client.release();
   }
 };
 
 // Reverse payment
 const reversePayment = async (paymentId, reason = null) => {
-  const client = await pool.connect();
-  
   try {
-    await client.query('BEGIN');
-
-    // Get payment
     const payment = await getPaymentById(paymentId);
     if (!payment) {
       throw new Error('Payment not found');
     }
+    if (payment.status === 'reversed') return payment;
 
     if (payment.status !== 'success') {
       throw new Error('Can only reverse successful payments');
     }
 
-    // Update payment status
-    const updatedPayment = await updatePaymentStatus(paymentId, 'reversed', {
-      metadata: { reversal_reason: reason }
-    });
-
-    // Debit wallet (reverse the credit)
+    // The ledger reference makes this debit idempotent. Perform it before the
+    // status update because the wallet service owns its own database transaction.
     await walletService.debitWallet(
       payment.user_id,
       payment.amount,
@@ -275,15 +258,12 @@ const reversePayment = async (paymentId, reason = null) => {
       `REVERSAL_${payment.tx_ref}`
     );
 
-    await client.query('COMMIT');
-
-    return updatedPayment;
+    return updatePaymentStatus(paymentId, 'reversed', {
+      metadata: { reversal_reason: reason }
+    });
   } catch (error) {
-    await client.query('ROLLBACK');
     console.error('[Payment Service] Error reversing payment:', error);
     throw error;
-  } finally {
-    client.release();
   }
 };
 

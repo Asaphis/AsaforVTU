@@ -495,7 +495,8 @@ const resetPassword = async (token, newPassword) => {
     const tokenResult = await client.query(
       `SELECT prt.user_id, prt.expires_at, u.email, u.full_name
        FROM password_reset_tokens prt JOIN users u ON u.id = prt.user_id
-       WHERE prt.token = $1 AND prt.used_at IS NULL AND prt.expires_at > CURRENT_TIMESTAMP`,
+       WHERE prt.token = $1 AND prt.used_at IS NULL AND prt.expires_at > CURRENT_TIMESTAMP
+       FOR UPDATE`,
       [token]
     );
 
@@ -515,10 +516,11 @@ const resetPassword = async (token, newPassword) => {
     );
 
     // Mark token as used
-    await client.query(
-      'UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE token = $1',
+    const consumed = await client.query(
+      'UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE token = $1 AND used_at IS NULL RETURNING id',
       [token]
     );
+    if (consumed.rows.length === 0) throw new Error('Invalid or expired reset token');
 
     // Revoke all refresh tokens for security
     await client.query(
@@ -576,12 +578,50 @@ const getUserById = async (userId) => {
   };
 };
 
-// Verify transaction PIN server-side. The stored hash never leaves the backend.
+// Verify transaction PIN server-side. Failed attempts are persisted so a
+// restart cannot reset brute-force protection. The stored hash never leaves
+// the backend and callers receive only a boolean result.
 const verifyPin = async (userId, pin) => {
   if (!/^\d{4,6}$/.test(String(pin || ''))) return false;
-  const result = await pool.query('SELECT pin_hash FROM users WHERE id = $1', [userId]);
-  if (result.rows.length === 0 || !result.rows[0].pin_hash) return false;
-  return bcrypt.compare(String(pin), result.rows[0].pin_hash);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      'SELECT pin_hash, pin_failed_attempts, pin_locked_until FROM users WHERE id = $1 FOR UPDATE',
+      [userId]
+    );
+    if (result.rows.length === 0 || !result.rows[0].pin_hash) {
+      await client.query('COMMIT');
+      return false;
+    }
+    const user = result.rows[0];
+    if (user.pin_locked_until && new Date(user.pin_locked_until).getTime() > Date.now()) {
+      await client.query('COMMIT');
+      return false;
+    }
+
+    const valid = await bcrypt.compare(String(pin), user.pin_hash);
+    if (valid) {
+      await client.query(
+        'UPDATE users SET pin_failed_attempts = 0, pin_locked_until = NULL WHERE id = $1',
+        [userId]
+      );
+    } else {
+      const attempts = Number(user.pin_failed_attempts || 0) + 1;
+      const lockedUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+      await client.query(
+        'UPDATE users SET pin_failed_attempts = $1, pin_locked_until = $2 WHERE id = $3',
+        [attempts, lockedUntil, userId]
+      );
+    }
+    await client.query('COMMIT');
+    return valid;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 const changePin = async (userId, currentPin, pin) => {
