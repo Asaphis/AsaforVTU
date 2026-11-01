@@ -93,8 +93,8 @@ const refreshAccessToken = async () => {
     try {
       const response = await fetch(`${API_BASE}/api/auth/refresh`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refresh_token: refresh }), signal: AbortSignal.timeout(7000) });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok || !payload.access_token) return false;
-      localStorage.setItem("access_token", payload.access_token);
+      if (!response.ok || !payload.access_token || !payload.refresh_token) return false;
+      persistTokens(payload.access_token, payload.refresh_token);
       scheduleSessionRefresh();
       return true;
     } catch {
